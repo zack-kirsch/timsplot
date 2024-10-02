@@ -2,7 +2,7 @@
 The timsTOF Visualization Tool App is a Shiny App designed to facilitate quick and easy data visualization for Bruker timsTOF data. The app uses the reports from common software (Spectronaut, DIA-NN, FragPipe, and tims DIA-NN) to generate informative figures that can be adjusted on-the-fly for data inspection and presentation. 
 
 # Tutorial
-Instructions on how to use the app can be found [here](/timsTOF Visualization App Tutorial.pptx).
+Instructions on how to use the app can be found [here](main/).
 
 # Getting Started
 ## Installation
