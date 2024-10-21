@@ -1,8 +1,86 @@
+# =============================================================================
+# Changelog
+# =============================================================================
+#region
+
+#changes made from 240913 version
+#region
+    #metadata
+        #changed how metadata works. Added 2nd table that only shows conditions so it makes reordering and concentration input much easier
+        #it should update with removal of entire conditions' replicates in the replicate-based metadata table so long as the switch is active
+        #changed how R.Condition, R.Replicate, and concentration are updated from the metadata, substantially faster by not going row-by-row 
+    #throughout 
+        #changed .str.contains(condition) to ==condition. There was a bug where - in the condition name would make the code interpret as an invalid decimal and mess up how it interpreted the conditions
+        #adjusted titlefont, axisfont, labelfont, and legendfont throughout such that changing the sliders in the control panel adjusts the right groupings
+    #idmetrics
+        #added a sort for resultdf so that the conditions are ordered when it's generated. There was a bug where the ordering for the conditions would be correct based on the metadata (as in the x axis labels) in the idmetrics plot but the actual data were in order of condition because of the way the loop works
+    #Settings
+        #Control Panel 
+            #tab added for font size control and other plotting customization
+            #new variables to add throughout in plotting functions
+            # titlefont=input.titlefont()
+            # axisfont=input.axisfont()
+            # labelfont=input.labelfont()
+            # legendfont=input.legendfont()
+            # ypadding=input.ypadding()
+        #Column Check 
+            #tab added to make sure necessary columns are present
+        #Color Settings
+            #changed the matplotlib and css color groups to images that were explicitly saved to \images under the Spectronaut_Vis_App folder
+            #this makes them load faster and stay present even when the tab is reloaded
+            #the functions are still present to render them as plots under
+        #File Stats
+            #added panel with useful information about the input file
+    #Metrics
+        #added separate functions for explicitly calculating metrics instead of using the idmetrics function. Should help in error handling
+        #Peptide Lengths
+            #adjusted x axis such that it always uses integer ticks for the x axis
+        #Peptides per Protein  
+            #adjusted plotting such that there is a hard cutoff to the high x range
+            #adjusted plotting such that values were sorted properly, preventing odd plotting artefacts
+        #Data Completeness
+            #adjusted y padding and spacing for data labels
+        #Added Peak Width section
+    #PTMs
+        #PTMs per Precursor
+            #adjusted ylim top and x axis tick position
+    #Heatmaps
+        #RT, m/z, IM Heatmaps
+            #adjusted single replicate choice to == instead of .str.contains
+        #Charge/PTM Precursor Heatmap 
+            #adjusted syntax in uploading custom dia windows
+        #IDs vs RT
+            #adjusted rtmax to just the nearest whole number instead of the nearest ten
+        #Venn Diagram of IDs    
+            #adjusted single replicate choice to == instead of .str.contains
+        #Charge/PTM Scatter
+            #added as a plotting option, shows precursors of picked charge or ptm against all the other precursors to show how charges/ptms group in the heatmap
+    #Mixed Proteome
+        #Counts per Organism
+            #Added options for plotting peptides and precursors per organism instead of just proteins
+    #Raw Data
+        #Added EIM section
+    #Added Dilution Series section
+    #Added PCA section
+    
+#endregion
+
+#endregion
+
+# =============================================================================
+# Library Imports
+# =============================================================================
+#region
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui, module
+from shinyswatch import theme
+#https://rstudio.github.io/shinythemes/
+from shiny.types import ImgData
 import alphatims.bruker as atb
 import alphatims.plotting as atp
 from collections import OrderedDict
 from datetime import date
+from faicons import icon_svg
+#https://fontawesome.com/search?o=r&m=free
 import io
 import itertools
 from itertools import groupby
@@ -12,6 +90,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import matplotlib.colors as mcolors
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import MaxNLocator
 from matplotlib_venn import venn2,venn2_circles,venn3,venn3_circles
 import numpy as np
 import os
@@ -20,12 +99,14 @@ import pathlib
 import re
 from scipy.stats import norm
 import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from tkinter import *
 from upsetplot import *
-from shinyswatch import theme
-from faicons import icon_svg
-#https://rstudio.github.io/shinythemes/
+
 matplotlib.use('Agg')
+#endregion
 
 # =============================================================================
 # UI
@@ -33,26 +114,44 @@ matplotlib.use('Agg')
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsTOF Proteomics Data Visualization_v2024.09.13/Stable"),
+    ui.panel_title("timsTOF Proteomics Data Visualization"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
                      ui.card(
+                         ui.card_header("Upload Search Report"),
+                         ui.p("When uploading a new file after one has already been uploaded, click the apply changes button below"),
                          ui.input_file("searchreport","Upload search report:",accept=".tsv",multiple=False),
-                         ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut","diann":"DIA-NN","ddalibrary":"DDA Library (Spectronaut)","timsdiann":"tims-DIANN (BPS)"}),
+                         ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut","diann":"DIA-NN","fragpipe":"FragPipe","timsdiann":"tims-DIANN (BPS)","ddalibrary":"Spectronaut Library"}),
                          ui.output_text("metadata_reminder"),
                          ),
                      ui.card(
                          ui.card_header("Update from Metadata Table"),
-                         ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
-                         ui.input_switch("concentration","Update 'Concentration' column",width="100%"),
-                         ui.input_switch("remove_resort","Remove/resort samples"),
+                         ui.row(
+                             ui.column(4,
+                                          ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                                          ui.input_switch("remove","Remove selected runs")            
+                                          ),
+                             ui.column(4,
+                                          ui.input_switch("reorder","Reorder runs"),
+                                          ui.input_switch("concentration","Update 'Concentration' column")
+                                )
+                         ),
+                        #  ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                        #  ui.input_switch("remove","Remove selected runs"),
+                        #  ui.input_switch("reorder","Reorder runs"),
+                        #  ui.input_switch("concentration","Update 'Concentration' column"),
                          ui.input_action_button("rerun_metadata","Apply changes to search report / reinitialize search report",width="300px",class_="btn-primary")
                          ),
                      ui.card(
-                         ui.card_header("Metadata Table"),
+                         ui.card_header("Metadata Tables"),
                          ui.p("-Double click on any cell to update its contents"),
-                         ui.p("-To remove samples, add an 'x' to the 'remove' column. To reorder samples, number them in the order you want them to appear in the 'order' column"),
-                         ui.output_data_frame("metadata_table")
+                         ui.p("-To remove runs, add an 'x' to the 'remove' column"),
+                         #ui.output_data_frame("metadata_table")
+                         ui.row(
+                             ui.column(8,
+                             ui.output_data_frame("metadata_table")),
+                             ui.column(4,
+                             ui.output_data_frame("metadata_condition_table")))
                      ),icon=icon_svg("folder-open")
                     ),
         ui.nav_panel("Settings",
@@ -72,13 +171,45 @@ app_ui=ui.page_fluid(
                                                               )
                                                        ),
                                              ui.column(2,
-                                                       ui.output_text("matplotlibcolors_text"),ui.output_plot("matplotlibcolors")
+                                                       ui.output_text("matplotlibcolors_text"),
+                                                       ui.output_image("matplotcolors_image")
+                                                       #ui.output_plot("matplotlibcolors")
                                                        ),
                                              ui.column(5,
-                                                       ui.output_text("csscolors_text"),ui.output_plot("csscolors")
+                                                       ui.output_text("csscolors_text"),
+                                                       ui.output_image("csscolors_image")
+                                                       #ui.output_plot("csscolors")
                                                        ),
-                                             )
+                                             ),
+                                     ui.output_ui("colorplot_height")
+                                     ),
+                         ui.nav_panel("File Stats",
+                                      ui.output_table("filestats"),
+                                      ui.output_data_frame("filepreview")
                                       ),
+                         ui.nav_panel("Control Panel",
+                                      ui.card(
+                                          ui.card_header("Font Sizes"),
+                                          ui.row(
+                                              ui.input_slider("titlefont","Plot title size",min=10,max=25,value=20,step=1,ticks=True),
+                                          ),
+                                          ui.row(
+                                              ui.input_slider("axisfont","Axis label size",min=10,max=25,value=15,step=1,ticks=True)
+                                          ),
+                                          ui.row(
+                                              ui.input_slider("labelfont","Data label size",min=10,max=25,value=15,step=1,ticks=True)
+                                          ),
+                                          ui.row(
+                                              ui.input_slider("legendfont","Legend size",min=10,max=25,value=15,step=1,ticks=True)
+                                          ),
+                                          ui.row(
+                                              ui.input_slider("ypadding","y-axis padding for data labels",min=0,max=1,value=0.3,step=0.05,ticks=True)
+                                          )
+                                      )
+                                     ),
+                         ui.nav_panel("Column Check",
+                                      ui.output_table("column_check")
+                                     ),
                          ),icon=icon_svg("gear")
                      ),
         ui.nav_panel("ID Counts",
@@ -126,9 +257,6 @@ app_ui=ui.page_fluid(
                                       ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"proteins","precursors":"precursors"}),
                                       ui.output_plot("countscvcutoff")
                                     ),
-                        #  ui.nav_panel("Unique Counts per Condition",
-                        #               ui.output_plot("uniquecountsplot")
-                        #             ),
                          ui.nav_panel("UpSet Plot",
                                       ui.card(
                                           ui.row(
@@ -150,6 +278,7 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("chargestate_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
                                             )
                                           ),
+                                      ui.input_radio_buttons("chargestate_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
                                       ui.output_plot("chargestateplot")
                                       ),
                          ui.nav_panel("Peptide Length",
@@ -159,7 +288,8 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("peptidelength_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
                                             )
                                           ),
-                                      ui.input_selectize("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
+                                      ui.input_radio_buttons("peptidelengths_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
+                                      ui.input_radio_buttons("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
                                       ui.output_ui("lengthmark_ui"),
                                       ui.output_plot("peptidelengthplot")
                                       ),
@@ -170,13 +300,14 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("pepsperprotein_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
                                             )
                                           ),
-                                      ui.input_selectize("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
+                                      ui.input_radio_buttons("pepsperprotein_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
+                                      ui.input_radio_buttons("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
                                       ui.output_plot("pepsperproteinplot")
                                       ),
                          ui.nav_panel("Dynamic Range",
-                                      ui.output_ui("sampleconditions_ui"),
-                                      ui.input_selectize("meanmedian","Mean or median",choices={"mean":"mean","median":"median"}),
-                                      ui.output_plot("dynamicrangeplot")
+                                      ui.row(ui.column(5,ui.output_ui("sampleconditions_ui"),ui.input_selectize("meanmedian","Mean or median",choices={"mean":"mean","median":"median"})),
+                                      ui.column(7,ui.input_numeric("top_n","Input top N proteins to display:",value=25.0,min=5.0,step=5.0))),
+                                      ui.row(ui.column(5,ui.output_plot("dynamicrangeplot")),ui.column(7,ui.output_data_frame("dynamicrange_proteinrank"))),
                                       ),
                          ui.nav_panel("Data Completeness",
                                       ui.card(
@@ -187,6 +318,15 @@ app_ui=ui.page_fluid(
                                         ),
                                       ui.input_radio_buttons("protein_peptide","Pick what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides"}),
                                       ui.output_plot("datacompletenessplot")
+                                      ),
+                         ui.nav_panel("Peak Width",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("peakwidth_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("peakwidth_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                          )
+                                      ),
+                                      ui.output_plot("peakwidthplot")
                                       )
                         ),icon=icon_svg("chart-line")
                      ),
@@ -240,11 +380,24 @@ app_ui=ui.page_fluid(
                                       )
                             ),icon=icon_svg("binoculars")
                      ),
+        ui.nav_panel("PCA",
+                     ui.navset_pill(
+                         ui.nav_panel("PCA",
+                                    ui.card(
+                                        ui.row(
+                                            ui.input_slider("pca_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("pca_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("pca_plot")
+                                      )
+                      ),icon=icon_svg("network-wired")
+                     ),
         ui.nav_panel("Heatmaps",
                      ui.navset_pill(
                         ui.nav_panel("RT, m/z, IM Heatmaps",
                                      ui.input_slider("heatmap_numbins","Number of bins",min=10,max=250,value=100,step=10,ticks=True),
-                                     ui.input_selectize("conditiontype","Plot by individual replicate or by condition",choices={"replicate":"By replicate","condition":"By condition"}),
+                                     ui.input_radio_buttons("conditiontype","Plot by individual replicate or by condition",choices={"replicate":"By replicate","condition":"By condition"}),
                                      ui.output_ui("cond_rep_list_heatmap"),
                                      ui.output_plot("replicate_heatmap")
                                      ),
@@ -264,6 +417,19 @@ app_ui=ui.page_fluid(
                                                    ui.output_plot("chargeptmheatmap")
                                                    )
                                              ),
+                                     ),
+                        ui.nav_panel("Charge/PTM Precursor Scatter",
+                                     ui.card(
+                                         ui.row(
+                                            ui.input_slider("chargeptmscatter_width","Plot width",min=500,max=2000,step=100,value=800,ticks=True),
+                                            ui.input_slider("chargeptmscatter_height","Plot height",min=300,max=2000,step=100,value=600,ticks=True)
+                                            )
+                                        ),
+                                     ui.row(
+                                         ui.input_radio_buttons("charge_or_ptm","Plot based on charge or PTM?",choices={"charge":"charge","ptm":"ptm"}),
+                                         ui.output_ui("charge_ptm_dropdown")
+                                         ),
+                                     ui.output_plot("chargeptmscatter")
                                      ),
                         ui.nav_panel("#IDs vs RT",
                                      ui.card(
@@ -299,13 +465,14 @@ app_ui=ui.page_fluid(
                                             ),
                                           ui.output_plot("summedintensities")
                                           ),
-                             ui.nav_panel("Protein Counts per Organism",
+                             ui.nav_panel("Counts per Organism",
                                           ui.card(
                                               ui.row(
                                                   ui.input_slider("countsperorganism_width","Plot width",min=500,max=2000,step=100,value=1000,ticks=True),
                                                   ui.input_slider("countsperorganism_height","Plot height",min=500,max=2000,step=100,value=700,ticks=True)
                                                 )
                                             ),
+                                          ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"proteins","peptides":"peptides","precursors":"precursors"},multiple=False),
                                           ui.output_plot("countsperorganism")
                                           ),
                              ui.nav_panel("Quant Ratios",
@@ -315,7 +482,8 @@ app_ui=ui.page_fluid(
                                                         ),
                                               ui.column(4,
                                                         ui.input_text("referenceratio","Input ratios for each organism in the reference condition separated by a space: "),ui.output_text_verbatim("referenceratio_readout"),
-                                                        ui.input_text("testratio","Input ratios for each organism in the test condition separated by a space: "),ui.output_text_verbatim("testratio_readout")
+                                                        ui.input_text("testratio","Input ratios for each organism in the test condition separated by a space: "),ui.output_text_verbatim("testratio_readout"),
+                                                        ui.output_text("expectedratios_note")
                                                         ),
                                               ui.column(3,
                                                         ui.input_slider("plotrange","Plot Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
@@ -375,11 +543,20 @@ app_ui=ui.page_fluid(
                         #             )
                         ),icon=icon_svg("wand-sparkles")
                     ),
-        # ui.nav_panel("Dilution Series",
-        #              ui.navset_pill(
-        #                  ui.nav_panel("")
-        #              ),icon=icon_svg("vials")
-        #             ),
+        ui.nav_panel("Dilution Series",
+                     ui.navset_pill(
+                         ui.nav_panel("Dilution Ratios",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("dilutionseries_width","Plot width",min=500,max=2000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("dilutionseries_height","Plot height",min=500,max=2000,step=100,value=700,ticks=True)
+                                            )
+                                            ),
+                                      ui.output_ui("normalizingcondition"),
+                                      ui.output_plot("dilutionseries_plot")
+                                    )
+                     ),icon=icon_svg("vials")
+                    ),
         ui.nav_panel("Raw Data",
                      ui.navset_pill(
                          ui.nav_panel("Multi-File Import",
@@ -440,7 +617,7 @@ app_ui=ui.page_fluid(
                                                            ui.input_switch("include_mobility","Include mobility in EIC"),
                                                            ui.output_ui("mobility_input")
                                                            ),
-                                                ui.output_ui("rawfile_buttons")
+                                                ui.output_ui("rawfile_buttons_eic")
                                             ),
                                           ui.input_action_button("load_eic","Load EIC",class_="btn-primary")
                                           ),
@@ -451,7 +628,25 @@ app_ui=ui.page_fluid(
                                             )
                                           ),
                                       ui.output_plot("eic")
-                                      )
+                                      ),
+                         ui.nav_panel("EIM Plot",
+                                      ui.card(
+                                          ui.row(ui.column(4,
+                                                           ui.input_text("eim_mz_input","Input m/z for EIM:"),
+                                                           ui.input_text("eim_ppm_input","Input mass error (ppm) for EIM:"),
+                                                           ),
+                                                ui.output_ui("rawfile_buttons_eim")
+                                            ),
+                                          ui.input_action_button("load_eim","Load EIM",class_="btn-primary")
+                                          ),
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("eim_width","Plot width",min=500,max=2000,step=100,value=1500,ticks=True),
+                                              ui.input_slider("eim_height","Plot height",min=200,max=2000,step=100,value=600,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("eim")
+                                      ),
                          ),icon=icon_svg("desktop")
                      ),
         ui.nav_panel("Export Tables",
@@ -489,7 +684,7 @@ app_ui=ui.page_fluid(
                                       )
                                 ),icon=icon_svg("file-export")
                      ),
-    widths=(3,8)
+    widths=(2,8)
     ),
     theme=theme.cerulean()
 )
@@ -500,7 +695,6 @@ app_ui=ui.page_fluid(
 # =============================================================================
 
 def server(input: Inputs, output: Outputs, session: Session):
-
 
 # ============================================================================= UI calls
 #region
@@ -541,97 +735,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
             searchoutput.insert(1,"R.Condition","")
             searchoutput.insert(2,"R.Replicate","")
-        if input.software()=="ddalibrary":
-            searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
-            searchoutput.insert(1,"R.Condition","")
-            searchoutput.insert(2,"R.Replicate","")
-        if input.software()=="timsdiann":
-            searchoutput.rename(columns={"File.Name":"R.FileName"},inplace=True)
-            searchoutput.insert(1,"R.Condition","")
-            searchoutput.insert(2,"R.Replicate","")
-        return searchoutput
-    
-    @render.data_frame
-    def metadata_table():
-        searchoutput=inputfile()
-        if input.searchreport() is None:
-            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","order","remove","Concentration"])
-            return render.DataGrid(metadata,editable=True)
-        metadata=pd.DataFrame(searchoutput[["R.FileName","R.Condition","R.Replicate"]]).drop_duplicates().reset_index(drop=True)
-        metadata["order"]=metadata.apply(lambda _: '', axis=1)
-        metadata["remove"]=metadata.apply(lambda _: '', axis=1)
-        metadata["Concentration"]=metadata.apply(lambda _: '', axis=1)
-
-        return render.DataGrid(metadata,editable=True,width="100%")
-
-    #give a reminder for what to do with search reports from different software
-    @render.text
-    def metadata_reminder():
-        if input.software()=="spectronaut":
-            return "Spectronaut: Make sure to use Shiny report format when exporting search results"
-        if input.software()=="diann":
-            return "DIA-NN: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
-        if input.software()=="ddalibrary":
-            return "DDA Library: DDA libraries have limited functionality, can only plot ID metrics"
-        if input.software()=="timsdiann":
-            return "BPS tims-DIANN: to access results file, unzip the bps_timsDIANN folder, open the processing-run folder and its subfolder, then unzip the tims-diann.result folder. Upload the results.tsv and then make sure to fill out R.Condition and R.Replicate columns in the metadata"
-
-    #update the searchoutput df to match how we edited the metadata sheet
-    @reactive.calc
-    @reactive.event(input.rerun_metadata,ignore_none=False)
-    def metadata_update():
-        searchoutput=inputfile()
-        #metadata=metadatafile()
-        metadata=metadata_table.data_view()
-        #remove/resort conditions but do not change condition names
-        if input.condition_names()==False and input.concentration()==False and input.remove_resort()==True:
-            sortedmetadata=metadata[metadata.remove !="x"].sort_values(by="order").reset_index(drop=True)
-            searchoutput=searchoutput.set_index("R.FileName").loc[sortedmetadata["R.FileName"].tolist()].reset_index()
-
-        elif input.condition_names()==False and input.concentration()==True and input.remove_resort()==False:
-            concentrationlist=[]
-            for i in searchoutput["R.FileName"]:
-                fileindex=metadata[metadata["R.FileName"]==i].index.values[0]
-                concentrationlist.append(float(metadata["Concentration"][fileindex]))
-            if "Concentration" in searchoutput.columns:
-                searchoutput["Concentration"]=concentrationlist
-            else:
-                searchoutput.insert(3,"Concentration",concentrationlist)
-
-        #change condition names but do not remove or resort
-        elif input.condition_names()==True and input.concentration()==False and input.remove_resort()==False:
-            concentrationlist=[]
-            RConditionlist=[]
-            RReplicatelist=[]
-            for i in searchoutput["R.FileName"]:
-                fileindex=metadata[metadata["R.FileName"]==i].index.values[0]
-                RConditionlist.append(metadata["R.Condition"][fileindex])
-                RReplicatelist.append(int(metadata["R.Replicate"][fileindex]))
-            searchoutput["R.Condition"]=RConditionlist
-            searchoutput["R.Replicate"]=RReplicatelist
- 
-        #remove/resort conditions and change condition names
-        elif input.condition_names()==True and input.concentration()==True and input.remove_resort()==True:
-            sortedmetadata=metadata[metadata.remove !="x"].sort_values(by="order").reset_index(drop=True)
-            searchoutput=searchoutput.set_index("R.FileName").loc[sortedmetadata["R.FileName"].tolist()].reset_index()
-
-            concentrationlist=[]
-            RConditionlist=[]
-            RReplicatelist=[]
-            for i in searchoutput["R.FileName"]:
-                fileindex=metadata[metadata["R.FileName"]==i].index.values[0]
-                concentrationlist.append(float(metadata["Concentration"][fileindex]))
-                RConditionlist.append(metadata["R.Condition"][fileindex])
-                RReplicatelist.append(int(metadata["R.Replicate"][fileindex]))
-            searchoutput["R.Condition"]=RConditionlist
-            searchoutput["R.Replicate"]=RReplicatelist
-            if "Concentration" in searchoutput.columns:
-                searchoutput["Concentration"]=concentrationlist
-            else:
-                searchoutput.insert(3,"Concentration",concentrationlist)
-
-        #adjusting the searchoutput sheet depending on the search software
-        if input.software()=="diann":
             searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
             searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                         "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
@@ -669,6 +772,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                     "UniMod:21":"Phospho (STY)",
                     "UniMod:35":"Oxidation (M)"},regex=True)
         if input.software()=="ddalibrary":
+            searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
             searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
                             "PrecursorCharge":"FG.Charge",
                             "ModifiedPeptide":"EG.ModifiedPeptide",
@@ -677,9 +783,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                             "PrecursorMz":"FG.PrecMz",
                             "ReferenceRunMS1Response":"FG.MS2Quantity",
                             "Protein Name":"PG.ProteinNames"})
+        if input.software()=="timsdiann":
+            searchoutput.rename(columns={"File.Name":"R.FileName"},inplace=True)
             searchoutput.insert(1,"R.Condition","")
             searchoutput.insert(2,"R.Replicate","")
-        if input.software()=="timsdiann":
             searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
             searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
@@ -718,17 +825,137 @@ def server(input: Inputs, output: Outputs, session: Session):
                     "UniMod:1":"Acetyl (Protein N-term)",
                     "UniMod:4":"Carbamidomethyl (C)",
                     "UniMod:21":"Phospho (STY)",
-                    "UniMod:35":"Oxidation (M)"},regex=True)            
-        
+                    "UniMod:35":"Oxidation (M)"},regex=True)
+        if input.software()=="fragpipe":
+            searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+
+            searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length",
+                                    "Observed Mass","Calibrated Observed Mass","Calibrated Observed M/Z",
+                                    "Calculated Peptide Mass","Calculated M/Z","Delta Mass",#"SpectralSim",
+                                    #"RTScore",
+                                    "Expectation","Hyperscore","Nextscore",#"Probability",
+                                    "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start",
+                                    "Protein End","Intensity","Assigned Modifications","Observed Modifications",
+                                    "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True)
+
+            searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                        "Modified Peptide":"EG.ModifiedPeptide",
+                                        "Charge":"FG.Charge",
+                                        "Retention":"EG.ApexRT",
+                                        "Observed M/Z":"FG.PrecMz",
+                                        "Ion Mobility":"EG.IonMobility",
+                                        "Protein ID":"PG.ProteinGroups",
+                                        "Entry Name":"PG.ProteinNames",
+                                        "Gene":"PG.Genes"},inplace=True)
+
+            searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+            searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                "n":"",
+                "147":"Oxidation (M)",
+                "222":"Carbamidomethyl (C)",
+                "43":"[Acetyl (Protein N-term)]",
+                "111":""},regex=True)
+
+            peps=searchoutput["PEP.StrippedSequence"].tolist()
+            modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
+            for i in range(len(peps)):
+                if type(modpeps[i])!=str:
+                    modpeps[i]=peps[i]
+                else:
+                    modpeps[i]=modpeps[i]
+            searchoutput["EG.ModifiedPeptide"]=modpeps
+        return searchoutput
+    
+    #render the metadata table in the window
+    @render.data_frame
+    def metadata_table():
+        searchoutput=inputfile()
+        if input.searchreport() is None:
+            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])#"order","remove","Concentration"])
+            return render.DataGrid(metadata,width="100%")
+        metadata=pd.DataFrame(searchoutput[["R.FileName","R.Condition","R.Replicate"]]).drop_duplicates().reset_index(drop=True)
+        #metadata["order"]=metadata.apply(lambda _: '', axis=1)
+        metadata["remove"]=metadata.apply(lambda _: '', axis=1)
+        #metadata["Concentration"]=metadata.apply(lambda _: '', axis=1)
+
+        return render.DataGrid(metadata,editable=True,width="100%")
+
+    @render.data_frame
+    def metadata_condition_table():
+        searchoutput=inputfile()
+        metadata=metadata_table.data_view()
+        if input.searchreport() is None:
+            metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
+            return render.DataGrid(metadata_condition,width="100%")
+        if input.remove()==True:
+            metadata=metadata[metadata.remove !="x"]
+        metadata_condition=pd.DataFrame(metadata[["R.Condition"]]).drop_duplicates().reset_index(drop=True)
+        metadata_condition["order"]=metadata_condition.apply(lambda _: '', axis=1)
+        metadata_condition["Concentration"]=metadata_condition.apply(lambda _: '', axis=1)
+
+        return render.DataGrid(metadata_condition,editable=True,width="100%")
+
+    #give a reminder for what to do with search reports from different software
+    @render.text
+    def metadata_reminder():
+        if input.software()=="spectronaut":
+            return "Spectronaut: Make sure to use Shiny report format when exporting search results"
+        if input.software()=="diann":
+            return "DIA-NN: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
+        if input.software()=="ddalibrary":
+            return "DDA Library: DDA libraries have limited functionality, can only plot ID metrics"
+        if input.software()=="timsdiann":
+            return "BPS tims-DIANN: to access results file, unzip the bps_timsDIANN folder, open the processing-run folder and its subfolder, then unzip the tims-diann.result folder. Upload the results.tsv and then make sure to fill out R.Condition and R.Replicate columns in the metadata"
+        if input.software()=="fragpipe":
+            return "FragPipe: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
+    
+    #update the searchoutput df to match how we edited the metadata sheet
+    @reactive.calc
+    @reactive.event(input.rerun_metadata,ignore_none=False)
+    def metadata_update():
+        searchoutput=inputfile()
+        metadata=metadata_table.data_view()
+        metadata_condition=metadata_condition_table.data_view()
+
+        if input.condition_names()==True:
+            RConditionlist=[]
+            RReplicatelist=[]
+            for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+                RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+                RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+            searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+            searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+            searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+        if input.remove()==True:
+            editedmetadata=metadata[metadata.remove !="x"]
+            searchoutput=searchoutput.set_index("R.FileName").loc[editedmetadata["R.FileName"].tolist()].reset_index()
+
+        if input.reorder()==True:
+            metadata_condition["order"]=metadata_condition["order"].astype(int)
+            sortedmetadata_bycondition=metadata_condition.sort_values(by="order").reset_index(drop=True)
+            searchoutput=searchoutput.set_index("R.Condition").loc[sortedmetadata_bycondition["R.Condition"].tolist()].reset_index()
+
+        if input.concentration()==True:
+            concentrationlist=[]
+            for run in searchoutput["R.Condition"].drop_duplicates().tolist():
+                fileindex=metadata_condition[metadata_condition["R.Condition"]==run].index.values[0]
+                concentrationlist.append([metadata_condition["Concentration"][fileindex]]*len(searchoutput.set_index("R.Condition").loc[run]))
+            if "Concentration" in searchoutput.columns:
+                searchoutput["Concentration"]=list(itertools.chain(*concentrationlist))
+                searchoutput["Concentration"]=searchoutput["Concentration"].astype(int)
+            else:
+                searchoutput.insert(3,"Concentration",list(itertools.chain(*concentrationlist)))
+                searchoutput["Concentration"]=searchoutput["Concentration"].astype(int)
+
         return searchoutput
 
 #endregion
 
-# ============================================================================= Generate Necessary Variables and Dataframes, Calculate ID Metrics, Generate Colormaps for Plotting
+# ============================================================================= Generate Necessary Variables and Dataframes, Calculate Metrics
 #region
-
-    #searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-    #resultdf,averagedf=idmetrics()
 
     #take searchoutput df and generate variables and dataframes to be used downstream
     @reactive.calc
@@ -738,13 +965,12 @@ def server(input: Inputs, output: Outputs, session: Session):
         if "Cond_Rep" not in searchoutput.columns:
             searchoutput.insert(0,"Cond_Rep",searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str))
         elif "Cond_Rep" in searchoutput.columns:
-            if input.condition_names()==True:
-                searchoutput["Cond_Rep"]=searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str)
+            searchoutput["Cond_Rep"]=searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str)
         resultdf=pd.DataFrame(searchoutput[["Cond_Rep","R.FileName","R.Condition","R.Replicate"]].drop_duplicates()).reset_index(drop=True)
         sampleconditions=searchoutput["R.Condition"].drop_duplicates().tolist()
         maxreplicatelist=[]
         for i in sampleconditions:
-            samplegroup=pd.DataFrame(searchoutput[searchoutput["R.Condition"].str.contains(i)])
+            samplegroup=pd.DataFrame(searchoutput[searchoutput["R.Condition"]==i])
             maxreplicates=max(samplegroup["R.Replicate"].tolist())
             maxreplicatelist.append(maxreplicates)
         averagedf=pd.DataFrame({"R.Condition":sampleconditions,"N.Replicates":maxreplicatelist})
@@ -753,49 +979,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         numsamples=len(resultdf["R.Condition"].tolist())
 
         return searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples
-
-    #use the variables_dfs function that imports the searchoutput df to generate colormaps for plotting
-    @reactive.calc
-    def colordfs():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        samplelinspace=np.linspace(0,1,numconditions)
-        colorarray=[]
-        for i in range(numconditions):
-            x=repspercondition[i]
-            for ele in range(x):
-                colorarray.append(samplelinspace[i])
-        rainbowlist=cm.gist_rainbow(colorarray)
-        colorblocks=[]
-        for i in range(len(rainbowlist)):
-            colorblocks.append(sns.desaturate(rainbowlist[i],0.75))
-
-        n=numsamples
-        color=cm.gist_rainbow(np.linspace(0,1,n))
-        colors=[]
-        for i in range(len(color)):
-            colors.append(sns.desaturate(color[i],0.75))
-            
-        matplottabcolors=list(mcolors.TABLEAU_COLORS)
-
-        tabcolorsblocks=[]
-        if numconditions > len(matplottabcolors):
-            dif=numconditions-len(matplottabcolors)
-            for i in range(dif):
-                tabcolorsblocks.append(matplottabcolors[i])    
-            for i in range(numconditions):      
-                x=repspercondition[i]
-                for ele in range(x):
-                    tabcolorsblocks.append(matplottabcolors[i])
-        else:
-            for i in range(numconditions):      
-                x=repspercondition[i]
-                for ele in range(x):
-                    tabcolorsblocks.append(matplottabcolors[i])
-
-        return colorblocks,colors,matplottabcolors,tabcolorsblocks
-    
+   
     #use the variables_dfs function that imports the searchoutput df to calculate ID metrics
-    #most updated calcs for resultdf and averagedf
     @reactive.calc
     def idmetrics():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -803,19 +988,20 @@ def server(input: Inputs, output: Outputs, session: Session):
         numproteins2pepts=[]
         numpeptides=[]
         numprecursors=[]
-        for i in sampleconditions:
-            for j in range(max(maxreplicatelist)+1):
-                replicatedata=searchoutput[searchoutput["R.Condition"].str.contains(i)&(searchoutput["R.Replicate"]==j)]
-                if replicatedata.empty:
-                    continue
-                #identified proteins
-                numproteins.append(replicatedata["PG.ProteinNames"].nunique())
-                #identified proteins with 2 peptides
-                numproteins2pepts.append(len(replicatedata[["PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinNames").size().reset_index(name="peptides").query("peptides>1")))
-                #identified peptides
-                numpeptides.append(replicatedata["EG.ModifiedPeptide"].nunique())
-                #identified precursors
-                numprecursors.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]]))
+
+        for i in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            replicatedata=searchoutput[searchoutput["Cond_Rep"]==i]
+
+            if replicatedata.empty:
+                continue
+            #identified proteins
+            numproteins.append(replicatedata["PG.ProteinNames"].nunique())
+            #identified proteins with 2 peptides
+            numproteins2pepts.append(len(replicatedata[["PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinNames").size().reset_index(name="peptides").query("peptides>1")))
+            #identified peptides
+            numpeptides.append(replicatedata["EG.ModifiedPeptide"].nunique())
+            #identified precursors
+            numprecursors.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]]))
         resultdf["proteins"]=numproteins
         resultdf["proteins2pepts"]=numproteins2pepts
         resultdf["peptides"]=numpeptides
@@ -829,51 +1015,34 @@ def server(input: Inputs, output: Outputs, session: Session):
             avglist=[]
             stdevlist=[]
             for j in sampleconditions:
-                samplecondition=resultdf[resultdf["R.Condition"].str.contains(j)]
+                samplecondition=resultdf[resultdf["R.Condition"]==j]
                 avglist.append(round(np.average(samplecondition[i].to_numpy())))
                 stdevlist.append(np.std(samplecondition[i].to_numpy()))
             averagedf[i+"_avg"]=avglist
             averagedf[i+"_stdev"]=stdevlist
 
-        #charge states
-        chargestatelist=[]
-        chargestategroup=searchoutput[["R.Condition","PEP.StrippedSequence","FG.Charge"]].drop_duplicates().reset_index(drop=True)
-        for condition in averagedf["R.Condition"]:
-            df=pd.DataFrame(chargestategroup[chargestategroup["R.Condition"].str.contains(condition)].drop(columns=["R.Condition","PEP.StrippedSequence"]))
-            chargestatelist.append(df["FG.Charge"].tolist())
-        averagedf["Charge States"]=chargestatelist
+        return resultdf,averagedf
 
-        #peptide lengths
-        listoflengths=[]
-        for i in averagedf["R.Condition"]:
-            placeholder=searchoutput[searchoutput["R.Condition"].str.contains(i)]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True).tolist()
-            lengths=[]
-            for pep in placeholder:
-                lengths.append(len(pep))
-            listoflengths.append(lengths)
-        averagedf["Peptide Lengths"]=listoflengths
+    #CV calculation
+    @reactive.calc
+    def cvcalc():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
-        #number of peptides per protein
-        pepsperproteinlist=[]
-        for condition in averagedf["R.Condition"]:
-            df=searchoutput[searchoutput["R.Condition"].str.contains(condition)][["R.Condition","PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().drop(columns="R.Condition").reset_index(drop=True)
-            pepsperproteinlist.append(df.groupby(["PG.ProteinNames"]).size().tolist())
-        averagedf["Peptides per Protein"]=pepsperproteinlist
+        cvcalc_df=pd.DataFrame()
+        cvcalc_df["R.Condition"]=sampleconditions
 
         #protein-level CVs
         proteincvlist=[]
         proteincvlist95=[]
         proteincvdict={}
-        cvproteingroup=searchoutput[
-            ["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]
-            ].drop_duplicates().reset_index(drop=True)
+        cvproteingroup=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
         for x,condition in enumerate(sampleconditions):
             if maxreplicatelist[x]==1:
                 emptylist=[]
                 proteincvlist.append(emptylist)
                 proteincvlist95.append(emptylist)
             else:
-                df=pd.DataFrame(cvproteingroup[cvproteingroup["R.Condition"].str.contains(condition)]).drop(columns=["R.Condition","R.Replicate"])
+                df=pd.DataFrame(cvproteingroup[cvproteingroup["R.Condition"]==condition]).drop(columns=["R.Condition","R.Replicate"])
                 mean=df.groupby("PG.ProteinGroups").mean().rename(columns={"PG.MS2Quantity":"Protein Mean"})
                 std=df.groupby("PG.ProteinGroups").std().rename(columns={"PG.MS2Quantity":"Protein Std"})
                 cvproteintable=pd.concat([mean,std],axis=1)
@@ -887,23 +1056,21 @@ def server(input: Inputs, output: Outputs, session: Session):
                     if i <=top95:
                         cvlist95.append(i)
                 proteincvlist95.append(cvlist95)
-        averagedf["Protein CVs"]=proteincvlist
-        averagedf["Protein 95% CVs"]=proteincvlist95
+        cvcalc_df["Protein CVs"]=proteincvlist
+        cvcalc_df["Protein 95% CVs"]=proteincvlist95
 
         #precursor-level CVs
         precursorcvlist=[]
         precursorcvlist95=[]
         precursorcvdict={}
-        cvprecursorgroup=searchoutput[
-            ["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]
-            ].drop_duplicates().reset_index(drop=True)
+        cvprecursorgroup=searchoutput[["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
         for x,condition in enumerate(sampleconditions):
             if maxreplicatelist[x]==1:
                 emptylist=[]
                 precursorcvlist.append(emptylist)
                 precursorcvlist95.append(emptylist)
             else:
-                df=pd.DataFrame(cvprecursorgroup[cvprecursorgroup["R.Condition"].str.contains(condition)]).drop(columns=["R.Condition","R.Replicate"])
+                df=pd.DataFrame(cvprecursorgroup[cvprecursorgroup["R.Condition"]==condition]).drop(columns=["R.Condition","R.Replicate"])
                 mean=df.groupby(["EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"Precursor Mean"})
                 std=df.groupby(["EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Precursor Std"})
                 cvprecursortable=pd.concat([mean,std],axis=1)
@@ -917,8 +1084,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                     if i <=top95:
                         cvlist95.append(i)
                 precursorcvlist95.append(cvlist95)
-        averagedf["Precursor CVs"]=precursorcvlist
-        averagedf["Precursor 95% CVs"]=precursorcvlist95
+        cvcalc_df["Precursor CVs"]=precursorcvlist
+        cvcalc_df["Precursor 95% CVs"]=precursorcvlist95
 
         #counts above CV cutoffs
         #protein CVs
@@ -933,8 +1100,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 proteinscv20.append(proteincvdict[condition][proteincvdict[condition]["CV"]<20].shape[0])
                 proteinscv10.append(proteincvdict[condition][proteincvdict[condition]["CV"]<10].shape[0])
 
-        averagedf["proteinsCV<20"]=proteinscv20
-        averagedf["proteinsCV<10"]=proteinscv10
+        cvcalc_df["proteinsCV<20"]=proteinscv20
+        cvcalc_df["proteinsCV<10"]=proteinscv10
 
         #precursor CVs
         precursorscv20=[]
@@ -947,17 +1114,103 @@ def server(input: Inputs, output: Outputs, session: Session):
             else:
                 precursorscv20.append(precursorcvdict[condition][precursorcvdict[condition]["CV"]<20].shape[0])
                 precursorscv10.append(precursorcvdict[condition][precursorcvdict[condition]["CV"]<10].shape[0])
-        averagedf["precursorsCV<20"]=precursorscv20
-        averagedf["precursorsCV<10"]=precursorscv10
+        cvcalc_df["precursorsCV<20"]=precursorscv20
+        cvcalc_df["precursorsCV<10"]=precursorscv10
 
-        return resultdf,averagedf
+        return cvcalc_df
+
+    #charge states
+    @reactive.calc
+    def chargestates():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        chargestatedf_condition=pd.DataFrame()
+        chargestatedf_run=pd.DataFrame()
+
+        chargestatelist=[]
+        chargestategroup=searchoutput[["R.Condition","PEP.StrippedSequence","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+        for condition in sampleconditions:
+            df=pd.DataFrame(chargestategroup[chargestategroup["R.Condition"]==condition].drop(columns=["R.Condition","PEP.StrippedSequence"]))
+            chargestatelist.append(df["FG.Charge"].tolist())
+        chargestatedf_condition["Sample Names"]=sampleconditions
+        chargestatedf_condition["Charge States"]=chargestatelist
+
+        chargestatelist=[]
+        chargestategroup=searchoutput[["Cond_Rep","PEP.StrippedSequence","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+        for run in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            df=pd.DataFrame(chargestategroup[chargestategroup["Cond_Rep"]==run].drop(columns=["Cond_Rep","PEP.StrippedSequence"]))
+            chargestatelist.append(df["FG.Charge"].tolist())
+        chargestatedf_run["Sample Names"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+        chargestatedf_run["Charge States"]=chargestatelist
+
+        return chargestatedf_condition,chargestatedf_run
+
+    #peptide lengths
+    @reactive.calc
+    def peptidelengths():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        peptidelengths_condition=pd.DataFrame()
+        peptidelengths_run=pd.DataFrame()
+
+        listoflengths=[]
+        for condition in sampleconditions:
+            placeholder=searchoutput[searchoutput["R.Condition"]==condition]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True).tolist()
+            lengths=[]
+            for pep in placeholder:
+                lengths.append(len(pep))
+            listoflengths.append(lengths)
+        peptidelengths_condition["Sample Names"]=sampleconditions
+        peptidelengths_condition["Peptide Lengths"]=listoflengths
+
+        listoflengths=[]
+        for run in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            placeholder=searchoutput[searchoutput["Cond_Rep"]==run]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True).tolist()
+            lengths=[]
+            for pep in placeholder:
+                lengths.append(len(pep))
+            listoflengths.append(lengths)
+        peptidelengths_run["Sample Names"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+        peptidelengths_run["Peptide Lengths"]=listoflengths
+
+        return peptidelengths_condition,peptidelengths_run
+
+    #peptides per protein
+    @reactive.calc
+    def pepsperprotein():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        pepsperprotein_condition=pd.DataFrame()
+        pepsperprotein_run=pd.DataFrame()
+
+        pepsperproteinlist=[]
+        for condition in sampleconditions:
+            df=searchoutput[searchoutput["R.Condition"]==condition][["PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().reset_index(drop=True)
+            pepsperproteinlist.append(df.groupby(["PG.ProteinNames"]).size().tolist())
+        pepsperprotein_condition["Sample Names"]=sampleconditions
+        pepsperprotein_condition["Peptides per Protein"]=pepsperproteinlist
+
+        pepsperproteinlist=[]
+        for run in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            df=searchoutput[searchoutput["Cond_Rep"]==run][["PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().reset_index(drop=True)
+            pepsperproteinlist.append(df.groupby(["PG.ProteinNames"]).size().tolist())
+        pepsperprotein_run["Sample Names"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+        pepsperprotein_run["Peptides per Protein"]=pepsperproteinlist
+
+        return pepsperprotein_condition,pepsperprotein_run
 
 #endregion
 
-# ============================================================================= Color Options
+# ============================================================================= Settings
 #region
 
-    #function for showing color options
+    @render.text
+    def matplotlibcolors_text():
+        return ("Matplotlib Tableau Colors:")
+    @render.text
+    def csscolors_text():
+        return ("CSS Colors:")
+    #function for showing color options as plots
     def plot_colortable(colors, *, ncols=4, sort_colors=True):
         #from https://matplotlib.org/stable/gallery/color/named_colors.html
 
@@ -1007,22 +1260,31 @@ def server(input: Inputs, output: Outputs, session: Session):
             )
 
         return fig
-
     @render.plot(width=200,height=500)
     def matplotlibcolors():
         return plot_colortable(mcolors.TABLEAU_COLORS, ncols=1, sort_colors=False)
-    
     @render.plot(width=800,height=800)
     def csscolors():
         return plot_colortable(mcolors.CSS4_COLORS)
+    #render the color grids as images instead of plotting them explicitly
+    @render.image
+    def matplotcolors_image():
+        cwd=os.getcwd()
+        foldername="images"
+        joined=[cwd,foldername]
+        matplotcolors_imagefile="\\".join([cwd,"images","matplotlib_tabcolors.png"])        
+        img: ImgData={"src":matplotcolors_imagefile}
+        return img
+    @render.image
+    def csscolors_image():
+        cwd=os.getcwd()
+        foldername="images"
+        joined=[cwd,foldername]
+        csscolors_imagefile="\\".join([cwd,"images","css_colors.png"])        
+        img: ImgData={"src":csscolors_imagefile}
+        return img
 
-    @render.text
-    def matplotlibcolors_text():
-        return ("Matplotlib Tableau Colors:")
-    @render.text
-    def csscolors_text():
-        return ("CSS Colors:")
-
+    #color options for plotting 
     @reactive.calc
     def colorpicker():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -1047,6 +1309,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             plotcolors=[]
             if numconditions > len(matplottabcolors):
                 dif=numconditions-len(matplottabcolors)
+                plotcolors=matplottabcolors
                 for i in range(dif):
                     plotcolors.append(matplottabcolors[i])
             elif numconditions==1:
@@ -1061,8 +1324,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 plotcolors=list(input.customcolors().split("\n"))
         return plotcolors
     
+    #loop to extend list for replicates, used in the place of calling colorpicker() to have replicates of the same condition plotted with the same color
     @reactive.calc
-    #loop to extend list for replicates
     def replicatecolors():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         plotcolors=colorpicker()
@@ -1089,41 +1352,90 @@ def server(input: Inputs, output: Outputs, session: Session):
             conditioncolordf1=pd.DataFrame({"Run":[]})
             return conditioncolordf1
 
+    #show the conditions and color options for each condition
     @render.table
     def conditioncolors():
         conditioncolors_table=pd.DataFrame({"Color per run":[]})
         return conditioncolors_table
-    @render.plot(width=75,height=125)
-    def customcolors_plot():
-        try:
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            plotcolors=colorpicker()
-            
-            fig,ax=plt.subplots(nrows=len(sampleconditions))
-            fig.set_tight_layout(True)
-            for i in range(len(sampleconditions)):
-                if len(sampleconditions)==1:
-                    rect=matplotlib.patches.Rectangle(xy=(0,0),width=0.5,height=0.5,facecolor=plotcolors)
-                    ax.add_patch(rect)
-                    ax.axis("off")
-                    ax.set_ylim(bottom=0,top=0.5)
-                    ax.set_xlim(left=0,right=0.5)
-                else:
-                    rect=matplotlib.patches.Rectangle(xy=(0,0),width=0.5,height=0.5,facecolor=plotcolors[i])
-                    ax[i].add_patch(rect)
-                    ax[i].axis("off")
-                    ax[i].set_ylim(bottom=0,top=0.5)
-                    ax[i].set_xlim(left=0,right=0.5)
-        except:
-            pass
 
-#endregion   
+    @render.ui
+    def colorplot_height():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        height=40*numconditions
+        return ui.input_numeric("colorplot_height_input","Color per run height mod *no touchy >:(*",value=height)
+
+    @reactive.effect
+    def _():
+        @render.plot(width=75,height=input.colorplot_height_input())
+        def customcolors_plot():
+            try:
+                searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+                plotcolors=colorpicker()
+                
+                fig,ax=plt.subplots(nrows=len(sampleconditions))
+                fig.set_tight_layout(True)
+                for i in range(len(sampleconditions)):
+                    if len(sampleconditions)==1:
+                        rect=matplotlib.patches.Rectangle(xy=(0,0),width=0.5,height=0.5,facecolor=plotcolors)
+                        ax.add_patch(rect)
+                        ax.axis("off")
+                        ax.set_ylim(bottom=0,top=0.5)
+                        ax.set_xlim(left=0,right=0.5)
+                    else:
+                        rect=matplotlib.patches.Rectangle(xy=(0,0),width=0.5,height=0.5,facecolor=plotcolors[i])
+                        ax[i].add_patch(rect)
+                        ax[i].axis("off")
+                        ax[i].set_ylim(bottom=0,top=0.5)
+                        ax[i].set_xlim(left=0,right=0.5)
+            except:
+                pass
+
+    #stats about the input file
+    @render.table
+    def filestats():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        variablenames=["# samples","# conditions","Conditions","Replicates per Condition"]
+        variablecalls=[numsamples,numconditions,sampleconditions,repspercondition]
+
+        filestatsdf=pd.DataFrame({"Property":variablenames,"Values":variablecalls})
+        
+        return filestatsdf
+
+    #preview of searchoutput table
+    @render.data_frame
+    def filepreview():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        return render.DataGrid(searchoutput,editable=False,width="100%")
+
+    #column check
+    @render.table
+    def column_check():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        columnnames=searchoutput.columns.tolist()
+        expectedcolumns=["R.FileName","PG.ProteinGroups","PG.ProteinAccessions","PG.ProteinNames","PG.MS2Quantity",
+                        "PG.Genes","EG.ModifiedPeptide","FG.Charge","EG.Qvalue","PG.Qvalue",
+                        "FG.MS2Quantity","FG.MS2RawQuantity","EG.ApexRT","EG.RTPredicted","EG.Cscore","EG.IonMobility",
+                        "R.Condition","R.Replicate","Concentration","EG.PeakWidth",
+                        "PEP.StrippedSequence","PEP.IsProteotypic","EG.FWHM","EG.IsImputed","FG.PrecMz"]
+        columnnames=searchoutput.columns.tolist()
+        in_report=[]
+        for i in expectedcolumns:
+            if i in columnnames:
+                in_report.append("TRUE")
+            else:
+                in_report.append("NA")
+        columncheck_df=pd.DataFrame({"Expected Column":expectedcolumns,"in_report":in_report})
+        columncheck_df["Needed?"]=["Yes","Yes","","Yes","Yes","","Yes","Yes","Yes","Yes","Yes","","Yes","","","Yes","Yes","Yes","Yes","","Yes","","","","Yes"]
+        return columncheck_df
+        
+#endregion  
 
 # ============================================================================= ID Counts
 #region
 
     #plot ID metrics
-    @reactive.effect()
+    @reactive.effect
     def _():
         if input.idplotinput()=="all":
             @render.plot(width=input.idmetrics_width(),height=input.idmetrics_height())
@@ -1131,10 +1443,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 resultdf,averagedf=idmetrics()
                 idmetricscolor=replicatecolors()
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.4
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 fig,ax=plt.subplots(nrows=2,ncols=2,figsize=figsize,sharex=True)
                 fig.set_tight_layout(True)
@@ -1146,27 +1458,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                 resultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax1.set_ylim(top=max(resultdf["proteins"].tolist())+y_padding*max(resultdf["proteins"].tolist()))
-                ax1.set_title("Proteins",fontsize=titlefont)
+                ax1.set_title("Protein Groups",fontsize=titlefont)
 
                 resultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax2.set_ylim(top=max(resultdf["proteins2pepts"].tolist())+y_padding*max(resultdf["proteins2pepts"].tolist()))
-                ax2.set_title("Proteins2Pepts",fontsize=titlefont)
+                ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
 
                 resultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax3.set_ylim(top=max(resultdf["peptides"].tolist())+(y_padding+0.1)*max(resultdf["peptides"].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
-                ax3.set_xlabel("Condition",fontsize=titlefont)
-                ax3.set_ylabel("  ",fontsize=titlefont)
+                ax3.set_xlabel("Condition",fontsize=axisfont)
+                ax3.set_ylabel("  ",fontsize=axisfont)
 
                 resultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax4.set_ylim(top=max(resultdf["precursors"].tolist())+(y_padding+0.1)*max(resultdf["precursors"].tolist()))
                 ax4.set_title("Precursors",fontsize=titlefont)
-                ax4.set_xlabel("Condition",fontsize=titlefont)
+                ax4.set_xlabel("Condition",fontsize=axisfont)
 
-                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=titlefont)
+                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
@@ -1181,20 +1493,29 @@ def server(input: Inputs, output: Outputs, session: Session):
             def idmetricsplot():
                 resultdf,averagedf=idmetrics()
                 idmetricscolor=replicatecolors()
+                plotinput=input.idplotinput()
+                if plotinput=="proteins":
+                    titleprop="Protein Groups"
+                if plotinput=="proteins2pepts":
+                    titleprop="Protein Groups with >2 Peptides"
+                if plotinput=="peptides":
+                    titleprop="Peptides"
+                if plotinput=="precursors":
+                    titleprop="Precursors"
+
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.4
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 fig,ax=plt.subplots()
-                plotinput=input.idplotinput()
-                resultdf.plot.bar(ax=ax,x="Cond_Rep",y=plotinput,legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=axisfont)
+                resultdf.plot.bar(ax=ax,x="Cond_Rep",y=plotinput,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax.set_ylim(top=max(resultdf[plotinput].tolist())+y_padding*max(resultdf[plotinput].tolist()))
-                ax.set_ylabel("Counts",fontsize=titlefont)
-                ax.set_xlabel("Condition",fontsize=titlefont)
-                ax.set_title(plotinput,fontsize=titlefont)
+                ax.set_ylabel("Counts",fontsize=axisfont)
+                ax.set_xlabel("Condition",fontsize=axisfont)
+                ax.set_title(titleprop,fontsize=titlefont)
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
@@ -1206,15 +1527,13 @@ def server(input: Inputs, output: Outputs, session: Session):
             @render.plot(width=input.avgidmetrics_width(),height=input.avgidmetrics_height())
             def avgidmetricsplot():
                 resultdf,averagedf=idmetrics()
-                #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
-                #avgmetricscolor=matplottabcolors
                 avgmetricscolor=colorpicker()
 
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 fig,ax=plt.subplots(nrows=2,ncols=2,figsize=figsize)
                 fig.set_tight_layout(True)
@@ -1226,14 +1545,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                 bars1=ax1.bar(averagedf["R.Condition"],averagedf["proteins_avg"],yerr=averagedf["proteins_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
                 ax1.bar_label(bars1,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
                 ax1.set_ylim(top=max(averagedf["proteins_avg"].tolist())+y_padding*max(averagedf["proteins_avg"].tolist()))
-                ax1.set_title("Proteins",fontsize=titlefont)
+                ax1.set_title("Protein Groups",fontsize=titlefont)
                 ax1.tick_params(axis='y',labelsize=axisfont)
                 ax1.tick_params(axis='x',labelbottom=False)
 
                 bars2=ax2.bar(averagedf["R.Condition"],averagedf["proteins2pepts_avg"],yerr=averagedf["proteins2pepts_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
                 ax2.bar_label(bars2,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
                 ax2.set_ylim(top=max(averagedf["proteins2pepts_avg"].tolist())+y_padding*max(averagedf["proteins2pepts_avg"].tolist()))
-                ax2.set_title("Proteins2pepts",fontsize=titlefont)
+                ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
                 ax2.tick_params(axis='y',labelsize=axisfont)
                 ax2.tick_params(axis='x',labelbottom=False)
 
@@ -1243,8 +1562,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.tick_params(axis='y',labelsize=axisfont)
                 ax3.tick_params(axis='x',labelsize=axisfont,rotation=90)
-                ax3.set_xlabel("Condition",fontsize=titlefont)
-                ax3.set_ylabel("  ",fontsize=titlefont)
+                ax3.set_xlabel("Condition",fontsize=axisfont)
+                ax3.set_ylabel("  ",fontsize=axisfont)
 
                 bars4=ax4.bar(averagedf["R.Condition"],averagedf["precursors_avg"],yerr=averagedf["precursors_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
                 ax4.bar_label(bars4,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
@@ -1252,9 +1571,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax4.set_title("Precursors",fontsize=titlefont)
                 ax4.tick_params(axis='y',labelsize=axisfont)
                 ax4.tick_params(axis='x',labelsize=axisfont,rotation=90)
-                ax4.set_xlabel("Condition",fontsize=titlefont)
+                ax4.set_xlabel("Condition",fontsize=axisfont)
 
-                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=titlefont)
+                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
@@ -1270,20 +1589,29 @@ def server(input: Inputs, output: Outputs, session: Session):
             def avgidmetricsplot():
                 resultdf,averagedf=idmetrics()
                 avgmetricscolor=colorpicker()
+                avgplotinput=input.avgidplotinput()
+                if avgplotinput=="proteins":
+                    titleprop="Protein Groups"
+                if avgplotinput=="proteins2pepts":
+                    titleprop="Protein Groups with >2 Peptides"
+                if avgplotinput=="peptides":
+                    titleprop="Peptides"
+                if avgplotinput=="precursors":
+                    titleprop="Precursors"
 
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
                 fig,ax=plt.subplots()
-                avgplotinput=input.avgidplotinput()
+                
                 bars=ax.bar(averagedf["R.Condition"],averagedf[avgplotinput+"_avg"],yerr=averagedf[avgplotinput+"_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
                 ax.bar_label(bars,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
                 ax.set_ylim(top=max(averagedf[avgplotinput+"_avg"].tolist())+y_padding*max(averagedf[avgplotinput+"_avg"].tolist()))
                 plt.ylabel("Counts",fontsize=axisfont)
                 plt.xlabel("Condition",fontsize=axisfont)
-                plt.title("Average #"+avgplotinput,fontsize=titlefont)
+                plt.title("Average #"+titleprop,fontsize=titlefont)
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.tick_params(axis='x',labelsize=axisfont,rotation=90)
                 ax.set_axisbelow(True)
@@ -1294,41 +1622,34 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _():
         @render.plot(width=input.cvplot_width(),height=input.cvplot_height())
         def cvplot():
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
-            resultdf,averagedf=idmetrics()
+            cvcalc_df=cvcalc()
 
-            #violincolors=matplottabcolors
             violincolors=colorpicker()
 
-            figsize=(10,5)
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.3
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
 
             cvplotinput=input.proteins_precursors_cvplot()
             cutoff95=input.removetop5percent()
 
-            n=len(sampleconditions)
-            x=np.arange(n)
+            x=np.arange(len(cvcalc_df["R.Condition"]))
 
-            fig,ax=plt.subplots(figsize=figsize)
+            fig,ax=plt.subplots()
 
             medianlineprops=dict(linestyle="--",color="black")
             flierprops=dict(markersize=3)
 
             if cutoff95==True:
-                bplot=ax.boxplot(averagedf[cvplotinput+" 95% CVs"],medianprops=medianlineprops,flierprops=flierprops)
-                plot=ax.violinplot(averagedf[cvplotinput+" 95% CVs"],showextrema=False)#,showmeans=True)
+                bplot=ax.boxplot(cvcalc_df[cvplotinput+" 95% CVs"],medianprops=medianlineprops,flierprops=flierprops)
+                plot=ax.violinplot(cvcalc_df[cvplotinput+" 95% CVs"],showextrema=False)#,showmeans=True)
                 ax.set_title(cvplotinput+" CVs, 95% Cutoff",fontsize=titlefont)
 
             elif cutoff95==False:
-                bplot=ax.boxplot(averagedf[cvplotinput+" CVs"],medianprops=medianlineprops,flierprops=flierprops)
-                plot=ax.violinplot(averagedf[cvplotinput+" CVs"],showextrema=False)#,showmeans=True)
+                bplot=ax.boxplot(cvcalc_df[cvplotinput+" CVs"],medianprops=medianlineprops,flierprops=flierprops)
+                plot=ax.violinplot(cvcalc_df[cvplotinput+" CVs"],showextrema=False)#,showmeans=True)
                 ax.set_title(cvplotinput+" CVs",fontsize=titlefont)
 
-            ax.set_xticks(x+1,labels=averagedf["R.Condition"],fontsize=axisfont)
+            ax.set_xticks(x+1,labels=cvcalc_df["R.Condition"],fontsize=axisfont)
             ax.tick_params(axis="y",labelsize=axisfont)
             ax.set_ylabel("CV%",fontsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
@@ -1341,92 +1662,51 @@ def server(input: Inputs, output: Outputs, session: Session):
                 z.set_facecolor(color)
                 z.set_edgecolor("black")
                 z.set_alpha(0.7)
-            return fig
 
     #plot counts with CV cutoffs
     @reactive.effect
     def _():
         @render.plot(width=input.countscvcutoff_width(),height=input.countscvcutoff_height())
         def countscvcutoff():
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             resultdf,averagedf=idmetrics()
 
-            figsize=(6,6)
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.3
+            cvcalc_df=cvcalc()
 
-            n=len(sampleconditions)
-            x=np.arange(n)
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+
+            x=np.arange(len(cvcalc_df["R.Condition"]))
             width=0.25
 
             cvinput=input.proteins_precursors_idcutoffplot()
 
-            fig,ax=plt.subplots(figsize=figsize)
+            fig,ax=plt.subplots()
 
             ax.bar(x,averagedf[cvinput+"_avg"],width=width,label="Identified",edgecolor="k",color="#054169")
             ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
-            ax.bar(x+width,averagedf[cvinput+"CV<20"],width=width,label="CV<20%",edgecolor="k",color="#0071BC")
+            ax.bar(x+width,cvcalc_df[cvinput+"CV<20"],width=width,label="CV<20%",edgecolor="k",color="#0071BC")
             ax.bar_label(ax.containers[1],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
-            ax.bar(x+(2*width),averagedf[cvinput+"CV<10"],width=width,label="CV<10%",edgecolor="k",color="#737373")
+            ax.bar(x+(2*width),cvcalc_df[cvinput+"CV<10"],width=width,label="CV<10%",edgecolor="k",color="#737373")
             ax.bar_label(ax.containers[2],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
             ax.set_ylim(top=max(averagedf[cvinput+"_avg"])+y_padding*max(averagedf[cvinput+"_avg"]))
             #ax.legend(ncols=3,loc="upper left",fontsize=axisfont)
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':axisfont})
-            ax.set_xticks(x+width,sampleconditions,fontsize=axisfont,rotation=90)
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
+            ax.set_xticks(x+width,cvcalc_df["R.Condition"],fontsize=axisfont,rotation=90)
             ax.tick_params(axis="y",labelsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.set_ylabel("Counts",fontsize=axisfont)
-            ax.set_title(cvinput+" CV Cutoffs",fontsize=titlefont)
-
+            if cvinput=="proteins":
+                ax.set_title("Protein Counts with CV Cutoffs",fontsize=titlefont)
+            if cvinput=="precursors":
+                ax.set_title("Precursor Counts with CV Cutoffs",fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
-            return fig
-    
-    #plot unique counts per condition
-    @render.plot(width=1000,height=600)
-    def uniquecountsplot():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-        titlefont=20
-        labelfont=15
-        axisfont=15
-
-        conditions_proteins=searchoutput[["Cond_Rep","PG.ProteinNames"]].drop_duplicates().reset_index(drop=True)
-
-        shared=[]
-        unique=[]
-        for run in resultdf["Cond_Rep"].tolist():
-            counter_shared=0
-            counter_unique=0
-            testset=conditions_proteins[conditions_proteins.Cond_Rep==run]["PG.ProteinNames"].tolist()
-            rest=conditions_proteins[conditions_proteins.Cond_Rep!=run]["PG.ProteinNames"].tolist()
-            for i in testset:
-                if i in rest:
-                    counter_shared+=1
-                else:
-                    counter_unique+=1
-            shared.append(counter_shared)
-            unique.append(counter_unique)
-
-        fig,ax=plt.subplots()
-        x=np.arange(len(resultdf["Cond_Rep"].tolist()))
-        ax.bar(x,shared,label="Common IDs")
-        ax.bar(x,unique,label="Unique IDs")
-        ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=-50,fontsize=labelfont)
-        ax.bar_label(ax.containers[1],label_type="edge",rotation=90,padding=5,color="tab:orange",fontsize=labelfont)
-
-        ax.set_xticks(x,labels=resultdf["Cond_Rep"].tolist(),rotation=90)
-        ax.set_xlabel("Condition",fontsize=axisfont)
-        ax.set_ylabel("Counts",fontsize=axisfont)
-        ax.tick_params(axis="both",labelsize=axisfont)
-        ax.legend(loc="center left",bbox_to_anchor=(1,0.5),fontsize=axisfont)
-        ax.set_title("Unique Protein Counts",fontsize=titlefont)
-        return fig
 
     #plot upset plot
     @reactive.effect
@@ -1437,7 +1717,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.protein_precursor_pick()=="Protein":
                 proteindict=dict()
                 for condition in sampleconditions:
-                    proteinlist=searchoutput[searchoutput["R.Condition"].str.contains(condition)][["R.Condition","PG.ProteinNames"]].drop_duplicates().reset_index(drop=True).drop(columns=["R.Condition"])
+                    proteinlist=searchoutput[searchoutput["R.Condition"]==condition][["R.Condition","PG.ProteinNames"]].drop_duplicates().reset_index(drop=True).drop(columns=["R.Condition"])
                     proteinlist.rename(columns={"PG.ProteinNames":condition},inplace=True)
                     proteindict[condition]=proteinlist[condition].tolist()
                 proteins=from_contents(proteindict)
@@ -1449,14 +1729,14 @@ def server(input: Inputs, output: Outputs, session: Session):
             elif input.protein_precursor_pick()=="Peptide":
                 peptidedict=dict()
                 for condition in sampleconditions:
-                    peptidelist=searchoutput[searchoutput["R.Condition"].str.contains(condition)][["R.Condition","EG.ModifiedPeptide"]].drop_duplicates().reset_index(drop=True).drop(columns=["R.Condition"])
+                    peptidelist=searchoutput[searchoutput["R.Condition"]==condition][["R.Condition","EG.ModifiedPeptide"]].drop_duplicates().reset_index(drop=True).drop(columns=["R.Condition"])
                     peptidelist.rename(columns={"EG.ModifiedPeptide":condition},inplace=True)
                     peptidedict[condition]=peptidelist[condition].tolist()
                 peptides=from_contents(peptidedict)
                 fig=plt.figure()
                 upset=UpSet(peptides,show_counts=True,sort_by="cardinality").plot(fig)
                 upset["totals"].set_title("# Peptides")
-                plt.ylabel("Peptiede Intersections",fontsize=14)
+                plt.ylabel("Peptide Intersections",fontsize=14)
             return fig
     
 #endregion
@@ -1469,28 +1749,32 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _():
         @render.plot(width=input.chargestate_width(),height=input.chargestate_height())
         def chargestateplot():
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            resultdf,averagedf=idmetrics()
-            #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
-
-            chargestatecolor=colorpicker()    
             
             figsize=(12,5)
-            titlefont=20
-            labelfont=15
-            axisfont=15
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
             y_padding=0.15
         
-            if len(sampleconditions)==1:
+            chargestatedf_condition,chargestatedf_run=chargestates()
+
+            if input.chargestate_condition_or_run()=="condition":
+                plottingdf=chargestatedf_condition
+                chargestatecolor=colorpicker()
+            if input.chargestate_condition_or_run()=="individual":
+                plottingdf=chargestatedf_run
+                chargestatecolor=replicatecolors()
+
+            if len(plottingdf)==1:
                 fig,ax=plt.subplots(figsize=(5,5))
-                x=list(set(averagedf["Charge States"][0]))
-                frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Charge States"][0]))]
+                x=list(set(plottingdf["Charge States"][0]))
+                frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][0]))]
                 
                 totals=sum(frequencies)
                 for y,ele in enumerate(frequencies):
                     frequencies[y]=round((ele/totals)*100,1)
                 ax.bar(x,frequencies,edgecolor="k",color=chargestatecolor)
-                ax.set_title(averagedf["R.Condition"][0],fontsize=titlefont)
+                ax.set_title(plottingdf["Sample Names"][0],fontsize=titlefont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.bar_label(ax.containers[0],label_type="edge",padding=10,fontsize=labelfont)
@@ -1501,16 +1785,16 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_xlabel("Charge State",fontsize=axisfont)             
                 ax.set_ylabel("Frequency (%)",fontsize=axisfont)
             else:
-                fig,ax=plt.subplots(nrows=1,ncols=len(sampleconditions),figsize=figsize)
-                for i in range(len(sampleconditions)):
-                    x=list(set(averagedf["Charge States"][i]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Charge States"][i]))]
+                fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=figsize)
+                for i in range(len(plottingdf)):
+                    x=list(set(plottingdf["Charge States"][i]))
+                    frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][i]))]
 
                     totals=sum(frequencies)
                     for y,ele in enumerate(frequencies):
                         frequencies[y]=round((ele/totals)*100,1)
                     ax[i].bar(x,frequencies,color=chargestatecolor[i],edgecolor="k")
-                    ax[i].set_title(averagedf["R.Condition"][i],fontsize=titlefont)
+                    ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
                     ax[i].bar_label(ax[i].containers[0],label_type="edge",padding=10,fontsize=labelfont)
@@ -1526,9 +1810,8 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.ui
     def lengthmark_ui():
         if input.peplengthinput()=="barplot":
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            minlength=min(averagedf["Peptide Lengths"][0])
-            maxlength=max(averagedf["Peptide Lengths"][0])
+            minlength=7
+            maxlength=30
             opts=[item for item in range(minlength,maxlength+1)]
             opts.insert(0,0)
             return ui.input_selectize("lengthmark_pick","Pick peptide length to mark on bar plot (use 0 for maximum)",choices=opts)
@@ -1540,40 +1823,53 @@ def server(input: Inputs, output: Outputs, session: Session):
         def peptidelengthplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             resultdf,averagedf=idmetrics()
-            #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
-
             colors=colorpicker()
 
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.3
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+
+            peptidelengths_condition,peptidelengths_run=peptidelengths()
+
+            if input.peptidelengths_condition_or_run()=="condition":
+                plottingdf=peptidelengths_condition
+                colors=colorpicker()
+            if input.peptidelengths_condition_or_run()=="individual":
+                plottingdf=peptidelengths_run
+                colors=replicatecolors()
 
             if input.peplengthinput()=="lineplot":
                 legendlist=[]
                 fig,ax=plt.subplots(figsize=(6,4))
-                for i in range(len(sampleconditions)):
-                    x=list(set(averagedf["Peptide Lengths"][i]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptide Lengths"][i]))]
-                    if numconditions==1:
+                for i in range(len(plottingdf)):
+                    if len(plottingdf)==1:
+                        x=list(set(plottingdf["Peptide Lengths"][0]))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][0]))]
                         ax.plot(x,frequencies,color=colors,linewidth=2)
+                        legendlist.append(plottingdf["Sample Names"][0])
                     else:
+                        x=list(set(plottingdf["Peptide Lengths"][i]))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][i]))]
                         ax.plot(x,frequencies,color=colors[i],linewidth=2)
-                    legendlist.append(averagedf["R.Condition"][i])
+                        legendlist.append(plottingdf["Sample Names"][i])
                 ax.tick_params(axis="both",labelsize=axisfont)
-                ax.set_xlabel("Peptide Length",fontsize=titlefont)
-                ax.set_ylabel("Counts",fontsize=titlefont)
+                ax.set_xlabel("Peptide Length",fontsize=axisfont)
+                ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-                ax.legend(legendlist,fontsize=axisfont)
+                ax.legend(legendlist,fontsize=legendfont)
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
             if input.peplengthinput()=="barplot":
                 lengthmark=int(input.lengthmark_pick())
-                if len(sampleconditions)==1:
+                if len(plottingdf)==1:
                     fig,ax=plt.subplots(figsize=(5,5))
-                    x=list(set(averagedf["Peptide Lengths"][0]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptide Lengths"][0]))]
+                    x=list(set(plottingdf["Peptide Lengths"][0]))
+                    frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][0]))]
                     ax.bar(x,frequencies,color=colors,edgecolor="k")
-                    ax.set_title(averagedf["R.Condition"][0],fontsize=titlefont)
+                    ax.set_title(plottingdf["Sample Names"][0],fontsize=titlefont)
                     ax.set_axisbelow(True)
                     ax.grid(linestyle="--")
                     if lengthmark!=0:
@@ -1584,16 +1880,15 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax.text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+", "+str(max(frequencies)),fontsize=labelfont)
                     ax.set_ylim(top=max(frequencies)+y_padding*max(frequencies))
                     ax.tick_params(axis="both",labelsize=axisfont)
-                    ax.set_xticks(np.arange(5,max(x)+1,5))
                     ax.set_xlabel("Peptide Length",fontsize=axisfont)
                     ax.set_ylabel("Counts",fontsize=axisfont)
                 else:
-                    fig,ax=plt.subplots(nrows=1,ncols=len(sampleconditions),figsize=(15,5))
-                    for i in range(len(sampleconditions)):
-                        x=list(set(averagedf["Peptide Lengths"][i]))
-                        frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptide Lengths"][i]))]
+                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
+                    for i in range(len(plottingdf)):
+                        x=list(set(plottingdf["Peptide Lengths"][i]))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][i]))]
                         ax[i].bar(x,frequencies,color=colors[i],edgecolor="k")
-                        ax[i].set_title(averagedf["R.Condition"][i],fontsize=titlefont)
+                        ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                         ax[i].set_axisbelow(True)
                         ax[i].grid(linestyle="--")
                         if lengthmark!=0:
@@ -1604,54 +1899,65 @@ def server(input: Inputs, output: Outputs, session: Session):
                             ax[i].text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+", "+str(max(frequencies)),fontsize=labelfont)
                         ax[i].set_ylim(top=max(frequencies)+y_padding*max(frequencies))
                         ax[i].tick_params(axis="both",labelsize=axisfont)
-                        ax[i].set_xticks(np.arange(5,max(x)+1,5))
                         ax[i].set_xlabel("Peptide Length",fontsize=axisfont)
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
             fig.set_tight_layout(True)
-            return fig
     
     #plot peptides per protein
     @reactive.effect
     def _():
         @render.plot(width=input.pepsperprotein_width(),height=input.pepsperprotein_height())
         def pepsperproteinplot():
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            resultdf,averagedf=idmetrics()
-            #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
 
-            colors=colorpicker()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
 
-            titlefont=20
-            axisfont=15
-            labelfont=15
+            pepsperprotein_condition,pepsperprotein_run=pepsperprotein()
+
+            if input.pepsperprotein_condition_or_run()=="condition":
+                plottingdf=pepsperprotein_condition
+                colors=colorpicker()
+            if input.pepsperprotein_condition_or_run()=="individual":
+                plottingdf=pepsperprotein_run
+                colors=replicatecolors()
 
             if input.pepsperproteininput()=="lineplot":
                 legendlist=[]
                 fig,ax=plt.subplots(figsize=(6,4))
-                for i in range(len(sampleconditions)):
-                    x=list(set(averagedf["Peptides per Protein"][i]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptides per Protein"][i]))]
-                    if numconditions==1:
-                        ax.plot(x,frequencies,color=colors,linewidth=2)
-                    else:
+
+                if len(plottingdf)==1:
+                    x=sorted(list(set(plottingdf["Peptides per Protein"][0])))
+                    frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][0]))]
+                    ax.plot(x,frequencies,color=colors,linewidth=2)
+                    legendlist.append(plottingdf["Sample Names"][0])
+                else:
+                    for i in range(len(plottingdf)):
+                        x=sorted(list(set(plottingdf["Peptides per Protein"][i])))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][i]))]
                         ax.plot(x,frequencies,color=colors[i],linewidth=2)
-                    legendlist.append(averagedf["R.Condition"][i])
+                        legendlist.append(plottingdf["Sample Names"][i])
+
+                if max(x)>=100:
+                    ax.set_xlim(left=0,right=100)
+                ax.set_xlim(left=0)
                 ax.tick_params(axis="both",labelsize=axisfont)
-                ax.set_xlabel("Peptides per Protein",fontsize=titlefont)
-                ax.set_ylabel("Counts",fontsize=titlefont)
+                ax.set_xlabel("Peptides per Protein",fontsize=axisfont)
+                ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-                ax.legend(legendlist,fontsize=axisfont)
+                ax.legend(legendlist,fontsize=legendfont)
 
             if input.pepsperproteininput()=="barplot":
-                if len(sampleconditions)==1:
+                if len(plottingdf)==1:
                     fig,ax=plt.subplots(figsize=(5,5))
-                    for i in range(len(sampleconditions)):
-                        x=list(set(averagedf["Peptides per Protein"][0]))
-                        frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptides per Protein"][0]))]
+                    for i in range(len(plottingdf)):
+                        x=sorted(list(set(plottingdf["Peptides per Protein"][0])))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][0]))]
 
                         ax.bar(x,frequencies,color=colors,width=0.025)
-                        ax.set_title(averagedf["R.Condition"][0],fontsize=titlefont)
+                        ax.set_title(plottingdf["Sample Names"][0],fontsize=titlefont)
                         ax.set_axisbelow(True)
                         ax.grid(linestyle="--")
 
@@ -1659,23 +1965,26 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax.set_xticks(np.arange(0,max(x)+1,25))
                         ax.set_xlabel("# Peptides",fontsize=axisfont)
                         ax.set_ylabel("Counts",fontsize=axisfont)
+                    if max(x)>=100:
+                        ax.set_xlim(left=0,right=100)
                 else:
-                    fig,ax=plt.subplots(nrows=1,ncols=len(sampleconditions),figsize=(15,5))
-                    for i in range(len(sampleconditions)):
-                        x=list(set(averagedf["Peptides per Protein"][i]))
-                        frequencies=[len(list(group)) for key, group in groupby(sorted(averagedf["Peptides per Protein"][i]))]
+                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
+                    for i in range(len(plottingdf)):
+                        x=list(set(plottingdf["Peptides per Protein"][i]))
+                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][i]))]
 
                         ax[i].bar(x,frequencies,color=colors[i])
-                        ax[i].set_title(averagedf["R.Condition"][i],fontsize=titlefont)
+                        ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                         ax[i].set_axisbelow(True)
                         ax[i].grid(linestyle="--")
 
                         ax[i].tick_params(axis="both",labelsize=axisfont)
                         ax[i].set_xticks(np.arange(0,max(x)+1,25))
                         ax[i].set_xlabel("# Peptides",fontsize=axisfont)
+                        if max(x)>=100:
+                            ax[i].set_xlim(left=0,right=100)
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
                 fig.set_tight_layout(True)
-            return fig
     
     #plot dynamic range
     @render.plot(width=500,height=700)
@@ -1685,12 +1994,13 @@ def server(input: Inputs, output: Outputs, session: Session):
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
         markersize=25
-        titlefont=20
+        titlefont=input.titlefont()
 
         if propertyinput=="mean":
-            intensitydf=searchoutput[searchoutput["R.Condition"].str.contains(conditioninput)][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").mean().reset_index(drop=True)
+            intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").mean().reset_index(drop=True)
+
         elif propertyinput=="median":
-            intensitydf=searchoutput[searchoutput["R.Condition"].str.contains(conditioninput)][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").median().reset_index(drop=True)
+            intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").median().reset_index(drop=True)
 
         fig,ax=plt.subplots(nrows=2,ncols=1,figsize=(5,7),sharex=True,gridspec_kw={"height_ratios":[1,3]})
         ax1=ax[0]
@@ -1720,9 +2030,24 @@ def server(input: Inputs, output: Outputs, session: Session):
         ax2.set_axisbelow(True)
         ax1.grid(linestyle="--")
         ax2.grid(linestyle="--")
-        plt.tight_layout()
-        return fig
-    
+        fig.set_tight_layout(True)
+
+    #get ranked proteins based on signal
+    @render.data_frame
+    def dynamicrange_proteinrank():
+        conditioninput=input.conditionname()
+        propertyinput=input.meanmedian()
+
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        if propertyinput=="mean":
+            intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").mean().reset_index()
+        elif propertyinput=="median":
+            intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinNames").median().reset_index()
+        intensitydf=intensitydf.sort_values("PG.MS2Quantity",ascending=False).reset_index(drop=True)
+
+        return render.DataGrid(intensitydf.iloc[:input.top_n()],editable=False)
+
     #plot data completeness
     @reactive.effect
     def _():
@@ -1731,11 +2056,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
             figsize=(12,5)
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.3
-            labelpadding=3
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            y_padding=input.ypadding()
+            labelpadding=1
 
             color1="tab:blue"
             color2="black"
@@ -1756,11 +2081,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             y1=proteincounts
             y2=proteinfrequencies
 
-            fig,ax1 = plt.subplots(figsize=figsize)
+            fig,ax1=plt.subplots(figsize=figsize)
 
             ax2 = ax1.twinx()
-            ax1.bar(xaxis, y1,edgecolor="k")
-            ax2.plot(xaxis, y2,"-o",color=color2)
+            ax1.bar(xaxis,y1,edgecolor="k")
+            ax2.plot(xaxis,y2,"-o",color=color2)
 
             ax1.set_xlabel('Observed in X Runs',fontsize=axisfont)
             if input.protein_peptide()=="proteins":
@@ -1784,11 +2109,40 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax1.grid(linestyle="--")
             plt.xticks(range(1,len(xaxis)+1))
             plt.xlim(0.5,len(xaxis)+1)
-            return fig
+
+    #plot peak widths
+    @reactive.effect
+    def _():
+        @render.plot(width=input.peakwidth_width(),height=input.peakwidth_height())
+        def peakwidthplot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+            violincolors=replicatecolors()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+
+            fwhm_dict=[]
+            for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                fwhm_dict.append(searchoutput[searchoutput["Cond_Rep"]==run]["EG.PeakWidth"]*60)
+            x=np.arange(len(searchoutput["Cond_Rep"].drop_duplicates().tolist()))
+            fig,ax=plt.subplots()
+            medianlineprops=dict(linestyle="--",color="black")
+            flierprops=dict(markersize=3)
+            plot=ax.violinplot(fwhm_dict,showextrema=False)
+            bplot=ax.boxplot(fwhm_dict,medianprops=medianlineprops,flierprops=flierprops)
+            ax.set_ylabel("Peak Width (s)",fontsize=axisfont)
+            ax.set_xlabel("Run",fontsize=axisfont)
+            ax.set_xticks(x+1,labels=searchoutput["Cond_Rep"].drop_duplicates().tolist())
+            ax.grid(linestyle="--")
+            ax.set_axisbelow(True)
+            for z,color in zip(plot["bodies"],violincolors):
+                z.set_facecolor(color)
+                z.set_edgecolor("black")
+                z.set_alpha(0.7)
 
 #endregion
 
-#  ============================================================================ PTMs 
+# ============================================================================= PTMs 
 #region
 
     #function for finding the PTMs in the data
@@ -1816,7 +2170,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         numptmprecursors=[]
         for condition in sampleconditions:
             for j in range(max(maxreplicatelist)+1):
-                df=searchoutput[searchoutput["R.Condition"].str.contains(condition)&(searchoutput["R.Replicate"]==j)][["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]]
+                df=searchoutput[(searchoutput["R.Condition"]==condition)&(searchoutput["R.Replicate"]==j)][["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]]
                 if df.empty:
                     continue
                 #number of proteins with specified PTM
@@ -1862,10 +2216,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 idmetricscolor=replicatecolors()
 
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 ptmresultdf,ptm=ptmcounts()
 
@@ -1879,27 +2233,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ptmresultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax1.set_ylim(top=max(ptmresultdf["proteins"].tolist())+y_padding*max(ptmresultdf["proteins"].tolist()))
-                ax1.set_title("Proteins",fontsize=titlefont)
+                ax1.set_title("Protein Groups",fontsize=titlefont)
 
                 ptmresultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax2.set_ylim(top=max(ptmresultdf["proteins2pepts"].tolist())+y_padding*max(ptmresultdf["proteins2pepts"].tolist()))
-                ax2.set_title("Proteins2Pepts",fontsize=titlefont)
+                ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
 
                 ptmresultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax3.set_ylim(top=max(ptmresultdf["peptides"].tolist())+(y_padding+0.1)*max(ptmresultdf["peptides"].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
-                ax3.set_xlabel("Condition",fontsize=titlefont)
-                ax3.set_ylabel("  ",fontsize=titlefont)
+                ax3.set_xlabel("Condition",fontsize=axisfont)
+                ax3.set_ylabel("  ",fontsize=axisfont)
 
                 ptmresultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax4.set_ylim(top=max(ptmresultdf["precursors"].tolist())+(y_padding+0.1)*max(ptmresultdf["precursors"].tolist()))
                 ax4.set_title("Precursors",fontsize=titlefont)
-                ax4.set_xlabel("Condition",fontsize=titlefont)
+                ax4.set_xlabel("Condition",fontsize=axisfont)
 
-                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=titlefont)
+                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
@@ -1916,11 +2270,20 @@ def server(input: Inputs, output: Outputs, session: Session):
             def ptmidmetricsplot():
                 idmetricscolor=replicatecolors()
 
+                if plotinput=="proteins":
+                    titleprop="Proteins"
+                if plotinput=="proteins2pepts":
+                    titleprop="Proteins with >2 Peptides"
+                if plotinput=="peptides":
+                    titleprop="Peptides"
+                if plotinput=="precursors":
+                    titleprop="Precursors"
+
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 ptmresultdf,ptm=ptmcounts()
                 fig,ax=plt.subplots()
@@ -1929,7 +2292,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_ylim(top=max(ptmresultdf[plotinput].tolist())+y_padding*max(ptmresultdf[plotinput].tolist()))
                 plt.ylabel("Counts",fontsize=axisfont)
                 plt.xlabel("Condition",fontsize=axisfont)
-                plt.title(plotinput,fontsize=titlefont)
+                plt.title(titleprop,fontsize=titlefont)
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
@@ -1946,10 +2309,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 #idmetricscolor=tabcolorsblocks
                 idmetricscolor=replicatecolors()
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 ptmresultdf,ptm=ptmcounts()
 
@@ -1963,27 +2326,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ptmresultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins_enrich%",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax1.set_ylim(top=max(ptmresultdf["proteins_enrich%"].tolist())+y_padding*max(ptmresultdf["proteins_enrich%"].tolist()))
-                ax1.set_title("Proteins",fontsize=titlefont)
+                ax1.set_title("Protein Groups",fontsize=titlefont)
 
                 ptmresultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts_enrich%",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax2.set_ylim(top=max(ptmresultdf["proteins2pepts_enrich%"].tolist())+y_padding*max(ptmresultdf["proteins2pepts_enrich%"].tolist()))
-                ax2.set_title("Proteins2Pepts",fontsize=titlefont)
+                ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
 
                 ptmresultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides_enrich%",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax3.set_ylim(top=max(ptmresultdf["peptides_enrich%"].tolist())+y_padding*max(ptmresultdf["peptides_enrich%"].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
-                ax3.set_xlabel("Condition",fontsize=titlefont)
-                ax3.set_ylabel("  ",fontsize=titlefont)
+                ax3.set_xlabel("Condition",fontsize=axisfont)
+                ax3.set_ylabel("  ",fontsize=axisfont)
 
                 ptmresultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors_enrich%",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax4.set_ylim(top=max(ptmresultdf["precursors_enrich%"].tolist())+y_padding*max(ptmresultdf["precursors_enrich%"].tolist()))
                 ax4.set_title("Precursors",fontsize=titlefont)
-                ax4.set_xlabel("Condition",fontsize=titlefont)
+                ax4.set_xlabel("Condition",fontsize=axisfont)
 
-                fig.text(0.01, 0.6,"Enrichment %",ha="center",va="center",rotation="vertical",fontsize=titlefont)
+                fig.text(0.01, 0.6,"Enrichment %",ha="center",va="center",rotation="vertical",fontsize=axisfont)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
@@ -1999,11 +2362,21 @@ def server(input: Inputs, output: Outputs, session: Session):
             @render.plot(width=input.ptmenrichment_width(),height=input.ptmenrichment_height())
             def ptmenrichment():
                 idmetricscolor=replicatecolors()
+
+                if plotinput=="proteins":
+                    titleprop="Proteins"
+                if plotinput=="proteins2pepts":
+                    titleprop="Proteins with >2 Peptides"
+                if plotinput=="peptides":
+                    titleprop="Peptides"
+                if plotinput=="precursors":
+                    titleprop="Precursors"
+
                 figsize=(15,10)
-                titlefont=20
-                axisfont=15
-                labelfont=15
-                y_padding=0.3
+                titlefont=input.titlefont()
+                axisfont=input.axisfont()
+                labelfont=input.labelfont()
+                y_padding=input.ypadding()
 
                 ptmresultdf,ptm=ptmcounts()
 
@@ -2013,7 +2386,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_ylim(top=max(ptmresultdf[str(plotinput+"_enrich%")].tolist())+y_padding*max(ptmresultdf[str(plotinput+"_enrich%")].tolist()))
                 plt.ylabel("Enrichment %",fontsize=axisfont)
                 plt.xlabel("Condition",fontsize=axisfont)
-                plt.title(str(plotinput+" enrichment %"),fontsize=titlefont)
+                plt.title(str(titleprop+" Enrichment %"),fontsize=titlefont)
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
@@ -2033,10 +2406,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             cutoff95=input.ptm_removetop5percent()
             
             figsize=(15,10)
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.3
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
 
             ptmcvs=pd.DataFrame()
             ptmcvs["R.Condition"]=averagedf["R.Condition"]
@@ -2047,7 +2418,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             df=searchoutput[["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
             for x,condition in enumerate(averagedf["R.Condition"]):
-                ptmdf=df[df["R.Condition"].str.contains(condition)][["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+                ptmdf=df[df["R.Condition"]==condition][["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
                 
                 if maxreplicatelist[x]==1:
                     emptylist=[]
@@ -2133,16 +2504,17 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             colors=colorpicker()
 
-            y_padding=0.3
-            titlefont=20
-            axisfont=15
-            labelfont=15
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
 
             fig,ax=plt.subplots()
             ptmdf=pd.DataFrame()
 
             for j,condition in enumerate(sampleconditions):
-                df=searchoutput[searchoutput["R.Condition"].str.contains(condition)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+                df=searchoutput[searchoutput["R.Condition"]==condition][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
                 dfptmlist=[]
                 numptms=[]
                 for i in df["EG.ModifiedPeptide"]:
@@ -2160,9 +2532,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.bar(x+(j*width),frequencies,width=width,color=colors[j],edgecolor="black")
                 ax.bar_label(ax.containers[j],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
-            ax.legend(sampleconditions,loc="upper right",fontsize=axisfont)
-            ax.set_ylim(bottom=-1000,top=max(frequencies)+y_padding*max(frequencies))
-            ax.set_xticks(x+width/2,x)
+            ax.legend(sampleconditions,loc="upper right",fontsize=legendfont)
+            ax.set_ylim(bottom=-1000,top=ax.get_ylim()[1]+y_padding*ax.get_ylim()[1])
+            ax.set_xticks(x+((numconditions-1)/2)*width,x)
             ax.tick_params(axis="both",labelsize=axisfont)
             ax.set_ylabel("Counts",fontsize=axisfont)
             ax.set_xlabel("# of PTMs",fontsize=axisfont)
@@ -2173,6 +2545,80 @@ def server(input: Inputs, output: Outputs, session: Session):
             return fig
 
 #endregion    
+
+# ============================================================================= PCA
+#region
+
+    #compute PCA and plot principal components
+    @reactive.effect
+    def _():
+        @render.plot(width=input.pca_width(),height=input.pca_height())
+        def pca_plot():
+            #https://www.youtube.com/watch?v=WPRysPAhG5Q&ab_channel=CompuFlair
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
+
+            samplelist=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True).tolist()
+            intensitydict=dict()
+            for run in samplelist:
+                intensitydict[run]=searchoutput[searchoutput["Cond_Rep"]==run][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True).rename(columns={"PG.MS2Quantity":run}).set_index(keys="PG.ProteinNames")
+            df_intensity=[]
+            for run in intensitydict.keys():
+                temp_df=intensitydict[run]
+                df_intensity.append(temp_df)
+            concatenated_proteins=pd.concat(df_intensity,axis=1).dropna()
+
+            X=np.array(concatenated_proteins).T
+            pip=Pipeline([("scaler",StandardScaler()),("pca",PCA())]).fit(X)
+            X_trans=pip.transform(X)
+            #each row is a principal component, each element of each row is a sample
+
+            figsize=(10,5)
+            colors=colorpicker()
+
+            fig,ax=plt.subplots(ncols=2,figsize=figsize,gridspec_kw={"width_ratios":[10,5]})
+            
+            ax1=ax[0]
+            ax2=ax[1]
+
+            firstindex=0
+            secondindex=0
+            for i in range(numconditions):
+                if i==0:
+                    firstindex=0
+                else:
+                    firstindex+=repspercondition[i-1]
+                secondindex=firstindex+repspercondition[i]
+                ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors[i])
+
+            ax1.legend(loc="upper left",bbox_to_anchor=[1,1],fontsize=legendfont)
+
+            ax1.spines['bottom'].set_position('zero')
+            ax1.spines['top'].set_color('none')
+            ax1.spines['right'].set_color('none')
+            ax1.spines['left'].set_position('zero')
+            ax1.set_axisbelow(True)
+            ax1.grid(linestyle="--")
+
+            ax1.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)",fontsize=axisfont)
+            ax1.xaxis.set_label_coords(x=0.5,y=-0.02)
+            ax1.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)",fontsize=axisfont)
+            ax1.yaxis.set_label_coords(x=-0.02,y=0.45)
+            ax1.tick_params(axis="both",labelsize=axisfont)
+
+            ax2.bar(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1),pip.named_steps.pca.explained_variance_ratio_*100,edgecolor="k")
+            ax2.set_xlabel("Principal Component",fontsize=axisfont)
+            ax2.set_ylabel("Total % Variance Explained",fontsize=axisfont)
+            ax2.set_xticks(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1))
+            ax2.set_axisbelow(True)
+            ax2.grid(linestyle="--")
+            ax2.tick_params(axis="both",labelsize=axisfont)
+
+            fig.set_tight_layout(True)        
+
+#endregion
 
 # ============================================================================= Heatmaps
 #region
@@ -2193,16 +2639,18 @@ def server(input: Inputs, output: Outputs, session: Session):
     def replicate_heatmap():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
-        titlefont=20
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
+        labelfont=input.labelfont()
         figsize=(15,10)
 
         numbins=input.heatmap_numbins()
 
         conditioninput=input.cond_rep_heatmap()
         if input.conditiontype()=="replicate":
-            his2dsample=searchoutput[searchoutput["Cond_Rep"].str.contains(conditioninput)][["Cond_Rep","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity"]].sort_values(by="EG.ApexRT").reset_index(drop=True)
+            his2dsample=searchoutput[searchoutput["Cond_Rep"]==conditioninput][["Cond_Rep","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity"]].sort_values(by="EG.ApexRT").reset_index(drop=True)
         elif input.conditiontype()=="condition":
-            his2dsample=searchoutput[searchoutput["R.Condition"].str.contains(conditioninput)][["R.Condition","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity"]].sort_values(by="EG.ApexRT").reset_index(drop=True)
+            his2dsample=searchoutput[searchoutput["R.Condition"]==conditioninput][["R.Condition","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity"]].sort_values(by="EG.ApexRT").reset_index(drop=True)
 
         samplename=conditioninput
         cmap=matplotlib.colors.LinearSegmentedColormap.from_list("",["white","blue","red"])
@@ -2210,35 +2658,35 @@ def server(input: Inputs, output: Outputs, session: Session):
         fig,ax=plt.subplots(nrows=2,ncols=2,figsize=figsize)
 
         i=ax[0,0].hist2d(his2dsample["EG.ApexRT"],his2dsample["FG.PrecMz"],bins=numbins,cmap=cmap)
-        ax[0,0].set_title("RT vs m/z")
-        ax[0,0].set_xlabel("Retention Time (min)")
-        ax[0,0].set_ylabel("m/z")
+        ax[0,0].set_title("RT vs m/z",fontsize=titlefont)
+        ax[0,0].set_xlabel("Retention Time (min)",fontsize=axisfont)
+        ax[0,0].set_ylabel("m/z",fontsize=axisfont)
         fig.colorbar(i[3],ax=ax[0,0])
 
         j=ax[0,1].hist2d(his2dsample["FG.PrecMz"],his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
-        ax[0,1].set_title("m/z vs Mobility")
-        ax[0,1].set_xlabel("m/z")
-        ax[0,1].set_ylabel("Ion Mobility ($1/K_{0}$)")
+        ax[0,1].set_title("m/z vs Mobility",fontsize=titlefont)
+        ax[0,1].set_xlabel("m/z",fontsize=axisfont)
+        ax[0,1].set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
         fig.colorbar(j[3],ax=ax[0,1])
 
         ax[1,0].plot(his2dsample["EG.ApexRT"],his2dsample["FG.MS2Quantity"],color="blue",linewidth=0.5)
-        ax[1,0].set_title("RT vs Intensity (line plot)")
-        ax[1,0].set_xlabel("Retention Time (min)")
-        ax[1,0].set_ylabel("Intensity")
+        ax[1,0].set_title("RT vs Intensity (line plot)",fontsize=titlefont)
+        ax[1,0].set_xlabel("Retention Time (min)",fontsize=axisfont)
+        ax[1,0].set_ylabel("Intensity",fontsize=axisfont)
 
         k=ax[1,1].hist2d(his2dsample["EG.ApexRT"].sort_values(),his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
-        ax[1,1].set_title("RT vs Mobility")
-        ax[1,1].set_xlabel("Retention Time (min)")
-        ax[1,1].set_ylabel("Ion Mobility ($1/K_{0}$)")
+        ax[1,1].set_title("RT vs Mobility",fontsize=titlefont)
+        ax[1,1].set_xlabel("Retention Time (min)",fontsize=axisfont)
+        ax[1,1].set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
         fig.colorbar(k[3],ax=ax[1,1])
         fig.set_tight_layout(True)
-        plt.suptitle("Histograms of Identified Peptides"+", "+samplename,y=1,fontsize=titlefont)
+        plt.suptitle("Histograms of Identified Precursors"+", "+samplename,y=1,fontsize=titlefont)
 
     #imported DIA windows
     def diawindows_import():
-        diawindows=input.diawindow_upload()
-        if diawindows is None:
+        if input.diawindow_upload() is None:
             return pd.DataFrame()
+        diawindows=pd.read_csv(input.diawindow_upload()[0]["datapath"])
         diawindows=diawindows.drop(index=0).reset_index(drop=True)
         startcoords=[]
         for i in range(len(diawindows)):
@@ -2312,6 +2760,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         numbins=[numbins_x,numbins_y]
         cmap=matplotlib.colors.LinearSegmentedColormap.from_list("",["white","blue","red"])
         figsize=(8,6)
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
 
         fig,ax=plt.subplots(figsize=figsize)
 
@@ -2331,19 +2781,20 @@ def server(input: Inputs, output: Outputs, session: Session):
                 #all modified precursors 
                 his2dsample=searchoutput[searchoutput["EG.ModifiedPeptide"].str.contains(ptm)][["R.Condition","R.Replicate","EG.IonMobility","FG.PrecMz"]]
                 title="m/z vs Mobility, "+ptm+" Precursor IDs"
-                savetitle=ptm+"_Precursor IDs Heatmap_"                    
+                savetitle=ptm+"_Precursor IDs Heatmap_"   
             elif charge!="0":
                 #modified precursors of specific charge
                 his2dsample=searchoutput[(searchoutput["FG.Charge"]==int(charge))&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))][["R.Condition","R.Replicate","EG.IonMobility","FG.PrecMz"]]
                 title="m/z vs Mobility, "+ptm+" "+str(charge)+"+ Precursor IDs"
                 savetitle=ptm+"_"+str(charge)+"+_"+"_Precursor IDs Heatmap_"
         j=ax.hist2d(his2dsample["FG.PrecMz"],his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
-        ax.set_title(title)
-        ax.set_xlabel("m/z")
-        ax.set_ylabel("Ion Mobility ($1/K_{0}$)")
+        ax.set_title(title,fontsize=titlefont)
+        ax.set_xlabel("m/z",fontsize=axisfont)
+        ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+        ax.tick_params(axis="both",labelsize=axisfont)
         fig.colorbar(j[3],ax=ax)
 
-        ax.set_ylim(0.6,1.45)
+        #ax.set_ylim(0.6,1.45)
         ax.set_xlim(100,1700)
         
         fig.set_tight_layout(True)
@@ -2362,16 +2813,55 @@ def server(input: Inputs, output: Outputs, session: Session):
         
         return fig
 
+    #render ui call for dropdown options
     @render.ui
-    def cond_rep_list_venn1():
+    def charge_ptm_dropdown():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=resultdf["Cond_Rep"].tolist()
-        return ui.input_selectize("cond_rep1","Pick first run to compare:",choices=opts)
-    @render.ui
-    def cond_rep_list_venn2():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=resultdf["Cond_Rep"].tolist()
-        return ui.input_selectize("cond_rep2","Pick second run to compare:",choices=opts)
+
+        if input.charge_or_ptm()=="charge":
+            mincharge=min(searchoutput["FG.Charge"])
+            maxcharge=max(searchoutput["FG.Charge"])
+            opts=[item for item in range(mincharge,maxcharge+1)]
+            return ui.input_selectize("charge_ptm_list","Pick charge to plot data for:",choices=opts)
+        if input.charge_or_ptm()=="ptm":
+            listofptms=find_ptms()
+            ptmshortened=[]
+            for i in range(len(listofptms)):
+                ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
+            ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
+            return ui.input_selectize("charge_ptm_list","Pick PTM to plot data for:",choices=ptmdict)
+
+    #scatterplot of picked PTM or charge against the rest of the detected precursors (better for DDA to show charge groups in the heatmap)
+    @reactive.effect
+    def _():
+        @render.plot(width=input.chargeptmscatter_width(),height=input.chargeptmscatter_height())
+        def chargeptmscatter():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
+
+            if input.charge_or_ptm()=="charge":
+                charge=int(input.charge_ptm_list())
+                precursor_pick=searchoutput[(searchoutput["FG.Charge"]==charge)==True]
+                precursor_other=searchoutput[(searchoutput["FG.Charge"]==charge)==False]
+                titlemod=str(charge)+"+ Precursors"
+            if input.charge_or_ptm()=="ptm":
+                ptm=input.charge_ptm_list()
+                precursor_pick=searchoutput[searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True]
+                precursor_other=searchoutput[searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False]
+                titlemod=ptm.split("(")[0]+"Precursors"
+
+            fig,ax=plt.subplots()
+            ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Other Precursors")
+            ax.scatter(x=precursor_pick["FG.PrecMz"],y=precursor_pick["EG.IonMobility"],s=2,label=titlemod)
+            ax.set_xlabel("m/z",fontsize=axisfont)
+            ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            #ax.set_title(titlemod,fontsize=titlefont)
+            ax.legend(loc="upper left",fontsize=legendfont,markerscale=5)
+            ax.set_axisbelow(True)
+            ax.grid(linestyle="--")
 
     @render.ui
     def binslider_ui():
@@ -2384,18 +2874,20 @@ def server(input: Inputs, output: Outputs, session: Session):
         def ids_vs_rt():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             
-            rtmax=float(math.ceil(max(searchoutput["EG.ApexRT"])/10)*10) #needs to be a float
+            rtmax=float(math.ceil(max(searchoutput["EG.ApexRT"]))) #needs to be a float
             numbins=input.binslider()
 
             bintime=rtmax/numbins*60
 
-            axisfont=15
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
 
             fig,ax=plt.subplots()
 
             for i in sampleconditions:
                 for k in range(max(maxreplicatelist)+1):
-                    run=searchoutput[searchoutput["R.Condition"].str.contains(i)&(searchoutput["R.Replicate"]==k)]["EG.ApexRT"]
+                    run=searchoutput[(searchoutput["R.Condition"]==i)&(searchoutput["R.Replicate"]==k)]["EG.ApexRT"]
                     if run.empty:
                         continue
                     hist=np.histogram(run,bins=numbins,range=(0.0,rtmax))
@@ -2405,14 +2897,25 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_xlabel("RT (min)",fontsize=axisfont)
             ax.tick_params(axis="both",labelsize=axisfont)
             ax.text(0,(ax.get_ylim()[1]-(0.1*ax.get_ylim()[1])),"~"+str(round(bintime,2))+" s per bin",fontsize=axisfont)
-            legend=ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':10})
+            legend=ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
             for i in legend.legend_handles:
                 i.set_linewidth(5)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
-            ax.set_title("# of IDs vs RT")
+            ax.set_title("# of IDs vs RT",fontsize=titlefont)
             return fig
-    
+
+    @render.ui
+    def cond_rep_list_venn1():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("cond_rep1","Pick first run to compare:",choices=opts)
+    @render.ui
+    def cond_rep_list_venn2():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("cond_rep2","Pick second run to compare:",choices=opts)
+
     #plot venn diagram comparing IDs between runs
     @render.plot
     def venndiagram():
@@ -2422,8 +2925,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         pickB=input.cond_rep2()
         vennpick=input.vennpick()
 
-        conditionA=searchoutput[searchoutput["Cond_Rep"].str.contains(pickA)][["PG.ProteinNames","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-        conditionB=searchoutput[searchoutput["Cond_Rep"].str.contains(pickB)][["PG.ProteinNames","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
+        conditionA=searchoutput[searchoutput["Cond_Rep"]==(pickA)][["PG.ProteinNames","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
+        conditionB=searchoutput[searchoutput["Cond_Rep"]==(pickB)][["PG.ProteinNames","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
 
         if vennpick=="proteins":
             AvsB=conditionA["PG.ProteinNames"].drop_duplicates().reset_index(drop=True).isin(conditionB["PG.ProteinNames"].drop_duplicates().reset_index(drop=True)).tolist()
@@ -2475,7 +2978,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 exec(f'dict_{i}=dict()')
                 for j in sampleconditions:
                     for k in range(max(maxreplicatelist)+1):
-                        replicatedata=searchoutput[searchoutput["R.Condition"].str.contains(j)&(searchoutput["R.Replicate"]==k)]
+                        replicatedata=searchoutput[(searchoutput["R.Condition"]==j)&(searchoutput["R.Replicate"]==k)]
                         if replicatedata.empty:
                             continue
                         exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)')
@@ -2491,8 +2994,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 exec(f'intensitysumdf[i]=intensitylist_{i}')
             
             figsize=(5,5)
-            titlefont=20
-            axisfont=15
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
 
             matplottabcolors=list(mcolors.TABLEAU_COLORS)
             bluegray_colors=["#054169","#0071BC","#737373"]
@@ -2523,34 +3027,59 @@ def server(input: Inputs, output: Outputs, session: Session):
         @render.plot(width=input.countsperorganism_width(),height=input.countsperorganism_height())
         def countsperorganism():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
             organismlist=list(input.organisminput().split(" "))
-            
-            for i in organismlist:
-                exec(f'dict_{i}=dict()')
-                for j in sampleconditions:
-                    for k in range(max(maxreplicatelist)+1):
-                        replicatedata=searchoutput[searchoutput["R.Condition"].str.contains(j)&(searchoutput["R.Replicate"]==k)]
-                        if replicatedata.empty:
-                            continue
-                        exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)')
-                        exec(f'dict_{i}["{j}_{k}"]=dict_{i}["{j}_{k}"][dict_{i}["{j}_{k}"]["PG.ProteinNames"].str.contains(i)&(dict_{i}["{j}_{k}"]["PG.MS2Quantity"]>0)].reset_index(drop=True)')
-
             samplekeys=resultdf["Cond_Rep"].tolist()
 
-            proteincountdf=pd.DataFrame(index=samplekeys)
+            if input.countsplotinput()=="proteins":
+                for i in organismlist:
+                    exec(f'dict_{i}=dict()')
+                    for j in sampleconditions:
+                        for k in range(max(maxreplicatelist)+1):
+                            replicatedata=searchoutput[(searchoutput["R.Condition"]==j)&(searchoutput["R.Replicate"]==k)]
+                            if replicatedata.empty:
+                                continue
+                            exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)')
+                            exec(f'dict_{i}["{j}_{k}"]=dict_{i}["{j}_{k}"][dict_{i}["{j}_{k}"]["PG.ProteinNames"].str.contains(i)&(dict_{i}["{j}_{k}"]["PG.MS2Quantity"]>0)].reset_index(drop=True)')
+                y_padding=0.25
+                titleprop="Protein"
+            if input.countsplotinput()=="peptides":
+                for i in organismlist:
+                    exec(f'dict_{i}=dict()')
+                    for j in sampleconditions:
+                        for k in range(max(maxreplicatelist)+1):
+                            replicatedata=searchoutput[(searchoutput["R.Condition"]==j)&(searchoutput["R.Replicate"]==k)]
+                            if replicatedata.empty:
+                                continue
+                            exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)')
+                            exec(f'dict_{i}["{j}_{k}"]=dict_{i}["{j}_{k}"][dict_{i}["{j}_{k}"]["PG.ProteinNames"].str.contains(i)].reset_index(drop=True)')
+                y_padding=0.45
+                titleprop="Peptide"
+            if input.countsplotinput()=="precursors":
+                for i in organismlist:
+                    exec(f'dict_{i}=dict()')
+                    for j in sampleconditions:
+                        for k in range(max(maxreplicatelist)+1):
+                            replicatedata=searchoutput[(searchoutput["R.Condition"]==j)&(searchoutput["R.Replicate"]==k)]
+                            if replicatedata.empty:
+                                continue
+                            exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)')
+                            exec(f'dict_{i}["{j}_{k}"]=dict_{i}["{j}_{k}"][dict_{i}["{j}_{k}"]["PG.ProteinNames"].str.contains(i)&(dict_{i}["{j}_{k}"]["FG.MS2Quantity"]>0)].reset_index(drop=True)')
+                y_padding=0.45
+                titleprop="Precursor"
+           
+            countdf=pd.DataFrame(index=samplekeys)
             for i in organismlist:
                 exec(f'organismdict=dict_{i}')
                 exec(f'list_{i}=[]')
                 for condition in samplekeys:
                     exec(f'list_{i}.append(len(organismdict[condition]))')
-                exec(f'proteincountdf[i]=list_{i}')
+                exec(f'countdf[i]=list_{i}')
 
             figsize=(10,5)
-            titlefont=20
-            axisfont=15
-            labelfont=15
-            y_padding=0.25
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
 
             matplottabcolors=list(mcolors.TABLEAU_COLORS)
             bluegray_colors=["#054169","#0071BC","#737373"]
@@ -2566,17 +3095,17 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             fig,ax=plt.subplots(figsize=figsize)
             for i in range(len(organismlist)):
-                ax.bar(x+(i*width),proteincountdf[organismlist[i]],width=width,label=organismlist[i],color=colors[i])
-                ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=14)
+                ax.bar(x+(i*width),countdf[organismlist[i]],width=width,label=organismlist[i],color=colors[i])
+                ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
             ax.set_xticks(x+width,samplekeys,rotation=90)
-            ax.tick_params(axis='both',labelsize=14)
-            ax.set_ylim(top=max(proteincountdf[organismlist[0]])+(y_padding)*max(proteincountdf[organismlist[0]]))
+            ax.tick_params(axis='both',labelsize=axisfont)
+            ax.set_ylim(top=max(countdf[organismlist[0]])+(y_padding)*max(countdf[organismlist[0]]))
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':axisfont})
-            ax.set_ylabel("Counts",fontsize=14)   
-            ax.set_title("Protein Counts per Organism")              
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
+            ax.set_ylabel("Counts",fontsize=axisfont)
+            ax.set_title(titleprop+" Counts per Organism",fontsize=titlefont)              
             return fig
 
     #render ui call for dropdown calling sample condition names
@@ -2595,11 +3124,13 @@ def server(input: Inputs, output: Outputs, session: Session):
     def organismreminder():
         return "Organisms in order: "+input.organisminput()
 
+    @render.text
+    def expectedratios_note():
+        return "Note: average ratios will be shown as a dashed line and expected ratios input in the text boxes below will be shown as a solid line"
     #plot quant ratios for each organism
     @render.plot(width=1200,height=600)
     def quantratios():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
 
         organismlist=list(input.organisminput().split(" "))
 
@@ -2613,9 +3144,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             expectedratios.append(np.log2(testratios[i]/referenceratios[i]))
 
         figsize=(10,5)
-        titlefont=20
-        axisfont=15
-        labelfont=15
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
+        labelfont=input.labelfont()
+        legendfont=input.legendfont()
         y_padding=0.2
 
         matplottabcolors=list(mcolors.TABLEAU_COLORS)
@@ -2632,7 +3164,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             exec(f'dict_{i}=dict()')
             for j in sampleconditions:
                 for k in range(max(maxreplicatelist)+1):
-                    replicatedata=searchoutput[searchoutput["R.Condition"].str.contains(j)&(searchoutput["R.Replicate"]==k)]
+                    replicatedata=searchoutput[(searchoutput["R.Condition"]==j)&(searchoutput["R.Replicate"]==k)]
                     if replicatedata.empty:
                         continue
                     exec(f'dict_{i}["{j}_{k}"]=replicatedata[["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)')
@@ -2699,7 +3231,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         ax[0].set_ylim(top=top+(y_padding*top))
         ax[0].tick_params(axis="both",labelsize=axisfont)
 
-        leg=ax[1].legend(organismlist,loc="upper right")
+        leg=ax[1].legend(organismlist,loc="upper right",prop={'size':legendfont})
         for tag in leg.legend_handles:
             tag.set_alpha(1)
         ax[1].set_xlabel("log10 Intensity, Reference",fontsize=axisfont)
@@ -2773,6 +3305,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             pepdf=searchoutput_prmpepts[searchoutput_prmpepts["EG.ModifiedPeptide"]==peptide]
             chargelist=pepdf["FG.Charge"].drop_duplicates().tolist()
 
+            titlefont=input.titlefont()
+
             fig,ax=plt.subplots(ncols=2,nrows=2)
             for i,charge in enumerate(chargelist):
                 meandf=pepdf[pepdf["FG.Charge"]==charge][["R.Condition","FG.MS2Quantity"]].groupby("R.Condition").mean()
@@ -2791,7 +3325,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 width=0.25
                 detectedinreps=pepdf[pepdf["FG.Charge"]==charge].groupby("R.Condition").size().tolist()
                 ax[0,1].bar(x+i*width,detectedinreps,width=width,label=str(charge)+"+")
-                ax[0,1].set_xticks(x+(width/len(meandf["R.Condition"])),meandf["R.Condition"])
+                ax[0,1].set_xticks(x+((len(meandf["R.Condition"])-1)/2)*width,meandf["R.Condition"])
                 ax[0,1].set_ylabel("Number of Replicates")
 
                 ax[1,0].plot(meandf["R.Condition"],cv["FG.MS2Quantity"],marker="o")
@@ -2833,7 +3367,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax[1,1].grid(linestyle="--")
 
             fig.legend(loc="lower right",bbox_to_anchor=(0.99,0.9))
-            fig.suptitle(peptide.strip("_"))
+            fig.suptitle(peptide.strip("_"),fontsize=titlefont)
             fig.set_tight_layout(True)
 
     #plot intensity of all prm peptides across runs
@@ -2850,16 +3384,20 @@ def server(input: Inputs, output: Outputs, session: Session):
                 df_list.append(prm_peptide)
             searchoutput_prmpepts=pd.concat(df_list).reset_index(drop=True)
 
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
+
             fig,ax=plt.subplots()
             for peptide in prm_list["EG.ModifiedPeptide"]:
                 pepdf=searchoutput_prmpepts[searchoutput_prmpepts["EG.ModifiedPeptide"]==peptide]
                 chargelist=pepdf["FG.Charge"].drop_duplicates().tolist()
                 for charge in chargelist:
                     ax.plot(pepdf[pepdf["FG.Charge"]==charge]["Cond_Rep"],np.log10(pepdf[pepdf["FG.Charge"]==charge]["FG.MS2Quantity"]),marker="o",label=peptide.strip("_")+"_"+str(charge)+"+")
-            ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':8})
-            ax.tick_params(axis="x",rotation=90)
-            ax.set_xlabel("Condition")
-            ax.set_ylabel("log10(FG.MS2Quantity)")
+            ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':legendfont})
+            ax.tick_params(axis="x",rotation=90,labelsize=axisfont)
+            ax.tick_params(axis="y",labelsize=axisfont)
+            ax.set_xlabel("Condition",fontsize=axisfont)
+            ax.set_ylabel("log10(FG.MS2Quantity)",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
 
@@ -2934,136 +3472,60 @@ def server(input: Inputs, output: Outputs, session: Session):
         
         yield prm_table_view.to_csv(index=False)
 
-    # #plot intensity and presence in replicates for a specified peptide
-    # @render.plot(width=800,height=800)
-    # def peptide_intensity():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+#endregion
 
-    #     pickedpeptide=input.tracked_peptide()
+# ============================================================================= Dilution Series
+#region
 
-    #     figsize=(8,8)
-    #     find_ptms()
-    #     protandpep=searchoutput[["Cond_Rep","R.Condition","R.Replicate","PG.ProteinGroups","PG.ProteinNames","PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","PG.MS2Quantity","FG.MS2Quantity","PTMs"]]
-    #     pickedpeptidedf=protandpep.loc[protandpep["PEP.StrippedSequence"]==pickedpeptide]
-    #     peptideptms=pickedpeptidedf["PTMs"].drop_duplicates().reset_index(drop=True).tolist()
-    #     peptidecharges=pickedpeptidedf["FG.Charge"].drop_duplicates().reset_index(drop=True).tolist()
-    #     nummods=[]
-    #     for i in pickedpeptidedf["EG.ModifiedPeptide"].tolist():
-    #         nummods.append(i.count("["))
-    #     pickedpeptidedf.insert(loc=len(pickedpeptidedf.columns),column="# Mods",value=nummods)
-    #     peptidelist=pickedpeptidedf["EG.ModifiedPeptide"].tolist()
-    #     ptmpos=[]
-    #     for i in range(len(peptidelist)):
-    #         modnums=pickedpeptidedf["# Mods"].tolist()[i]
-    #         if modnums==0:
-    #             ptmpos.append("X")
-    #         elif modnums==1:
-    #             ptmpos.append(peptidelist[i].find("[")-1)
-    #         elif modnums>1:
-    #             multimod=[x-1 for x, ele in enumerate(peptidelist[i]) if ele=="["]
-    #             multimod=",".join(str(x) for x in multimod)
-    #             ptmpos.append(multimod)
-    #     pickedpeptidedf.insert(loc=len(pickedpeptidedf.columns),column="PTM Position",value=ptmpos)
-    #     ptmpositions=pickedpeptidedf["PTM Position"].drop_duplicates().tolist()
+    @render.ui
+    def normalizingcondition():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=sampleconditions
+        return ui.input_selectize("normalizingcondition_pick","Pick normalizing condition",choices=opts)
 
-    #     nrows=max(nummods)+1
-    #     fig,ax=plt.subplots(nrows=nrows,ncols=1,figsize=figsize,sharex=True)
-    #     for i in range(nrows):
-    #         for j in peptidecharges:
-    #             modchargegroup=pickedpeptidedf.groupby(["# Mods"]).get_group(i).groupby(["FG.Charge"]).get_group(j)
-    #             #if the groups of modifications aren't all for the same mod position, split those up
-    #             if len(set(modchargegroup["PTM Position"].tolist()))==1:
-    #                 label=str(modchargegroup["FG.Charge"].tolist()[0])+"+"
-    #                 ax[i].scatter(x=modchargegroup["Cond_Rep"],y=modchargegroup["FG.MS2Quantity"],label=label)
-    #                 ax[i].set_title(modchargegroup["EG.ModifiedPeptide"].tolist()[0].strip("_"))
-    #                 ax[i].set_ylabel("FG.MS2Quantity")
-                    
-    #                 x=np.arange(0,len(modchargegroup["Cond_Rep"]),1)
-    #                 y=modchargegroup["FG.MS2Quantity"]
-    #                 fit=np.poly1d(np.polyfit(x,y,1))
-    #                 ax[i].plot(x,fit(x),linestyle=":")
-    #             else:
-    #                 multimods=modchargegroup["PTM Position"].drop_duplicates().tolist()
-    #                 for k in range(len(multimods)):
-    #                     multimodgroup=modchargegroup.groupby(["PTM Position"]).get_group(multimods[k])
-    #                     multimodlabel=str(multimodgroup["FG.Charge"].tolist()[0])+"+, "+str(multimodgroup["PTMs"].tolist()[0])+"@"+str(multimodgroup["PTM Position"].tolist()[0])
-    #                     ax[i].scatter(x=multimodgroup["Cond_Rep"],y=multimodgroup["FG.MS2Quantity"],label=multimodlabel)
-    #                     ax[i].set_title(modchargegroup["PEP.StrippedSequence"].tolist()[0])
-    #                     ax[i].set_ylabel("FG.MS2Quantity")
-                        
-    #                     x=np.arange(0,len(multimodgroup["Cond_Rep"]))
-    #                     y=multimodgroup["FG.MS2Quantity"]
-    #                     fit=np.poly1d(np.polyfit(x,y,1))
-    #                     ax[i].plot(x,fit(x),linestyle=":")
-                        
-    #         ax[i].set_xticks(modchargegroup["Cond_Rep"],labels=modchargegroup["Cond_Rep"],rotation=45)
-    #         ax[i].legend(loc="center left",bbox_to_anchor=(1, 0.5))
-    #         fig.tight_layout()
+    @reactive.effect
+    def _():
+        @render.plot()
+        def dilutionseries_plot(width=input.dilutionseries_width(),height=input.dilutionseries_height()):
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            sortedconditions=[]
+            concentrations=searchoutput["Concentration"].drop_duplicates().tolist()
+            sortedconcentrations=sorted(concentrations)
+            for i in sortedconcentrations:
+                sortedconditions.append(searchoutput[searchoutput["Concentration"]==i]["R.Condition"].values[0])
 
-    #     return fig
-    
-    # @render.plot(width=900,height=800)
-    # def peptide_replicates():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            normalizingcondition=input.normalizingcondition_pick()
 
-    #     pickedpeptide=input.tracked_peptide()
+            dilutionseries=[]
+            for condition in sortedconditions:
+                norm=searchoutput[searchoutput["R.Condition"]==normalizingcondition][["PG.ProteinNames","PG.MS2Quantity"]].groupby("PG.ProteinNames").mean().reset_index()
+                test=searchoutput[searchoutput["R.Condition"]==condition][["PG.ProteinNames","PG.MS2Quantity"]].groupby("PG.ProteinNames").mean().reset_index()
 
-    #     figsize=(8,8)
-    #     find_ptms()
-    #     protandpep=searchoutput[["Cond_Rep","R.Condition","R.Replicate","PG.ProteinGroups","PG.ProteinNames","PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","PG.MS2Quantity","FG.MS2Quantity","PTMs"]]
-    #     pickedpeptidedf=protandpep.loc[protandpep["PEP.StrippedSequence"]==pickedpeptide]
-    #     peptideptms=pickedpeptidedf["PTMs"].drop_duplicates().reset_index(drop=True).tolist()
-    #     peptidecharges=pickedpeptidedf["FG.Charge"].drop_duplicates().reset_index(drop=True).tolist()
-    #     nummods=[]
-    #     for i in pickedpeptidedf["EG.ModifiedPeptide"].tolist():
-    #         nummods.append(i.count("["))
-    #     pickedpeptidedf.insert(loc=len(pickedpeptidedf.columns),column="# Mods",value=nummods)
-    #     peptidelist=pickedpeptidedf["EG.ModifiedPeptide"].tolist()
-    #     ptmpos=[]
-    #     for i in range(len(peptidelist)):
-    #         modnums=pickedpeptidedf["# Mods"].tolist()[i]
-    #         if modnums==0:
-    #             ptmpos.append("X")
-    #         elif modnums==1:
-    #             ptmpos.append(peptidelist[i].find("[")-1)
-    #         elif modnums>1:
-    #             multimod=[x-1 for x, ele in enumerate(peptidelist[i]) if ele=="["]
-    #             multimod=",".join(str(x) for x in multimod)
-    #             ptmpos.append(multimod)
-    #     pickedpeptidedf.insert(loc=len(pickedpeptidedf.columns),column="PTM Position",value=ptmpos)
-    #     ptmpositions=pickedpeptidedf["PTM Position"].drop_duplicates().tolist()
+                merge=norm.merge(test,how="left",on="PG.ProteinNames",suffixes=("_norm","_test"))
+                merge["Ratio"]=merge["PG.MS2Quantity_test"]/merge["PG.MS2Quantity_norm"]
+                merge=merge.dropna()
+                dilutionseries.append(merge["Ratio"])
 
-    #     nrows=max(nummods)+1
-    #     x=np.arange(len(sampleconditions))
-    #     width=0.2
-    #     fig,ax=plt.subplots(nrows=nrows,ncols=1,figsize=figsize,sharex=True)
-    #     #group by # of mods, then by charge
-    #     for i in range(nrows):
-    #         for j in range(len(peptidecharges)):
-    #             modchargegroup=pickedpeptidedf.groupby(["# Mods"]).get_group(i).groupby(["FG.Charge"]).get_group(peptidecharges[j])
-    #             #if the groups of modifications aren't all for the same mod position, split those up
-    #             if len(set(modchargegroup["PTM Position"].tolist()))==1:
-    #                 label=str(modchargegroup["FG.Charge"].tolist()[0])+"+"
-    #                 detectedinreps=modchargegroup.groupby(["R.Condition"]).size().tolist()
-    #                 ax[i].bar(x+j*width,detectedinreps,label=label,width=width)
-    #                 ax[i].set_title(modchargegroup["EG.ModifiedPeptide"].tolist()[0].strip("_"))
-    #                 ax[i].set_ylabel("Detected in X Replicates")
-    #                 ax[i].set_yticks(np.arange(0,max(repspercondition)+1,1))
-    #                 ax[i].set_xticks(x+width/2,sampleconditions)
-    #             else:
-    #                 multimods=modchargegroup["PTM Position"].drop_duplicates().tolist()
-    #                 for k in range(len(multimods)):
-    #                     multimodgroup=modchargegroup.groupby(["PTM Position"]).get_group(multimods[k])
-    #                     multimodlabel=str(multimodgroup["FG.Charge"].tolist()[0])+"+, "+str(multimodgroup["PTMs"].tolist()[0])+"@"+str(multimodgroup["PTM Position"].tolist()[0])
-    #                     detectedinreps=multimodgroup.groupby(["R.Condition"]).size().tolist()
-    #                     ax[i].bar(x+((j+2*k)*width),detectedinreps,label=multimodlabel,width=width)
-    #                     ax[i].set_title(modchargegroup["PEP.StrippedSequence"].tolist()[0])
-    #                     ax[i].set_ylabel("Detected in X Replicates")
-    #                     ax[i].set_yticks(np.arange(0,max(repspercondition)+1,1))
-    #         ax[i].legend(loc="center left",bbox_to_anchor=(1, 0.5))
-    #     fig.tight_layout()
+            fig,ax=plt.subplots()
 
-    #     return fig
+            medianlineprops=dict(linestyle="--",color="black")
+            flierprops=dict(markersize=3)
+
+            bplot=ax.boxplot(dilutionseries,medianprops=medianlineprops,flierprops=flierprops)
+            plot=ax.violinplot(dilutionseries,showextrema=False)
+
+            ax.set_yscale("log")
+            ax.set_xticks(np.arange(1,len(sortedconditions)+1,1),labels=sortedconditions)
+            ax.set_xlabel("Condition")
+            ax.set_ylabel("Ratio")
+            ax.set_axisbelow(True)
+            ax.grid(linestyle="--")
+
+            colors=colorpicker()
+            for z,color in zip(plot["bodies"],colors):
+                z.set_facecolor(color)
+                z.set_edgecolor("black")
+                z.set_alpha(0.7)   
 
 #endregion
 
@@ -3219,14 +3681,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                     z.set_linewidth(5)
 
     @render.ui
-    def rawfile_buttons():
+    def rawfile_buttons_eic():
         MSframedict,precursordict,samplenames=rawfile_list()
         opts=dict()
         keys=input.rawfile_input().split("\n")
         labels=samplenames
         for x,y in zip(keys,labels):
             opts[x]=y
-        return ui.input_radio_buttons("rawfile_pick","Pick file to plot data for:",choices=opts,width="800px")
+        return ui.input_radio_buttons("rawfile_pick_eic","Pick file to plot data for:",choices=opts,width="800px")
     
     #input for mobility add-on for EICs
     @render.ui
@@ -3239,7 +3701,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def eic_setup():
         mz=float(input.eic_mz_input())
         ppm_error=float(input.eic_ppm_input())
-        rawfile=atb.TimsTOF(input.rawfile_pick())
+        rawfile=atb.TimsTOF(input.rawfile_pick_eic())
 
         low_mz=mz/(1+ppm_error/10**6)
         high_mz=mz*(1+ppm_error/10**6)
@@ -3255,6 +3717,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         return eic_df
 
+    #plot EIC for input mass
     @reactive.effect
     def _():
         @render.plot(width=input.eic_width(),height=input.eic_height())
@@ -3265,9 +3728,44 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_xlabel("Time (min)")
             ax.set_ylabel("Intensity")
             if input.include_mobility()==True:
-                ax.set_title(input.rawfile_pick().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()))
+                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()))
             else:
-                ax.set_title(input.rawfile_pick().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()))
+                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()))
+
+    @render.ui
+    def rawfile_buttons_eim():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=input.rawfile_input().split("\n")
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_radio_buttons("rawfile_pick_eim","Pick file to plot data for:",choices=opts,width="800px")
+
+    @reactive.calc
+    @reactive.event(input.load_eim)
+    def eim_setup():
+        mz=float(input.eim_mz_input())
+        ppm_error=float(input.eim_ppm_input())
+        rawfile=atb.TimsTOF(input.rawfile_pick_eim())
+
+        low_mz=mz/(1+ppm_error/10**6)
+        high_mz=mz*(1+ppm_error/10**6)
+
+        eim_df=rawfile[:,:,0,low_mz: high_mz].sort_values("mobility_values")
+        return eim_df
+
+    #plot EIM for input mass
+    @reactive.effect
+    def _():
+        @render.plot(width=input.eim_width(),height=input.eim_height())
+        def eim():
+            eim_df=eim_setup()
+            fig,ax=plt.subplots(figsize=(10,5))
+            ax.plot(eim_df["mobility_values"],eim_df["intensity_values"],linewidth=0.5)
+            ax.set_xlabel("Ion Mobility ($1/K_{0}$)")
+            ax.set_ylabel("Intensity")
+            ax.set_title(input.rawfile_pick_eim().split("\\")[-1]+"\n"+"EIM: "+str(input.eim_mz_input()))
 
 #endregion
 
@@ -3326,7 +3824,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         sample=input.cond_rep()
 
         columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]
-        df=searchoutput[searchoutput["Cond_Rep"].str.contains(sample)][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
+        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
         coelutingpeptides=pd.DataFrame(columns=columns)
         for i in range(len(df)):
             if i+1 not in range(len(df)):
@@ -3356,7 +3854,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         ptmdf=pd.DataFrame()
         for condition in sampleconditions:
-            df=searchoutput[searchoutput["R.Condition"].str.contains(condition)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+            df=searchoutput[searchoutput["R.Condition"]==condition][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
             dfptmlist=[]
             numptms=[]
             for i in df["EG.ModifiedPeptide"]:
