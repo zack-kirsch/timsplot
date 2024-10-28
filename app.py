@@ -64,6 +64,18 @@
     #Added PCA section
     
 #endregion
+#changes made from 241021 version
+#region
+    #File Import
+        #added the capability to download the metadata table as-shown as well as upload your own metadata table
+        #added error handling for different software search reports. If columns are missing, it will ignore them in the .drop function
+    #PTMs
+        #adjusted ptmcounts function, no need for MS2Quantity columns and made it more comparable to the idmetrics function
+    #Glycoproteomics
+        #added section, working on adding different visualization functions
+    #reordered some side tabs
+
+#endregion
 
 #endregion
 
@@ -119,10 +131,10 @@ app_ui=ui.page_fluid(
         ui.nav_panel("File Import",
                      ui.card(
                          ui.card_header("Upload Search Report"),
-                         ui.p("When uploading a new file after one has already been uploaded, click the apply changes button below"),
-                         ui.input_file("searchreport","Upload search report:",accept=".tsv",multiple=False),
-                         ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut","diann":"DIA-NN","fragpipe":"FragPipe","timsdiann":"tims-DIANN (BPS)","ddalibrary":"Spectronaut Library"}),
+                         ui.input_selectize("software","Search software:",{"spectronaut":"Spectronaut","diann":"DIA-NN","fragpipe":"FragPipe","timsdiann":"tims-DIANN (ProteoScape)","ddalibrary":"Spectronaut Library","fragpipe_glyco":"FragPipe (Glyco)"}),
                          ui.output_text("metadata_reminder"),
+                         ui.input_file("searchreport","Upload search report:",accept=".tsv",multiple=False),
+                         height="350px"
                          ),
                      ui.card(
                          ui.card_header("Update from Metadata Table"),
@@ -140,12 +152,24 @@ app_ui=ui.page_fluid(
                         #  ui.input_switch("remove","Remove selected runs"),
                         #  ui.input_switch("reorder","Reorder runs"),
                         #  ui.input_switch("concentration","Update 'Concentration' column"),
-                         ui.input_action_button("rerun_metadata","Apply changes to search report / reinitialize search report",width="300px",class_="btn-primary")
+                         ui.input_action_button("rerun_metadata","Apply changes to search report / reinitialize search report",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
                          ),
                      ui.card(
                          ui.card_header("Metadata Tables"),
-                         ui.p("-Double click on any cell to update its contents"),
-                         ui.p("-To remove runs, add an 'x' to the 'remove' column"),
+                         ui.row(
+                             ui.column(4,
+                                       ui.input_file("metadata_upload","(Optional) Upload filled metadata table:",accept=".csv",multiple=False),
+                                       ui.input_switch("use_uploaded_metadata","Use uploaded metadata table"),
+                                       ),
+                             ui.column(4,
+                                       ui.download_button("metadata_download","Download metadata table as shown",width="300px",icon=icon_svg("file-arrow-down"))
+                                       ),
+                             ui.column(4,
+                                       ui.p("Notes:"),
+                                       ui.p("-To remove runs, add an 'x' to the 'remove' column"),
+                                       ui.p("-To reorder conditions, order them numerically in the 'order' column")
+                                       ),
+                            ),
                          #ui.output_data_frame("metadata_table")
                          ui.row(
                              ui.column(8,
@@ -184,8 +208,7 @@ app_ui=ui.page_fluid(
                                      ui.output_ui("colorplot_height")
                                      ),
                          ui.nav_panel("File Stats",
-                                      ui.output_table("filestats"),
-                                      ui.output_data_frame("filepreview")
+                                      ui.output_table("filestats")
                                       ),
                          ui.nav_panel("Control Panel",
                                       ui.card(
@@ -210,6 +233,9 @@ app_ui=ui.page_fluid(
                          ui.nav_panel("Column Check",
                                       ui.output_table("column_check")
                                      ),
+                         ui.nav_panel("File Preview",
+                                      ui.output_data_frame("filepreview")
+                                      ),
                          ),icon=icon_svg("gear")
                      ),
         ui.nav_panel("ID Counts",
@@ -380,19 +406,6 @@ app_ui=ui.page_fluid(
                                       )
                             ),icon=icon_svg("binoculars")
                      ),
-        ui.nav_panel("PCA",
-                     ui.navset_pill(
-                         ui.nav_panel("PCA",
-                                    ui.card(
-                                        ui.row(
-                                            ui.input_slider("pca_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
-                                            ui.input_slider("pca_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
-                                            )
-                                          ),
-                                      ui.output_plot("pca_plot")
-                                      )
-                      ),icon=icon_svg("network-wired")
-                     ),
         ui.nav_panel("Heatmaps",
                      ui.navset_pill(
                         ui.nav_panel("RT, m/z, IM Heatmaps",
@@ -448,6 +461,19 @@ app_ui=ui.page_fluid(
                                      ui.output_plot("venndiagram")
                                      ),
                         ),icon=icon_svg("chart-area")
+                     ),
+        ui.nav_panel("PCA",
+                     ui.navset_pill(
+                         ui.nav_panel("PCA",
+                                    ui.card(
+                                        ui.row(
+                                            ui.input_slider("pca_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("pca_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("pca_plot")
+                                      )
+                      ),icon=icon_svg("network-wired")
                      ),
         ui.nav_panel("Mixed Proteome",
                       ui.navset_pill(
@@ -684,6 +710,66 @@ app_ui=ui.page_fluid(
                                       )
                                 ),icon=icon_svg("file-export")
                      ),
+        ui.nav_panel("Glycoproteomics",
+                     ui.navset_pill(
+                         ui.nav_panel("Glyco ID Metrics",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycoIDsplot_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycoIDsplot_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("glycoIDsplot")
+                                      ),
+                         ui.nav_panel("Glyco ID Tables",
+                                      ui.row(
+                                          ui.column(3,
+                                              ui.download_button("glycoproteins_download","Download Glycoprotein IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycoproteins_df_view")
+                                          ),
+                                          ui.column(4,
+                                              ui.download_button("glycopeptides_download","Download Glycopeptide IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycopeptides_df_view")
+                                          ),
+                                          ui.column(4,
+                                              ui.download_button("glycoPSMs_download","Download GlycoPSM IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycoPSMs_df_view")
+                                          ),
+                                      ),
+                                      ),
+                         ui.nav_panel("Glycan Tracker",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycomodIDsplot_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycomodIDsplot_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.row(
+                                          ui.output_ui("glycomodlist_ui"),
+                                          ui.input_radio_buttons("counts_vs_enrich","Show counts or enrichment %?",choices={"counts":"Counts","enrich":"Enrichment %"})
+                                          ),
+                                      ui.output_plot("glycomod_IDs")
+                                      ),
+                         ui.nav_panel("Peptide Tracker",
+                                      ui.row(
+                                          ui.column(6,
+                                                    ui.download_button("selected_glyco_download","Download PSMs for Selected Peptide",width="400px",icon=icon_svg("file-arrow-down")),
+                                                    ui.output_ui("glyco_peplist")
+                                                    )
+                                             ),
+                                      ui.output_data_frame("selected_glyco_peplist")
+                                      ),
+                         ui.nav_panel("Precursor Scatterplot",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycoscatter_width","Plot width",min=200,max=2000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycoscatter_height","Plot height",min=200,max=2000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("glycoscatter")
+                                      ),
+                                ),icon=icon_svg("cubes-stacked")
+                     ),
     widths=(2,8)
     ),
     theme=theme.cerulean()
@@ -696,7 +782,7 @@ app_ui=ui.page_fluid(
 
 def server(input: Inputs, output: Outputs, session: Session):
 
-# ============================================================================= UI calls
+# ============================================================================= UI calls for use around the app
 #region
 
     #render ui call for dropdown calling sample condition names
@@ -739,13 +825,13 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                         "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
                                         "PEP","Global.Q.Value","Protein.Q.Value","Global.PG.Q.Value","GG.Q.Value",
-                                        "Translated.Q.Value","Precursor.Translated","Translated.Quality",
-                                        "Ms1.Translated","Quantity.Quality","RT.Stop","RT.Start","iRT","Predicted.iRT",
+                                        "Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated",
+                                        "Quantity.Quality","RT.Stop","RT.Start","iRT","Predicted.iRT",
                                         "First.Protein.Description","Lib.Q.Value","Lib.PG.Q.Value","Ms1.Profile.Corr",
                                         "Ms1.Area","Evidence","Spectrum.Similarity","Averagine","Mass.Evidence",
                                         "Decoy.Evidence","Decoy.CScore","Fragment.Quant.Raw","Fragment.Quant.Corrected",
                                         "Fragment.Correlations","MS2.Scan","iIM","Predicted.IM",
-                                        "Predicted.iIM"],inplace=True)
+                                        "Predicted.iIM"],inplace=True,errors='ignore')
             searchoutput.rename(columns={#"Run":"R.FileName",
                         "Protein.Group":"PG.ProteinGroups",
                         "Protein.Ids":"PG.ProteinAccessions",
@@ -797,7 +883,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                       "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0"],inplace=True)
+                                       "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0"],inplace=True,errors='ignore')
 
             searchoutput.rename(columns={"Protein.Group":"PG.ProteinGroups",
                                          "Protein.Ids":"PG.ProteinAccessions",
@@ -837,8 +923,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                     #"RTScore",
                                     "Expectation","Hyperscore","Nextscore",#"Probability",
                                     "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start",
-                                    "Protein End","Intensity","Assigned Modifications","Observed Modifications",
-                                    "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True)
+                                    "Protein End","Assigned Modifications","Observed Modifications",
+                                    "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
 
             searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
                                         "Modified Peptide":"EG.ModifiedPeptide",
@@ -848,7 +934,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                                         "Ion Mobility":"EG.IonMobility",
                                         "Protein ID":"PG.ProteinGroups",
                                         "Entry Name":"PG.ProteinNames",
-                                        "Gene":"PG.Genes"},inplace=True)
+                                        "Gene":"PG.Genes",
+                                        "Intensity":"FG.MS2Quantity"
+                                        },inplace=True)
 
             searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
             searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
@@ -866,34 +954,85 @@ def server(input: Inputs, output: Outputs, session: Session):
                 else:
                     modpeps[i]=modpeps[i]
             searchoutput["EG.ModifiedPeptide"]=modpeps
+        if input.software()=="fragpipe_glyco":
+            searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+
+            searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length","Observed Mass",  
+                    "Calibrated Observed Mass","Calibrated Observed M/Z","Calculated Peptide Mass",
+                    "Calculated M/Z","Delta Mass","Expectation","Hyperscore","Nextscore","Probability",
+                    "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start","Protein End",
+                    "MSFragger Localization","Number Best Positions","Shifted Only Position Scores",
+                    "Shifted Only Position Ions","Score Best Position","Ions Best Position",
+                    "Score Second Best Position","Ions Second Best Position","Score All Unshifted",
+                    "Ions All Unshifted","Score Shifted Best Position","Ions Shifted Best Position",
+                    "Score Shifted All Positions","Ions Shifted All Positions","Purity","Protein",
+                    "Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
+
+            searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                        "Modified Peptide":"EG.ModifiedPeptide",
+                                        "Charge":"FG.Charge",
+                                        "Retention":"EG.ApexRT",
+                                        "Observed M/Z":"FG.PrecMz",
+                                        "Ion Mobility":"EG.IonMobility",
+                                        "Protein ID":"PG.ProteinGroups",
+                                        "Entry Name":"PG.ProteinNames",
+                                        "Gene":"PG.Genes"
+                                        },inplace=True)
+            
+            if len(searchoutput["Intensity"].drop_duplicates())==1:
+                searchoutput.drop(columns=["Intensity"],inplace=True)
+            else:
+                searchoutput.rename(columns={"Intensity":"FG.MS2Quantity"},inplace=True)
+
+            searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+            searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
+
         return searchoutput
     
     #render the metadata table in the window
     @render.data_frame
     def metadata_table():
-        searchoutput=inputfile()
-        if input.searchreport() is None:
-            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])#"order","remove","Concentration"])
-            return render.DataGrid(metadata,width="100%")
-        metadata=pd.DataFrame(searchoutput[["R.FileName","R.Condition","R.Replicate"]]).drop_duplicates().reset_index(drop=True)
-        #metadata["order"]=metadata.apply(lambda _: '', axis=1)
-        metadata["remove"]=metadata.apply(lambda _: '', axis=1)
-        #metadata["Concentration"]=metadata.apply(lambda _: '', axis=1)
+        if input.use_uploaded_metadata()==True:
+            metadata=inputmetadata()
+            if metadata is None:
+                metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
+            metadata=metadata.drop(columns=["order","Concentration"])
+        else:
+            searchoutput=inputfile()
+            if input.searchreport() is None:
+                metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])#"order","remove","Concentration"])
+                return render.DataGrid(metadata,width="100%")
+            metadata=pd.DataFrame(searchoutput[["R.FileName","R.Condition","R.Replicate"]]).drop_duplicates().reset_index(drop=True)
+            #metadata["order"]=metadata.apply(lambda _: '', axis=1)
+            metadata["remove"]=metadata.apply(lambda _: '', axis=1)
+            #metadata["Concentration"]=metadata.apply(lambda _: '', axis=1)
 
         return render.DataGrid(metadata,editable=True,width="100%")
 
     @render.data_frame
     def metadata_condition_table():
-        searchoutput=inputfile()
-        metadata=metadata_table.data_view()
-        if input.searchreport() is None:
-            metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
-            return render.DataGrid(metadata_condition,width="100%")
-        if input.remove()==True:
-            metadata=metadata[metadata.remove !="x"]
-        metadata_condition=pd.DataFrame(metadata[["R.Condition"]]).drop_duplicates().reset_index(drop=True)
-        metadata_condition["order"]=metadata_condition.apply(lambda _: '', axis=1)
-        metadata_condition["Concentration"]=metadata_condition.apply(lambda _: '', axis=1)
+        if input.use_uploaded_metadata()==True:
+            metadata=inputmetadata()
+            if metadata is None:
+                metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
+            if input.remove()==True:
+                metadata=metadata[metadata.remove !="x"]
+            metadata_condition=pd.DataFrame()
+            metadata_condition["R.Condition"]=metadata["R.Condition"].drop_duplicates()
+            metadata_condition["order"]=metadata["order"].drop_duplicates()
+            metadata_condition["Concentration"]=metadata["Concentration"].drop_duplicates()
+        else:
+            metadata=metadata_table.data_view()
+            if input.searchreport() is None:
+                metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
+                return render.DataGrid(metadata_condition,width="100%")
+            if input.remove()==True:
+                metadata=metadata[metadata.remove !="x"]
+            metadata_condition=pd.DataFrame(metadata[["R.Condition"]]).drop_duplicates().reset_index(drop=True)
+            metadata_condition["order"]=metadata_condition.apply(lambda _: '', axis=1)
+            metadata_condition["Concentration"]=metadata_condition.apply(lambda _: '', axis=1)
 
         return render.DataGrid(metadata_condition,editable=True,width="100%")
 
@@ -910,7 +1049,43 @@ def server(input: Inputs, output: Outputs, session: Session):
             return "BPS tims-DIANN: to access results file, unzip the bps_timsDIANN folder, open the processing-run folder and its subfolder, then unzip the tims-diann.result folder. Upload the results.tsv and then make sure to fill out R.Condition and R.Replicate columns in the metadata"
         if input.software()=="fragpipe":
             return "FragPipe: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
+        if input.software()=="fragpipe_glyco":
+            return "FragPipe (Glyco): Make sure to fill out R.Condition and R.Replicate columns in the metadata. Use the Glycoproteomics tab for processing"
     
+    #download metadata table as shown
+    @render.download(filename="metadata_"+str(date.today())+".csv")
+    def metadata_download():
+        metadata=metadata_table.data_view()
+        metadata_condition=metadata_condition_table.data_view()
+
+        orderlist=[]
+        concentrationlist=[]
+        #metadata_fordownload=metadata
+        metadata_fordownload=pd.DataFrame()
+        for run in metadata_condition["R.Condition"]:
+            fileindex=metadata_condition[metadata_condition["R.Condition"]==run].index.values[0]
+            orderlist.append([metadata_condition["order"][fileindex]]*len(metadata[metadata["R.Condition"]==run]))
+            concentrationlist.append([metadata_condition["Concentration"][fileindex]]*len(metadata[metadata["R.Condition"]==run]))
+        metadata_fordownload["R.FileName"]=metadata["R.FileName"]
+        metadata_fordownload["R.Condition"]=metadata["R.Condition"]
+        metadata_fordownload["R.Replicate"]=metadata["R.Replicate"]
+        metadata_fordownload["remove"]=metadata["remove"]
+        metadata_fordownload["order"]=list(itertools.chain(*orderlist))
+        metadata_fordownload["Concentration"]=list(itertools.chain(*concentrationlist))
+        with io.BytesIO() as buf:
+            metadata_fordownload.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #upload filled out metadata table
+    @reactive.calc
+    def inputmetadata():
+        if input.metadata_upload() is None:
+            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
+            return metadata
+        else:
+            metadata=pd.read_csv(input.metadata_upload()[0]["datapath"],sep=",")
+        return metadata
+
     #update the searchoutput df to match how we edited the metadata sheet
     @reactive.calc
     @reactive.event(input.rerun_metadata,ignore_none=False)
@@ -929,6 +1104,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
             searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
             searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+
         if input.remove()==True:
             editedmetadata=metadata[metadata.remove !="x"]
             searchoutput=searchoutput.set_index("R.FileName").loc[editedmetadata["R.FileName"].tolist()].reset_index()
@@ -1001,7 +1177,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             #identified peptides
             numpeptides.append(replicatedata["EG.ModifiedPeptide"].nunique())
             #identified precursors
-            numprecursors.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]]))
+            numprecursors.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
         resultdf["proteins"]=numproteins
         resultdf["proteins2pepts"]=numproteins2pepts
         resultdf["peptides"]=numpeptides
@@ -1201,6 +1377,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 #endregion
 
+# =============================# Sidebar Tabs #================================
 # ============================================================================= Settings
 #region
 
@@ -2170,20 +2347,20 @@ def server(input: Inputs, output: Outputs, session: Session):
         numptmprecursors=[]
         for condition in sampleconditions:
             for j in range(max(maxreplicatelist)+1):
-                df=searchoutput[(searchoutput["R.Condition"]==condition)&(searchoutput["R.Replicate"]==j)][["R.Condition","R.Replicate","PG.ProteinNames","PG.MS2Quantity","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]]
+                df=searchoutput[(searchoutput["R.Condition"]==condition)&(searchoutput["R.Replicate"]==j)][["R.Condition","R.Replicate","PG.ProteinNames","EG.ModifiedPeptide","FG.Charge"]]
                 if df.empty:
                     continue
                 #number of proteins with specified PTM
-                numptmproteins.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates()))
+                numptmproteins.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["PG.ProteinNames"].nunique())
 
                 #number of proteins with 2 peptides and specified PTM
                 numptmproteins2pepts.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["PG.ProteinNames","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinNames").size().reset_index(name="peptides").query("peptides>1")))
 
                 #number of peptides with specified PTM
-                numptmpeptides.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide"]].drop_duplicates()))
+                numptmpeptides.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["EG.ModifiedPeptide"].nunique())
 
                 #number of precursors with specified PTM
-                numptmprecursors.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide"]]))
+                numptmprecursors.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
 
         ptmresultdf=pd.DataFrame({"Cond_Rep":resultdf["Cond_Rep"],"proteins":numptmproteins,"proteins2pepts":numptmproteins2pepts,"peptides":numptmpeptides,"precursors":numptmprecursors})
 
@@ -2546,80 +2723,6 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 #endregion    
 
-# ============================================================================= PCA
-#region
-
-    #compute PCA and plot principal components
-    @reactive.effect
-    def _():
-        @render.plot(width=input.pca_width(),height=input.pca_height())
-        def pca_plot():
-            #https://www.youtube.com/watch?v=WPRysPAhG5Q&ab_channel=CompuFlair
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            titlefont=input.titlefont()
-            axisfont=input.axisfont()
-            legendfont=input.legendfont()
-
-            samplelist=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True).tolist()
-            intensitydict=dict()
-            for run in samplelist:
-                intensitydict[run]=searchoutput[searchoutput["Cond_Rep"]==run][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True).rename(columns={"PG.MS2Quantity":run}).set_index(keys="PG.ProteinNames")
-            df_intensity=[]
-            for run in intensitydict.keys():
-                temp_df=intensitydict[run]
-                df_intensity.append(temp_df)
-            concatenated_proteins=pd.concat(df_intensity,axis=1).dropna()
-
-            X=np.array(concatenated_proteins).T
-            pip=Pipeline([("scaler",StandardScaler()),("pca",PCA())]).fit(X)
-            X_trans=pip.transform(X)
-            #each row is a principal component, each element of each row is a sample
-
-            figsize=(10,5)
-            colors=colorpicker()
-
-            fig,ax=plt.subplots(ncols=2,figsize=figsize,gridspec_kw={"width_ratios":[10,5]})
-            
-            ax1=ax[0]
-            ax2=ax[1]
-
-            firstindex=0
-            secondindex=0
-            for i in range(numconditions):
-                if i==0:
-                    firstindex=0
-                else:
-                    firstindex+=repspercondition[i-1]
-                secondindex=firstindex+repspercondition[i]
-                ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors[i])
-
-            ax1.legend(loc="upper left",bbox_to_anchor=[1,1],fontsize=legendfont)
-
-            ax1.spines['bottom'].set_position('zero')
-            ax1.spines['top'].set_color('none')
-            ax1.spines['right'].set_color('none')
-            ax1.spines['left'].set_position('zero')
-            ax1.set_axisbelow(True)
-            ax1.grid(linestyle="--")
-
-            ax1.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)",fontsize=axisfont)
-            ax1.xaxis.set_label_coords(x=0.5,y=-0.02)
-            ax1.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)",fontsize=axisfont)
-            ax1.yaxis.set_label_coords(x=-0.02,y=0.45)
-            ax1.tick_params(axis="both",labelsize=axisfont)
-
-            ax2.bar(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1),pip.named_steps.pca.explained_variance_ratio_*100,edgecolor="k")
-            ax2.set_xlabel("Principal Component",fontsize=axisfont)
-            ax2.set_ylabel("Total % Variance Explained",fontsize=axisfont)
-            ax2.set_xticks(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1))
-            ax2.set_axisbelow(True)
-            ax2.grid(linestyle="--")
-            ax2.tick_params(axis="both",labelsize=axisfont)
-
-            fig.set_tight_layout(True)        
-
-#endregion
-
 # ============================================================================= Heatmaps
 #region
 
@@ -2948,6 +3051,80 @@ def server(input: Inputs, output: Outputs, session: Session):
         venn2_circles(subsets=vennlist,linestyle="dashed",linewidth=0.5)
         plt.title("Venn Diagram for "+vennpick)
         return fig
+
+#endregion
+
+# ============================================================================= PCA
+#region
+
+    #compute PCA and plot principal components
+    @reactive.effect
+    def _():
+        @render.plot(width=input.pca_width(),height=input.pca_height())
+        def pca_plot():
+            #https://www.youtube.com/watch?v=WPRysPAhG5Q&ab_channel=CompuFlair
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
+
+            samplelist=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True).tolist()
+            intensitydict=dict()
+            for run in samplelist:
+                intensitydict[run]=searchoutput[searchoutput["Cond_Rep"]==run][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True).rename(columns={"PG.MS2Quantity":run}).set_index(keys="PG.ProteinNames")
+            df_intensity=[]
+            for run in intensitydict.keys():
+                temp_df=intensitydict[run]
+                df_intensity.append(temp_df)
+            concatenated_proteins=pd.concat(df_intensity,axis=1).dropna()
+
+            X=np.array(concatenated_proteins).T
+            pip=Pipeline([("scaler",StandardScaler()),("pca",PCA())]).fit(X)
+            X_trans=pip.transform(X)
+            #each row is a principal component, each element of each row is a sample
+
+            figsize=(10,5)
+            colors=colorpicker()
+
+            fig,ax=plt.subplots(ncols=2,figsize=figsize,gridspec_kw={"width_ratios":[10,5]})
+            
+            ax1=ax[0]
+            ax2=ax[1]
+
+            firstindex=0
+            secondindex=0
+            for i in range(numconditions):
+                if i==0:
+                    firstindex=0
+                else:
+                    firstindex+=repspercondition[i-1]
+                secondindex=firstindex+repspercondition[i]
+                ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors[i])
+
+            ax1.legend(loc="upper left",bbox_to_anchor=[1,1],fontsize=legendfont)
+
+            ax1.spines['bottom'].set_position('zero')
+            ax1.spines['top'].set_color('none')
+            ax1.spines['right'].set_color('none')
+            ax1.spines['left'].set_position('zero')
+            ax1.set_axisbelow(True)
+            ax1.grid(linestyle="--")
+
+            ax1.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)",fontsize=axisfont)
+            ax1.xaxis.set_label_coords(x=0.5,y=-0.02)
+            ax1.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)",fontsize=axisfont)
+            ax1.yaxis.set_label_coords(x=-0.02,y=0.45)
+            ax1.tick_params(axis="both",labelsize=axisfont)
+
+            ax2.bar(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1),pip.named_steps.pca.explained_variance_ratio_*100,edgecolor="k")
+            ax2.set_xlabel("Principal Component",fontsize=axisfont)
+            ax2.set_ylabel("Total % Variance Explained",fontsize=axisfont)
+            ax2.set_xticks(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1))
+            ax2.set_axisbelow(True)
+            ax2.grid(linestyle="--")
+            ax2.tick_params(axis="both",labelsize=axisfont)
+
+            fig.set_tight_layout(True)        
 
 #endregion
 
@@ -3771,6 +3948,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 # ============================================================================= Export Tables 
 #region 
+
     #download table of peptide IDs
     @render.download(filename=lambda: f"Peptide List_{input.searchreport()[0]['name']}.csv")
     def peptidelist():
@@ -3866,6 +4044,305 @@ def server(input: Inputs, output: Outputs, session: Session):
         with io.BytesIO() as buf:
             ptmdf.to_csv(buf,index=False)
             yield buf.getvalue()
+
+#endregion
+
+# ============================================================================= Glycoproteomics
+#region
+
+    #generate dfs and variables for the glyco results
+    @reactive.calc
+    def glyco_variables():
+        searchoutput=metadata_update()
+        searchoutput["R.Condition"]=searchoutput["R.Condition"].apply(str)
+        if "Cond_Rep" not in searchoutput.columns:
+            searchoutput.insert(0,"Cond_Rep",searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str))
+        elif "Cond_Rep" in searchoutput.columns:
+            searchoutput["Cond_Rep"]=searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str)
+        resultdf_glyco=pd.DataFrame()
+        num_glycoproteins=[]
+        num_glycopeptides=[]
+        num_glycoPSMs=[]
+        dict_glycoproteins=dict()
+        dict_glycopeptides=dict()
+        dict_glycoPSMs=dict()
+        for run in searchoutput["Cond_Rep"].drop_duplicates():
+            df=searchoutput[searchoutput["Cond_Rep"]==run]
+            #all PSMs with a glycan q value (not used here)
+            all_glycoPSM=df[df["Glycan q-value"].isnull()==False]
+            #filtered PSMs with a q value cutoff (used for the dfs generated here)
+            glycoPSM_QvalFilter=df[(df["Glycan q-value"].isnull()==False)&(df["Glycan q-value"]<=0.01)]
+            #all unique glycopeptides (charge agnostic)
+            glycopeptide=glycoPSM_QvalFilter[["EG.ModifiedPeptide","PG.ProteinNames"]].drop_duplicates()
+            #all unique glycoproteins
+            glycoprotein=glycoPSM_QvalFilter["PG.ProteinNames"].drop_duplicates()
+            
+            num_glycoproteins.append(len(glycoprotein))
+            num_glycopeptides.append(len(glycopeptide))
+            num_glycoPSMs.append(len(glycoPSM_QvalFilter))
+            
+            dict_glycoproteins[run]=glycoprotein.reset_index(drop=True)
+            dict_glycopeptides[run]=glycopeptide.reset_index(drop=True)
+            dict_glycoPSMs[run]=glycoPSM_QvalFilter.reset_index(drop=True)
+
+        resultdf_glyco["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+        resultdf_glyco["glycoproteins"]=num_glycoproteins
+        resultdf_glyco["glycopeptides"]=num_glycopeptides
+        resultdf_glyco["glycoPSM"]=num_glycoPSMs
+
+        return resultdf_glyco,dict_glycoproteins,dict_glycopeptides,dict_glycoPSMs
+
+    #generate dfs for the glyco results
+    @reactive.calc
+    def glyco_dataframes():
+        resultdf_glyco,dict_glycoproteins,dict_glycopeptides,dict_glycoPSMs=glyco_variables()
+        glycoproteins_df=pd.DataFrame()
+        glycopeptides_df=pd.DataFrame()
+        glycoPSMs_df=pd.DataFrame()
+        for key in dict_glycoproteins.keys():
+            protein_key=pd.DataFrame({"Cond_Rep":[key]*len(dict_glycoproteins[key]),"PG.ProteinNames":dict_glycoproteins[key]})
+            glycoproteins_df=pd.concat([glycoproteins_df,protein_key]).reset_index(drop=True)
+            
+            peptide_key=pd.DataFrame({"Cond_Rep":[key]*len(dict_glycopeptides[key])})
+            peptide_key_df=pd.concat([peptide_key,dict_glycopeptides[key]],axis=1)
+            glycopeptides_df=pd.concat([glycopeptides_df,peptide_key_df]).reset_index(drop=True)
+
+            glycoPSMs_df=pd.concat([glycoPSMs_df,dict_glycoPSMs[key]]).reset_index(drop=True)
+        return glycoproteins_df,glycopeptides_df,glycoPSMs_df
+
+    #plot only glycosylated IDs
+    @reactive.effect
+    def _():
+        @render.plot(width=input.glycoIDsplot_width(),height=input.glycoIDsplot_height())
+        def glycoIDsplot():
+            resultdf_glyco,dict_glycoproteins,dict_glycopeptides,dict_glycoPSMs=glyco_variables()
+            color=replicatecolors()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            y_padding=input.ypadding()
+
+            fig,ax=plt.subplots(ncols=3,sharex=True)
+            fig.set_tight_layout(True)
+            ax1=ax[0]
+            ax2=ax[1]
+            ax3=ax[2]
+
+            resultdf_glyco.plot.bar(ax=ax1,x="Cond_Rep",y="glycoproteins",legend=False,width=0.8,color=color,edgecolor="k")
+            ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax1.set_ylim(top=max(resultdf_glyco["glycoproteins"].tolist())+y_padding*max(resultdf_glyco["glycoproteins"].tolist()))
+            ax1.set_ylabel("Counts",fontsize=axisfont)
+            ax1.set_xlabel("Condition",fontsize=axisfont)
+            ax1.set_title("Glycoproteins",fontsize=titlefont)
+
+            resultdf_glyco.plot.bar(ax=ax2,x="Cond_Rep",y="glycopeptides",legend=False,width=0.8,color=color,edgecolor="k")
+            ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax2.set_ylim(top=max(resultdf_glyco["glycopeptides"].tolist())+y_padding*max(resultdf_glyco["glycopeptides"].tolist()))
+            ax2.set_xlabel("Condition",fontsize=axisfont)
+            ax2.set_title("Glycopeptides",fontsize=titlefont)
+
+            resultdf_glyco.plot.bar(ax=ax3,x="Cond_Rep",y="glycoPSM",legend=False,width=0.8,color=color,edgecolor="k")
+            ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax3.set_ylim(top=max(resultdf_glyco["glycoPSM"].tolist())+(y_padding+0.1)*max(resultdf_glyco["glycoPSM"].tolist()))
+            ax3.set_xlabel("Condition",fontsize=axisfont)
+            ax3.set_title("Glyco-PSMs\n(Qvalue<0.1)",fontsize=titlefont)
+
+            ax1.set_axisbelow(True)
+            ax1.grid(linestyle="--")
+            ax2.set_axisbelow(True)
+            ax2.grid(linestyle="--")
+            ax3.set_axisbelow(True)
+            ax3.grid(linestyle="--")
+
+    #show data grid for glycoproteins
+    @render.data_frame
+    def glycoproteins_df_view():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        return render.DataGrid(glycoproteins_df,editable=False,height="600px")
+
+    #download shown data grid for glycoproteins
+    @render.download(filename=lambda: f"glycoproteins_{input.searchreport()[0]['name']}.csv")
+    def glycoproteins_download():
+        glycoprotein_table=glycoproteins_df_view.data_view()
+        with io.BytesIO() as buf:
+            glycoprotein_table.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #show data grid for glycopeptides
+    @render.data_frame
+    def glycopeptides_df_view():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        return render.DataGrid(glycopeptides_df,editable=False,height="600px")
+
+    #download shown data grid for glycopeptides
+    @render.download(filename=lambda: f"glycopeptides_{input.searchreport()[0]['name']}.csv")
+    def glycopeptides_download():
+        glycopeptide_table=glycopeptides_df_view.data_view()
+        with io.BytesIO() as buf:
+            glycopeptide_table.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #show data grid for glycoPSMs
+    @render.data_frame
+    def glycoPSMs_df_view():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        return render.DataGrid(glycoPSMs_df,editable=False,height="600px")
+
+    #download shown data grid for glyco PSMs
+    @render.download(filename=lambda: f"glycoPSMs_{input.searchreport()[0]['name']}.csv")
+    def glycoPSMs_download():
+        glycoPSMs_table=glycoPSMs_df_view.data_view()
+        with io.BytesIO() as buf:
+            glycoPSMs_table.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #generate selectize list of stripped peptide sequences
+    @render.ui
+    def glyco_peplist():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        peplist=glycoPSMs_df["PEP.StrippedSequence"].drop_duplicates().sort_values().reset_index(drop=True).tolist()
+        pep_dict=dict()
+        for pep in peplist:
+            pep_dict[pep]=pep
+        return ui.input_selectize("glyco_peplist_pick","Pick stripped peptide sequence:",choices=pep_dict)
+    
+    #show glycoPSMs for selected stripped peptide sequence 
+    @render.data_frame
+    def selected_glyco_peplist():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        selectedpep=input.glyco_peplist_pick()
+        selectedpep_df=glycoPSMs_df[glycoPSMs_df["PEP.StrippedSequence"]==selectedpep]
+        return render.DataGrid(selectedpep_df,editable=False,height="600px")
+
+    #download shown table of glycoPSMs for selected stripped peptide sequence
+    @render.download(filename=lambda: f"glycoPSMs_{input.glyco_peplist_pick()}.csv")
+    def selected_glyco_download():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+        glycopep_table=selected_glyco_peplist.data_view()
+        with io.BytesIO() as buf:
+            glycopep_table.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #scatterplot like the charge/PTM scatter for glycosylated precursors
+    @reactive.effect
+    def _():
+        @render.plot(width=input.glycoscatter_width(),height=input.glycoscatter_height())
+        def glycoscatter():
+            searchoutput=metadata_update()
+
+            searchoutput_nonglyco=searchoutput[searchoutput["Glycan q-value"].isnull()==True]
+            searchoutput_glyco=searchoutput[searchoutput["Glycan q-value"].isnull()==False]
+
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            legendfont=input.legendfont()
+
+            fig,ax=plt.subplots()
+            ax.scatter(x=searchoutput_nonglyco["FG.PrecMz"],y=searchoutput_nonglyco["EG.IonMobility"],s=2,label="All Other Precursors")
+            ax.scatter(x=searchoutput_glyco["FG.PrecMz"],y=searchoutput_glyco["EG.IonMobility"],s=2,label="Glycosylated Precursors")
+            ax.set_xlabel("m/z",fontsize=axisfont)
+            ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            ax.legend(loc="upper left",fontsize=legendfont,markerscale=5)
+            ax.set_axisbelow(True)
+            ax.grid(linestyle="--")
+
+    #generate selectize list of detected glyco mods
+    @render.ui
+    def glycomodlist_ui():
+        glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+
+        raw_modlist=[]
+        modlist=[]
+        allmods=glycoPSMs_df["Total Glycan Composition"].drop_duplicates().tolist()
+        for i in range(len(allmods)):
+            raw_modlist.append(allmods[i].split("%")[0])
+            modstring=raw_modlist[i].replace("(","").replace(")",",").replace(", ","")
+            
+            modlist.append("".join(i for i in modstring if not i.isdigit()))
+        set_modlist=list(set(modlist))
+        unique_mods=[]
+        for item in set_modlist:
+            if item.count(",")>=1:
+                unique_mods.append(item.split(","))
+            else:
+                unique_mods.append([item])
+        unique_mods=list(set(list(itertools.chain(*unique_mods))))
+        mods_dict=dict()
+        for item in unique_mods:
+            mods_dict[item]=item
+
+        return ui.input_selectize("found_glycomods","Pick glycan mod to plot data for",choices=mods_dict)
+    
+    #plot ID bar graph for selected glyco mod, option to show enrichment % instead of counts
+    @reactive.effect
+    def _():
+        @render.plot(width=input.glycomodIDsplot_width(),height=input.glycomodIDsplot_height())
+        def glycomod_IDs():
+            resultdf_glyco,dict_glycoproteins,dict_glycopeptides,dict_glycoPSMs=glyco_variables()
+            glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_dataframes()
+            picked_mod=input.found_glycomods()
+
+            color=replicatecolors()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            y_padding=input.ypadding()
+
+            resultdf_glycomod=pd.DataFrame()
+
+            num_glycoproteins_mod=[]
+            num_glycopeptides_mod=[]
+            num_glycoPSMs_mod=[]
+
+            for run in glycoPSMs_df["Cond_Rep"].drop_duplicates():
+                num_glycoproteins_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["PG.ProteinNames"].drop_duplicates()))
+                num_glycopeptides_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["EG.ModifiedPeptide"].drop_duplicates()))
+                num_glycoPSMs_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]))
+
+            resultdf_glycomod["Cond_Rep"]=glycoPSMs_df["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+            resultdf_glycomod["glycoproteins"]=num_glycoproteins_mod
+            resultdf_glycomod["glycopeptides"]=num_glycopeptides_mod
+            resultdf_glycomod["glycoPSM"]=num_glycoPSMs_mod
+
+            if input.counts_vs_enrich()=="counts":
+                plottingdf=resultdf_glycomod
+            if input.counts_vs_enrich()=="enrich":
+                resultdf_glyco_enrich=round(resultdf_glycomod.drop(columns=["Cond_Rep"])/resultdf_glyco.drop(columns=["Cond_Rep"])*100,1)
+                resultdf_glyco_enrich["Cond_Rep"]=glycoPSMs_df["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+                plottingdf=resultdf_glyco_enrich
+
+            fig,ax=plt.subplots(ncols=3,sharex=True)
+            fig.set_tight_layout(True)
+            ax1=ax[0]
+            ax2=ax[1]
+            ax3=ax[2]
+
+            plottingdf.plot.bar(ax=ax1,x="Cond_Rep",y="glycoproteins",legend=False,width=0.8,color=color,edgecolor="k")
+            ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax1.set_ylim(top=max(plottingdf["glycoproteins"].tolist())+y_padding*max(plottingdf["glycoproteins"].tolist()))
+            ax1.set_ylabel("Counts",fontsize=axisfont)
+            ax1.set_xlabel("Condition",fontsize=axisfont)
+            ax1.set_title("Glycoproteins",fontsize=titlefont)
+
+            plottingdf.plot.bar(ax=ax2,x="Cond_Rep",y="glycopeptides",legend=False,width=0.8,color=color,edgecolor="k")
+            ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax2.set_ylim(top=max(plottingdf["glycopeptides"].tolist())+y_padding*max(plottingdf["glycopeptides"].tolist()))
+            ax2.set_xlabel("Condition",fontsize=axisfont)
+            ax2.set_title("Glycopeptides",fontsize=titlefont)
+
+            plottingdf.plot.bar(ax=ax3,x="Cond_Rep",y="glycoPSM",legend=False,width=0.8,color=color,edgecolor="k")
+            ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+            ax3.set_ylim(top=max(plottingdf["glycoPSM"].tolist())+(y_padding+0.1)*max(plottingdf["glycoPSM"].tolist()))
+            ax3.set_xlabel("Condition",fontsize=axisfont)
+            ax3.set_title("Glyco-PSMs\n(Qvalue<0.1)",fontsize=titlefont)
+
+            ax1.set_axisbelow(True)
+            ax1.grid(linestyle="--")
+            ax2.set_axisbelow(True)
+            ax2.grid(linestyle="--")
+            ax3.set_axisbelow(True)
+            ax3.grid(linestyle="--")
+
 
 #endregion
 
