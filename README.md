@@ -16,6 +16,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 
   #### Note: When installing Python libraries, make sure that the installation is under the selected Python interpreter in Visual Studio Code (e.g. if Anaconda is used as the Python interpreter, perform the installations in a Conda powershell prompt).
   #### Each library can be installed in a powershell terminal by typing `pip install {library}`.
+  #### Alternatively, make sure the requirements.txt file is in the same directory as the app.py and use `py -m pip install -r requirements.txt` to bulk-install all the nececssary libraries
   - alphatims
   - colorcet
   - faicons
