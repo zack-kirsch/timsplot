@@ -6,7 +6,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 
 # Getting Started
 ## Installation
-1. **Install Python and/or Anaconda:** Make sure you have Python installed on your computer. You can donwload either from their respective websites. (<https://www.python.org/downloads/>, <https://www.anaconda.com/download>)
+1. **Install Python:** Make sure you have Python installed on your computer. Alphatims does not support newer versions of Python, so make sure to use versions prior to 3.13. (<https://www.python.org/downloads/release/python-3128/>)
 2. **Install Visual Studio Code:** This will be the primary interface for the app (<https://code.visualstudio.com/>). Make sure to set the Python interpreter in the IDE to the current installed version of Python or Anaconda.
 3. **Install required Python libraries:** Most of the libraries needed for the app are built into the installation of Python. The libraries listed below need to be installed manually:
 
