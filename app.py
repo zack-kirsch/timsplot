@@ -1,9 +1,158 @@
 # =============================================================================
+# Library Imports
+# =============================================================================
+#region
+from shiny import App, Inputs, Outputs, Session, reactive, render, ui, module
+from shinyswatch import theme
+#https://rstudio.github.io/shinythemes/
+from shiny.types import ImgData
+import alphatims.bruker as atb
+import alphatims.plotting as atp
+from collections import OrderedDict
+from datetime import date
+from faicons import icon_svg
+#https://fontawesome.com/search?o=r&m=free
+import io
+import itertools
+from itertools import groupby
+import math
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
+import matplotlib.colors as mcolors
+from matplotlib.patches import Rectangle
+from matplotlib.ticker import MaxNLocator,MultipleLocator
+from matplotlib_venn import venn2,venn2_circles,venn3,venn3_circles
+import numpy as np
+import os
+import pandas as pd
+import pathlib
+import re
+import scipy.stats as stats
+from scipy.stats import norm
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from tkinter import *
+from upsetplot import *
+from zipfile import ZipFile
+
+matplotlib.use('Agg')
+#endregion
+
+# =============================================================================
 # Changelog
 # =============================================================================
 #region
 
-#changes from 240913 version
+#changes since 241115 version
+#region
+    #General
+        #added descriptions for some plotting sections to help clarify what's happening under the hood
+    #File Import
+        #updated reminder text for each search software
+        #modified file import to include multiple files in upload
+        #modified inputfile() function that if there are more than 1 file uploaded, concatenate them row-wise before moving on to column rename/drop
+            #the function first checks if the first file uploaded is a .tsv to keep with differentiating BPS vs other software output
+        #added a line in the fragger file input that calculates mass accuracy and adds it as a column to the search report
+        #added handling for tims-DIANN and tims-rescore data from BPS, can only import one .zip file at a time for now
+        #adjusted visual of the file import window
+    #Metrics
+        #added a calculation of peak widths to its own function, redid how the calculation is put together (more similarly to how CVs are calculated and tabulated for plotting)
+        #added a table of mean and median peak widths
+        #added an option to show all peak widths or remove outlier 5% peak widths from violin plot
+        #added error handling for charge state, pep length, and peps per protein where the plotting color was being unnecessarily split when there was only one condition present (but with replicates)
+        #added a slider to Peptides per Protein to explicitly set the high end of the x axis range
+        #changed how the marker is shown in Peptide Lengths to avoid confusion because of the comma previously used
+        #added minor x ticks to the Peptide Lengths bar plots
+        #added Mass Accuracy plot (violin or histogram options)
+    #PTMs
+        #moved CV calculation to its own function to avoid redundancy in plotting and generating table
+        #added a table like for ID Counts CV plot
+        #added the same mass accuracy plotting from the Metrics section to just precursors with a specified PTM
+    #Heatmaps
+        #changed how charge/ptm scatter is plotted
+        #added a table to charge/ptm scatter to show the number of precursors of each charge state present in the scatter depending on the selection
+    #Statistics
+        #fixed an issue where the label size for the volcano plot wasn't set to the input variable
+    #Immunopeptidomics
+        #added section
+        #added different modes of charge state plotting requested by Kristina Marx which specifies peptides that are detected at multiple charge states instead of lumping them together
+        #included for two of the plotting modes the ability to only plot specific charges of interest
+    #Mixed Proteome
+        #adjusted peptide count for each organism to match how ID counts are done (unique values from EG.ModifiedPeptide)
+        #added a data table to the Quant Ratios plot
+        #added an option to use mean or median quant values for calculating Quant Ratios
+    #Dilution Series
+        #moved calculations to make the plot into a separate function so that changing the plot size with the sliders doesn't need re-execution of the calcuation
+    #Raw Data
+        #added an option to paste a directory containing raw data files instead of individually pasting the whole file path for each raw file
+#endregion
+#changes since 241114 version
+#region
+    #File Import
+        #fixed an issue with DIA-NN input where the filenames weren't sorted (as assumed from other software) and ended up duplicating condition and replicate values across each file name. Fixed by adding a sort_values before returning searchoutput df
+    #ID Counts
+        #fixed an issue with CV plotting where it would error out when there was only one sample condition
+#endregion
+#changes since 241028 version
+#region
+    #General
+        #adjusted width and height slider ranges
+        # *important* changed ProteinNames to ProteinGroups in calculations throughout, that way all calculations are based on PG.ProteinGroups (except for mixed proteome which needs PG.ProteinNames)
+        #added an option in Setitngs for rotating the x labels on most plots (especially those that have condition names as the x labels)
+    #File Import
+        #adjusted how fragger glyco input is handled in case the Spectrum File column has no distinct values
+    #ID Counts
+        #added an option in UpSet Plot to plot by condition or by run instead of just by run
+        #changed "Peptides" title to "Modified Peptides"
+        #added a table to the CV Plots that shows the mean and median CV values that updates based on selections for precursor/protein and 5% outlier cutoff
+    #Metrics
+        #changed the top N slider for dynamic range to int values instead of float
+        #added an option in Peptide Length to hide the length marker
+        #changed rotation of charge state labels to 90 deg that way they don't overlap
+        #adjusted the calculation behind charge states function, was using stripped sequence instead of modified sequence and was ultimately under-counting the number of precursors 
+    #PTMs
+        #fixed an error with fragpipe data where Acetyl modifications were not being renamed correctly
+        #removed PTM enrichment tab and changed how PTM ID counts are plotted similarly to the glycoproteomics ID counts enrichment
+            #Radio button to switch between ID counts and % of total IDs per run (enrichment)
+    #Heatmaps
+        #added an option in Venn Diagram to plot by condition or by run instead of just by run
+        #added an option in Venn Diagram to download the list of IDs that are shown in the Venn diagram
+        #added an option in Charge/PTM Precursor Scatter to choose to plot based on Cond_Rep
+        #added an option in IDs vs RT to choose runs from a checklist
+    #PCA
+        #adjusted PC bar graph to just show first 3 components
+        #added volcano plot calculation and plotting
+    #Mixed Proteome
+        #complete overhaul of how the calculations were performed. Added a table in the Info tab to simplify input
+        #everything back to previous working condition but with new logic for the calculations
+    #PRM
+        #adjusted how intensity across runs is plotted such that the x axis order is what we'd expect. Missing values are added as zeros
+        #changed plotting setup for individual peptide tracker. Plots should be generated a lot more cleanly and if signal is missing for the lowest concentration, we set all values of measured ratio to 0
+    #Dilution Series
+        #added a theoretical ratio line to the plot
+    #Export Tables
+        #added index=False to the .to_csv for each function to get rid of unnecessary index column in the output .csv
+        #added an option to export a list of stripped peptide sequences of specific length (specifically for use in weblogo)
+    #Glycoproteomics
+        #added Total Glycan Composition to the glycopeptide df that's used in the dictionary and df generation
+        #changed language in Glycan Tracker to % of IDs instead of enrichment
+        #simplified the two functions (glyco_variables, glyco_dataframes) since the dictionaries generated by glyco_variables weren't being used except to generate the dataframes
+#endregion
+#changes since 241021 version
+#region
+    #File Import
+        #added the capability to download the metadata table as-shown as well as upload your own metadata table
+        #added error handling for different software search reports. If columns are missing, it will ignore them in the .drop function
+    #PTMs
+        #adjusted ptmcounts function, no need for MS2Quantity columns and made it more comparable to the idmetrics function
+    #Glycoproteomics
+        #added section, working on adding different visualization functions
+    #reordered some side tabs
+#endregion
+#changes since 240913 version
 #region
     #metadata
         #changed how metadata works. Added 2nd table that only shows conditions so it makes reordering and concentration input much easier
@@ -61,118 +210,9 @@
     #Raw Data
         #Added EIM section
     #Added Dilution Series section
-    #Added PCA section
-    
-#endregion
-#changes from 241021 version
-#region
-    #File Import
-        #added the capability to download the metadata table as-shown as well as upload your own metadata table
-        #added error handling for different software search reports. If columns are missing, it will ignore them in the .drop function
-    #PTMs
-        #adjusted ptmcounts function, no need for MS2Quantity columns and made it more comparable to the idmetrics function
-    #Glycoproteomics
-        #added section, working on adding different visualization functions
-    #reordered some side tabs
-
-#endregion
-#changes from 241028 version
-#region
-    #General
-        #adjusted width and height slider ranges
-        # *important* changed ProteinNames to ProteinGroups in calculations throughout, that way all calculations are based on PG.ProteinGroups (except for mixed proteome which needs PG.ProteinNames)
-        #added an option in Setitngs for rotating the x labels on most plots (especially those that have condition names as the x labels)
-    #File Import
-        #adjusted how fragger glyco input is handled in case the Spectrum File column has no distinct values
-    #ID Counts
-        #added an option in UpSet Plot to plot by condition or by run instead of just by run
-        #changed "Peptides" title to "Modified Peptides"
-        #added a table to the CV Plots that shows the mean and median CV values that updates based on selections for precursor/protein and 5% outlier cutoff
-    #Metrics
-        #changed the top N slider for dynamic range to int values instead of float
-        #added an option in Peptide Length to hide the length marker
-        #changed rotation of charge state labels to 90 deg that way they don't overlap
-        #adjusted the calculation behind charge states function, was using stripped sequence instead of modified sequence and was ultimately under-counting the number of precursors 
-    #PTMs
-        #fixed an error with fragpipe data where Acetyl modifications were not being renamed correctly
-        #removed PTM enrichment tab and changed how PTM ID counts are plotted similarly to the glycoproteomics ID counts enrichment
-            #Radio button to switch between ID counts and % of total IDs per run (enrichment)
-    #Heatmaps
-        #added an option in Venn Diagram to plot by condition or by run instead of just by run
-        #added an option in Venn Diagram to download the list of IDs that are shown in the Venn diagram
-        #added an option in Charge/PTM Precursor Scatter to choose to plot based on Cond_Rep
-        #added an option in IDs vs RT to choose runs from a checklist
-    #PCA
-        #adjusted PC bar graph to just show first 3 components
-        #added volcano plot calculation and plotting
-    #Mixed Proteome
-        #complete overhaul of how the calculations were performed. Added a table in the Info tab to simplify input
-        #everything back to previous working condition but with new logic for the calculations
-    #PRM
-        #adjusted how intensity across runs is plotted such that the x axis order is what we'd expect. Missing values are added as zeros
-        #changed plotting setup for individual peptide tracker. Plots should be generated a lot more cleanly and if signal is missing for the lowest concentration, we set all values of measured ratio to 0
-    #Dilution Series
-        #added a theoretical ratio line to the plot
-    #Export Tables
-        #added index=False to the .to_csv for each function to get rid of unnecessary index column in the output .csv
-        #added an option to export a list of stripped peptide sequences of specific length (specifically for use in weblogo)
-    #Glycoproteomics
-        #added Total Glycan Composition to the glycopeptide df that's used in the dictionary and df generation
-        #changed language in Glycan Tracker to % of IDs instead of enrichment
-        #simplified the two functions (glyco_variables, glyco_dataframes) since the dictionaries generated by glyco_variables weren't being used except to generate the dataframes
-
-#endregion
-#changes from 241114 version
-#region
-    #File Import
-        #fixed an issue with DIA-NN input where the filenames weren't sorted (as assumed from other software) and ended up duplicating condition and replicate values across each file name. Fixed by adding a sort_values before returning searchoutput df
-    #ID Counts
-        #fixed an issue with CV plotting where it would error out when there was only one sample condition
+    #Added PCA section    
 #endregion
 
-#endregion
-
-# =============================================================================
-# Library Imports
-# =============================================================================
-#region
-from shiny import App, Inputs, Outputs, Session, reactive, render, ui, module
-from shinyswatch import theme
-#https://rstudio.github.io/shinythemes/
-from shiny.types import ImgData
-import alphatims.bruker as atb
-import alphatims.plotting as atp
-from collections import OrderedDict
-from datetime import date
-from faicons import icon_svg
-#https://fontawesome.com/search?o=r&m=free
-import io
-import itertools
-from itertools import groupby
-import math
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
-import matplotlib.colors as mcolors
-from matplotlib.patches import Rectangle
-from matplotlib.ticker import MaxNLocator
-from matplotlib_venn import venn2,venn2_circles,venn3,venn3_circles
-import numpy as np
-import os
-import pandas as pd
-import pathlib
-import re
-import scipy.stats as stats
-from scipy.stats import norm
-import seaborn as sns
-from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from tkinter import *
-from upsetplot import *
-from zipfile import ZipFile
-
-matplotlib.use('Agg')
 #endregion
 
 # =============================================================================
@@ -181,19 +221,48 @@ matplotlib.use('Agg')
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsTOF Proteomics Data Visualization"),
+    ui.panel_title("timsTOF Proteomics Data Visualization (v.2024.12.12)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
+                    #  ui.card(
+                    #      ui.card_header("Upload Search Report"),
+                        #  ui.input_selectize("software","Search software:",{"spectronaut":"Spectronaut",
+                        #                                                    "diann":"DIA-NN",
+                        #                                                    "fragpipe":"FragPipe",
+                        #                                                    "fragpipe_glyco":"FragPipe (Glyco)",
+                        #                                                    "bps_timsrescore":"tims-rescore (BPS)",
+                        #                                                    "bps_timsdiann":"tims-DIANN (BPS)",
+                        #                                                    "ddalibrary":"Spectronaut Library"
+                        #                                                    }
+                        #                                                    ),
+                    #      ui.output_text("metadata_reminder"),
+                    #      ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip"],multiple=True),
+                    #      height="350px"
+                    #      ),
                      ui.card(
                          ui.card_header("Upload Search Report"),
-                         ui.input_selectize("software","Search software:",{"spectronaut":"Spectronaut","diann":"DIA-NN","fragpipe":"FragPipe","timsdiann":"tims-DIANN (ProteoScape)","ddalibrary":"Spectronaut Library","fragpipe_glyco":"FragPipe (Glyco)"}),
-                         ui.output_text("metadata_reminder"),
-                         ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip"],multiple=False),
-                         height="350px"
-                         ),
+                         ui.row(
+                            ui.column(3,
+                                      ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut",
+                                                                                            "diann":"DIA-NN",
+                                                                                            "fragpipe":"FragPipe",
+                                                                                            "fragpipe_glyco":"FragPipe (Glyco)",
+                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
+                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
+                                                                                            "ddalibrary":"Spectronaut Library"}),
+                                      ),
+                            ui.column(6,
+                                      ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip"],multiple=True),
+                                      ui.output_text("metadata_reminder")
+                                      )
+                                ),
+                            ),
                      ui.card(
                          ui.card_header("Update from Metadata Table"),
                          ui.row(
+                             ui.column(4,
+                                       ui.input_action_button("rerun_metadata","Apply Changes/Reinitialize",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
+                                       ),
                              ui.column(4,
                                           ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
                                           ui.input_switch("remove","Remove selected runs")            
@@ -202,9 +271,8 @@ app_ui=ui.page_fluid(
                                           ui.input_switch("reorder","Reorder runs"),
                                           ui.input_switch("concentration","Update 'Concentration' column")
                                 )
-                         ),
-                         ui.input_action_button("rerun_metadata","Apply changes to search report / reinitialize search report",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
-                         ),
+                                ),
+                            ),
                      ui.card(
                          ui.card_header("Metadata Tables"),
                          ui.row(
@@ -216,17 +284,18 @@ app_ui=ui.page_fluid(
                                        ui.download_button("metadata_download","Download metadata table as shown",width="300px",icon=icon_svg("file-arrow-down"))
                                        ),
                              ui.column(4,
-                                       ui.p("Notes:"),
                                        ui.p("-To remove runs, add an 'x' to the 'remove' column"),
                                        ui.p("-To reorder conditions, order them numerically in the 'order' column")
                                        ),
                             ),
-                         #ui.output_data_frame("metadata_table")
                          ui.row(
                              ui.column(8,
-                             ui.output_data_frame("metadata_table")),
+                                       ui.output_data_frame("metadata_table")
+                                       ),
                              ui.column(4,
-                             ui.output_data_frame("metadata_condition_table")))
+                                       ui.output_data_frame("metadata_condition_table")
+                                       )
+                                       )
                      ),icon=icon_svg("folder-open")
                     ),
         ui.nav_panel("Settings",
@@ -295,20 +364,32 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("idmetrics_width","Plot width",min=500,max=3000,step=100,value=1500,ticks=True),
-                                              ui.input_slider("idmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True)
+                                              ui.input_slider("idmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True),
+                                              ui.column(6,
+                                                        ui.p("Proteins: number of unique values in the ProteinGroups column"),
+                                                        ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides"),
+                                                        ui.p("Peptides: number of unique values in the ModifiedPeptide column (charge agnostic)"),
+                                                        ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns")
+                                                        )
                                               )
                                               ),
-                                      ui.input_selectize("idplotinput","Choose what metric to plot:",choices={"all":"all","proteins":"proteins","proteins2pepts":"proteins2pepts","peptides":"peptides","precursors":"precursors"},multiple=False,selected="all"),
+                                      ui.input_selectize("idplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
                                       ui.output_plot("idmetricsplot")
                                     ),
                          ui.nav_panel("Average Counts",
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("avgidmetrics_width","Plot width",min=500,max=3000,step=100,value=1500,ticks=True),
-                                              ui.input_slider("avgidmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True)
+                                              ui.input_slider("avgidmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True),
+                                              ui.column(6,
+                                                        ui.p("Proteins: number of unique values in the ProteinGroups column"),
+                                                        ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides"),
+                                                        ui.p("Peptides: number of unique values in the ModifiedPeptide column (charge agnostic)"),
+                                                        ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns")
+                                                        )
                                               )
                                               ),
-                                      ui.input_selectize("avgidplotinput","Choose what metric to plot:",choices={"all":"all","proteins":"proteins","proteins2pepts":"proteins2pepts","peptides":"peptides","precursors":"precursors"},multiple=False,selected="all"),
+                                      ui.input_selectize("avgidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
                                       ui.output_plot("avgidmetricsplot")
                                     ),
                          ui.nav_panel("CV Plots",
@@ -319,7 +400,7 @@ app_ui=ui.page_fluid(
                                               )
                                             ),
                                       ui.row(
-                                          ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor"}),
+                                          ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors"}),
                                           ui.input_switch("removetop5percent","Remove top 5%"),
                                           ui.output_table("cv_table")
                                           ),
@@ -332,7 +413,7 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("countscvcutoff_height","Plot height",min=500,max=3000,step=100,value=700,ticks=True)
                                             )
                                           ),
-                                      ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"proteins","precursors":"precursors"}),
+                                      ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors"}),
                                       ui.output_plot("countscvcutoff")
                                     ),
                          ui.nav_panel("UpSet Plot",
@@ -342,8 +423,10 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("upsetplot_height","Plot height",min=500,max=3000,step=100,value=700,ticks=True)
                                             )
                                           ),
-                                      ui.input_radio_buttons("upset_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
-                                      ui.input_selectize("protein_precursor_pick","Pick which IDs to plot",choices={"Protein":"Protein","Peptide":"Peptide"}),
+                                      ui.row(
+                                          ui.input_radio_buttons("upset_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                          ui.input_selectize("protein_precursor_pick","Pick which IDs to plot",choices={"Protein":"Protein","Peptide":"Peptide"})
+                                          ),
                                       ui.output_plot("upsetplot")
                                     )
                         ),icon=icon_svg("chart-simple")
@@ -354,33 +437,53 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("chargestate_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("chargestate_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                              ui.input_slider("chargestate_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("Charge State: calculates the frequencies of charge states from the unique entries between ModifiedPeptide and Charge columns")
+                                                    )
                                             )
                                           ),
-                                      ui.input_radio_buttons("chargestate_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
+                                      ui.input_radio_buttons("chargestate_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
                                       ui.output_plot("chargestateplot")
                                       ),
                          ui.nav_panel("Peptide Length",
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("peptidelength_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("peptidelength_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                              ui.input_slider("peptidelength_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("Peptide Length: calculates the lengths of all unique stripped peptide sequences")
+                                                    )
                                             )
                                           ),
-                                      ui.input_radio_buttons("peptidelengths_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
-                                      ui.input_radio_buttons("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
-                                      ui.output_ui("lengthmark_ui"),
+                                      ui.row(
+                                          ui.column(4,
+                                                    ui.input_radio_buttons("peptidelengths_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                    ui.input_radio_buttons("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"})
+                                                    ),
+                                          ui.output_ui("lengthmark_ui"),
+                                          ),
                                       ui.output_plot("peptidelengthplot")
                                       ),
                          ui.nav_panel("Peptides per Protein",
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("pepsperprotein_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("pepsperprotein_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                              ui.input_slider("pepsperprotein_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("Peptides per Protein: counts the number of unique ModifiedPeptides for each ProteinGroup")
+                                                    )
                                             )
                                           ),
-                                      ui.input_radio_buttons("pepsperprotein_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
-                                      ui.input_radio_buttons("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
+                                      ui.row(
+                                          ui.column(4,
+                                                    ui.input_radio_buttons("pepsperprotein_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                    ui.input_radio_buttons("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"})
+                                                    ),
+                                          ui.column(4,
+                                                    ui.input_slider("pepsperprotein_xrange","X-axis high bound",min=0,max=200,value=50,step=5,ticks=True)
+                                                    )
+                                            ),
                                       ui.output_plot("pepsperproteinplot")
                                       ),
                          ui.nav_panel("Dynamic Range",
@@ -402,11 +505,31 @@ app_ui=ui.page_fluid(
                                                     )
                                           ),
                                       ),
+                         ui.nav_panel("Mass Accuracy",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("massaccuracy_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("massaccuracy_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          )
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.input_radio_buttons("massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"})
+                                                    ),
+                                          ui.column(4,
+                                                    ui.output_ui("massaccuracy_bins_ui")
+                                                    ),
+                                      ),
+                                      ui.output_plot("massaccuracy_plot")
+                                      ),
                          ui.nav_panel("Data Completeness",
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("datacompleteness_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("datacompleteness_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                              ui.input_slider("datacompleteness_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("Data Completeness: calculates how many runs each unique protein or stripped peptide is detected in")
+                                                    )
                                             )
                                         ),
                                       ui.input_radio_buttons("protein_peptide","Pick what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides"}),
@@ -418,8 +541,10 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("peakwidth_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
                                               ui.input_slider("peakwidth_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
                                           )
-                                      ),
-                                      ui.output_plot("peakwidthplot")
+                                        ),
+                                      ui.input_switch("peakwidth_removetop5percent","Remove top 5%"),
+                                      ui.output_table("peakwidth_table"),
+                                      ui.output_plot("peakwidthplot")                                      
                                       )
                         ),icon=icon_svg("chart-line")
                      ),
@@ -432,24 +557,18 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("ptmidmetrics_width","Plot width",min=500,max=3000,step=100,value=1500,ticks=True),
-                                              ui.input_slider("ptmidmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True)
+                                              ui.input_slider("ptmidmetrics_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("Count logic is the same here as Counts per Condition, but with a condition that the ModifiedPeptide contains the specified PTM")
+                                                    )
                                             )
                                           ),
                                       ui.row(
-                                      ui.input_selectize("ptmidplotinput","Choose what metric to plot:",choices={"all":"all","proteins":"proteins","proteins2pepts":"proteins2pepts","peptides":"peptides","precursors":"precursors"},multiple=False,selected="all"),
-                                      ui.input_radio_buttons("ptm_counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})),
+                                          ui.input_selectize("ptmidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
+                                          ui.input_radio_buttons("ptm_counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
+                                          ),
                                       ui.output_plot("ptmidmetricsplot")
                                       ),
-                        #  ui.nav_panel("PTM Enrichment",
-                        #               ui.card(
-                        #                   ui.row(
-                        #                       ui.input_slider("ptmenrichment_width","Plot width",min=500,max=3000,step=100,value=1500,ticks=True),
-                        #                       ui.input_slider("ptmenrichment_height","Plot height",min=500,max=3000,step=100,value=1000,ticks=True)
-                        #                     )
-                        #                 ),
-                        #               ui.input_selectize("ptmenrichplotinput","Choose what metric to plot:",choices={"all":"all","proteins":"proteins","proteins2pepts":"proteins2pepts","peptides":"peptides","precursors":"precursors"},multiple=False,selected="all"),
-                        #               ui.output_plot("ptmenrichment")
-                        #               ),
                          ui.nav_panel("CV Plots",
                                       ui.card(
                                           ui.row(
@@ -459,7 +578,8 @@ app_ui=ui.page_fluid(
                                         ),
                                       ui.row(
                                           ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor"}),
-                                          ui.input_switch("ptm_removetop5percent","Remove top 5%")
+                                          ui.input_switch("ptm_removetop5percent","Remove top 5%"),
+                                          ui.output_table("ptm_cvtable")
                                           ),
                                       ui.output_plot("ptm_cvplot")
                                       ),
@@ -467,13 +587,33 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("ptmsperprecursor_width","Plot width",min=500,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("ptmsperprecursor_height","Plot height",min=500,max=3000,step=100,value=600,ticks=True)
+                                              ui.input_slider("ptmsperprecursor_height","Plot height",min=500,max=3000,step=100,value=600,ticks=True),
+                                          ui.column(6,
+                                                    ui.p("PTMs per Precursor: counts the number of PTMs in each ModifiedPeptide value. Agnostic to PTM identity, a more detailed list of the PTM combinations can be exported in the Export Tables section")
+                                                    )
                                             )
                                           ),
                                       ui.input_slider("barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
                                       ui.output_plot("ptmsperprecursor")
-                                      )
-                            ),icon=icon_svg("binoculars")
+                                      ),
+                         ui.nav_panel("Mass Accuracy",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("ptm_massaccuracy_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("ptm_massaccuracy_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True),
+                                          )
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.input_radio_buttons("ptm_massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"})
+                                                    ),
+                                          ui.column(4,
+                                                    ui.output_ui("ptm_massaccuracy_bins_ui")
+                                                    ),
+                                      ),
+                                      ui.output_plot("ptm_massaccuracy_plot")
+                                      ),
+                            ),icon=icon_svg("magnifying-glass")
                      ),
         ui.nav_panel("Heatmaps",
                      ui.navset_pill(
@@ -508,28 +648,37 @@ app_ui=ui.page_fluid(
                                             )
                                         ),
                                      ui.row(
-                                         ui.input_radio_buttons("charge_or_ptm","Plot based on charge or PTM?",choices={"charge":"charge","ptm":"ptm"}),
-                                         ui.output_ui("charge_ptm_dropdown"),
-                                         ui.output_ui("chargeptmscatter_cond_rep")
-                                         ),
-                                     ui.output_plot("chargeptmscatter")
+                                         ui.column(4,
+                                                   ui.output_ui("chargeptmscatter_cond_rep"),
+                                                   ui.output_ui("ptm_chargeptmscatter_ui"),
+                                                   ui.output_ui("chargestates_chargeptmscatter_ui"),
+                                                   ui.output_table("chargeptmscatter_table")
+                                                   ),
+                                         ui.column(8,
+                                                   ui.output_plot("chargeptmscatter")
+                                                  )
+                                            ),
                                      ),
                         ui.nav_panel("#IDs vs RT",
                                      ui.card(
                                          ui.row(
                                             ui.input_slider("idsvsrt_width","Plot width",min=500,max=3000,step=100,value=1000,ticks=True),
-                                            ui.input_slider("idsvsrt_height","Plot height",min=300,max=3000,step=100,value=500,ticks=True)
+                                            ui.input_slider("idsvsrt_height","Plot height",min=300,max=3000,step=100,value=500,ticks=True),
+                                         ui.column(6,
+                                                    ui.p("#IDs vs RT: generates a histogram based on the ApexRT values in each run. An estimate of the maximum retention time is used to determine the timespan of each histogram bin"),
+                                                    ui.p("Changing the bin size changes the RT range over which IDs are grouped in the histogram")
+                                                    )
                                             )
                                         ),
                                      ui.row(
-                                     ui.column(3,ui.output_ui("ids_vs_rt_checkbox")),
-                                     ui.column(8,ui.output_ui("binslider_ui"),ui.output_plot("ids_vs_rt")))
+                                        ui.column(3,ui.output_ui("ids_vs_rt_checkbox")),
+                                        ui.column(8,ui.output_ui("binslider_ui"),ui.output_plot("ids_vs_rt")))
                                      ),
                         ui.nav_panel("Venn Diagram of IDs",
-                                     ui.input_radio_buttons("venn_condition_or_run","Plot by condition or by individual run?",choices={"condition":"condition","individual":"individual run"}),
+                                     ui.input_radio_buttons("venn_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
                                      ui.output_ui("cond_rep_list_venn1"),
                                      ui.output_ui("cond_rep_list_venn2"),
-                                     ui.input_selectize("vennpick","Pick what metric to compare:",choices={"proteins":"proteins","peptides":"peptides","precursors":"precursors"}),
+                                     ui.input_selectize("vennpick","Pick what metric to compare:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"}),
                                      ui.download_button("venn_table_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down")),
                                      ui.output_plot("venndiagram")
                                      ),
@@ -554,7 +703,7 @@ app_ui=ui.page_fluid(
                                               ui.column(4,
                                                         ui.input_slider("volcano_xplotrange","Plot x Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,drag_range=True),
                                                         ui.input_slider("volcano_yplotrange","Plot y Range",min=-10,max=10,value=[0,2],step=0.5,ticks=True,drag_range=True),
-                                                        ui.input_switch("volcano_plotrange_switch","Use slider for y-axis range")
+                                                        ui.input_switch("volcano_plotrange_switch","Use sliders for axis ranges")
                                                         ),
                                               ui.column(4,
                                                         ui.output_ui("volcano_condition1"),
@@ -575,6 +724,59 @@ app_ui=ui.page_fluid(
                                       )
                       ),icon=icon_svg("network-wired")
                      ),
+        ui.nav_panel("Immunopeptidomics",
+                     ui.navset_pill(
+                         ui.nav_panel("Charge States (Bar)",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("charge_barchart_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("charge_barchart_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                          )
+                                          ),
+                                      ui.row(
+                                          ui.column(4,
+                                                    ui.input_radio_buttons("chargestate_bar_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"})
+                                                    ),
+                                          ui.column(4,
+                                                    ui.input_switch("chargestate_charges_usepickedcharges","Use picked charges"),
+                                                    ui.output_ui("chargestate_charges_ui"))
+                                            ),
+                                      ui.output_plot("charge_barchart")
+                                      ),
+                         ui.nav_panel("Charge States (Stacked)",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("charge_stackedbarchart_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("charge_stackedbarchart_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                          )
+                                          ),
+                                      ui.row(
+                                          ui.input_radio_buttons("chargestate_stacked_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                          ui.output_data_frame("charge_stacked_table")
+                                          ),
+                                      ui.output_plot("charge_stacked_barchart")
+                                      ),
+                         ui.nav_panel("Charge States per Peptide Length",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("chargestate_peplength_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                            ui.input_slider("chargestate_peplength_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                          )
+                                          ),
+                                      ui.row(
+                                          ui.column(4,
+                                                    ui.input_radio_buttons("chargestate_peplength_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                    ui.output_ui("chargestate_peplength_plotrange_ui")
+                                                    ),
+                                          ui.column(4,
+                                                    ui.input_switch("usepickedcharges","Use picked charges"),
+                                                    ui.output_ui("chargestate_peplength_charges_ui")
+                                                    )
+                                          ),
+                                      ui.output_plot("chargestate_peplength")
+                                      ),
+                     ),icon=icon_svg("vial-virus")
+                     ),
         ui.nav_panel("Mixed Proteome",
                       ui.navset_pill(
                              ui.nav_panel("Info",
@@ -588,7 +790,7 @@ app_ui=ui.page_fluid(
                                                   ui.input_slider("countsperorganism_height","Plot height",min=500,max=3000,step=100,value=700,ticks=True)
                                                 )
                                             ),
-                                          ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"proteins","peptides":"peptides","precursors":"precursors"},multiple=False),
+                                          ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"},multiple=False),
                                           ui.output_plot("countsperorganism")
                                           ),
                              ui.nav_panel("Summed Intensities",
@@ -602,14 +804,21 @@ app_ui=ui.page_fluid(
                                           ),
                              ui.nav_panel("Quant Ratios",
                                           ui.row(
-                                              ui.column(4,
-                                                        ui.output_ui("referencecondition"),ui.output_ui("testcondition"),ui.output_text("expectedratios_note")
+                                              ui.column(3,
+                                                        ui.output_ui("referencecondition"),
+                                                        ui.output_ui("testcondition"),
                                                         ),
                                               ui.column(3,
                                                         ui.input_slider("plotrange","Plot Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
                                                         ui.input_switch("plotrange_switch","Use slider for y-axis range"),
                                                         ui.input_slider("cvcutofflevel","CV Cutoff Level (%)",min=10,max=50,value=20,step=10,ticks=True,width="400px"),
-                                                        ui.input_switch("cvcutoff_switch","Include CV cutoff?")),
+                                                        ui.input_switch("cvcutoff_switch","Include CV cutoff?")
+                                                        ),
+                                              ui.column(5,
+                                                        ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
+                                                        ui.output_table("quantratios_table"),
+                                                        ui.output_text("expectedratios_note")
+                                                        )
                                                         ),
                                           ui.output_plot("quantratios")
                                           )
@@ -650,18 +859,7 @@ app_ui=ui.page_fluid(
                                      ),
                                      ui.output_plot("prmpepintensity_plot"),
                                      ),
-                        # ui.nav_panel("Manual Peptide Tracker",
-                        #              ui.row(
-                        #                  ui.input_text("tracked_peptide","Input stripped peptide sequence:")
-                        #                  ),
-                        #                  ui.card(
-                        #                      ui.output_plot("peptide_intensity")
-                        #                      ),
-                        #                  ui.card(
-                        #                      ui.output_plot("peptide_replicates")
-                        #                      )
-                        #             )
-                        ),icon=icon_svg("wand-sparkles")
+                        ),icon=icon_svg("crosshairs")
                     ),
         ui.nav_panel("Dilution Series",
                      ui.navset_pill(
@@ -677,10 +875,72 @@ app_ui=ui.page_fluid(
                                     )
                      ),icon=icon_svg("vials")
                     ),
+        ui.nav_panel("Glycoproteomics",
+                     ui.navset_pill(
+                         ui.nav_panel("Glyco ID Metrics",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycoIDsplot_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycoIDsplot_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("glycoIDsplot")
+                                      ),
+                         ui.nav_panel("Glyco ID Tables",
+                                      ui.row(
+                                          ui.column(3,
+                                              ui.download_button("glycoproteins_download","Download Glycoprotein IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycoproteins_df_view")
+                                          ),
+                                          ui.column(4,
+                                              ui.download_button("glycopeptides_download","Download Glycopeptide IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycopeptides_df_view")
+                                          ),
+                                          ui.column(4,
+                                              ui.download_button("glycoPSMs_download","Download GlycoPSM IDs",width="300px",icon=icon_svg("file-arrow-down")),
+                                              ui.output_data_frame("glycoPSMs_df_view")
+                                          ),
+                                      ),
+                                      ),
+                         ui.nav_panel("Glycan Tracker",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycomodIDsplot_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycomodIDsplot_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.row(
+                                          ui.output_ui("glycomodlist_ui"),
+                                          ui.input_radio_buttons("counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
+                                          ),
+                                      ui.output_plot("glycomod_IDs")
+                                      ),
+                         ui.nav_panel("Peptide Tracker",
+                                      ui.row(
+                                          ui.column(6,
+                                                    ui.download_button("selected_glyco_download","Download PSMs for Selected Peptide",width="400px",icon=icon_svg("file-arrow-down")),
+                                                    ui.output_ui("glyco_peplist")
+                                                    )
+                                             ),
+                                      ui.output_data_frame("selected_glyco_peplist")
+                                      ),
+                         ui.nav_panel("Precursor Scatterplot",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("glycoscatter_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
+                                              ui.input_slider("glycoscatter_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
+                                            )
+                                          ),
+                                      ui.output_plot("glycoscatter")
+                                      ),
+                                ),icon=icon_svg("cubes-stacked")
+                     ),
         ui.nav_panel("Raw Data",
                      ui.navset_pill(
                          ui.nav_panel("Multi-File Import",
-                                      ui.input_text_area("rawfile_input","Paste the path for each .d file you want to upload (note: do not leave whitespace at the end):",width="1500px",autoresize=True,placeholder="ex - C:\\Users\\Data\\K562_500ng_1_Slot1-49_1_3838.d")
+                                      ui.input_radio_buttons("file_or_folder","Load raw data from:",choices={"individual":"Individual Files","directory":"Directory"}),
+                                      ui.output_ui("rawfile_input_ui"),
+                                      ui.output_text_verbatim("uploadedfiles")
                                       ),
                          ui.nav_panel("TIC Plot",
                                       ui.card(
@@ -817,66 +1077,6 @@ app_ui=ui.page_fluid(
                                       )
                                 ),icon=icon_svg("file-export")
                      ),
-        ui.nav_panel("Glycoproteomics",
-                     ui.navset_pill(
-                         ui.nav_panel("Glyco ID Metrics",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("glycoIDsplot_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("glycoIDsplot_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
-                                            )
-                                          ),
-                                      ui.output_plot("glycoIDsplot")
-                                      ),
-                         ui.nav_panel("Glyco ID Tables",
-                                      ui.row(
-                                          ui.column(3,
-                                              ui.download_button("glycoproteins_download","Download Glycoprotein IDs",width="300px",icon=icon_svg("file-arrow-down")),
-                                              ui.output_data_frame("glycoproteins_df_view")
-                                          ),
-                                          ui.column(4,
-                                              ui.download_button("glycopeptides_download","Download Glycopeptide IDs",width="300px",icon=icon_svg("file-arrow-down")),
-                                              ui.output_data_frame("glycopeptides_df_view")
-                                          ),
-                                          ui.column(4,
-                                              ui.download_button("glycoPSMs_download","Download GlycoPSM IDs",width="300px",icon=icon_svg("file-arrow-down")),
-                                              ui.output_data_frame("glycoPSMs_df_view")
-                                          ),
-                                      ),
-                                      ),
-                         ui.nav_panel("Glycan Tracker",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("glycomodIDsplot_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("glycomodIDsplot_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
-                                            )
-                                          ),
-                                      ui.row(
-                                          ui.output_ui("glycomodlist_ui"),
-                                          ui.input_radio_buttons("counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
-                                          ),
-                                      ui.output_plot("glycomod_IDs")
-                                      ),
-                         ui.nav_panel("Peptide Tracker",
-                                      ui.row(
-                                          ui.column(6,
-                                                    ui.download_button("selected_glyco_download","Download PSMs for Selected Peptide",width="400px",icon=icon_svg("file-arrow-down")),
-                                                    ui.output_ui("glyco_peplist")
-                                                    )
-                                             ),
-                                      ui.output_data_frame("selected_glyco_peplist")
-                                      ),
-                         ui.nav_panel("Precursor Scatterplot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("glycoscatter_width","Plot width",min=200,max=3000,step=100,value=1000,ticks=True),
-                                              ui.input_slider("glycoscatter_height","Plot height",min=200,max=3000,step=100,value=500,ticks=True)
-                                            )
-                                          ),
-                                      ui.output_plot("glycoscatter")
-                                      ),
-                                ),icon=icon_svg("cubes-stacked")
-                     ),
     widths=(2,8)
     ),
     theme=theme.cerulean()
@@ -887,34 +1087,7 @@ app_ui=ui.page_fluid(
 # Server
 # =============================================================================
 
-def server(input: Inputs, output: Outputs, session: Session):
-
-# ============================================================================= UI calls for use around the app
-#region
-
-    #render ui call for dropdown calling sample condition names
-    @render.ui
-    def sampleconditions_ui():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=sampleconditions
-        return ui.input_selectize("conditionname","Pick sample condition",choices=opts)
-
-    #render ui call for dropdown calling replicate number
-    @render.ui
-    def replicates_ui():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=np.arange(1,max(repspercondition)+1,1)
-        return ui.input.selectize("replicate","Replicate number",opts)
-
-    #render ui call for dropdown calling Cond_Rep column
-    @render.ui
-    def cond_rep_list():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=resultdf["Cond_Rep"].tolist()
-        return ui.input_selectize("cond_rep","Pick run:",choices=opts)
-
-#endregion
-
+def server(input: Inputs, output: Outputs, session: Session):        
 # ============================================================================= File Import, Metadata Generation, Updating searchoutput Based on Metadata
 #region
 
@@ -924,12 +1097,19 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.searchreport() is None:
             return pd.DataFrame()
         if ".tsv" in input.searchreport()[0]["name"]:
-            searchoutput=pd.read_csv(input.searchreport()[0]["datapath"],sep="\t")
+            if len(input.searchreport())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.searchreport())):
+                    run=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_csv(input.searchreport()[0]["datapath"],sep="\t")
             if input.software()=="diann":
                 searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                             "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
                                             "PEP","Global.Q.Value","Protein.Q.Value","Global.PG.Q.Value","GG.Q.Value",
@@ -978,59 +1158,17 @@ def server(input: Inputs, output: Outputs, session: Session):
                                 "PrecursorMz":"FG.PrecMz",
                                 "ReferenceRunMS1Response":"FG.MS2Quantity",
                                 "Protein Name":"PG.ProteinNames"})
-            if input.software()=="timsdiann":
-                searchoutput.rename(columns={"File.Name":"R.FileName"},inplace=True)
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
-                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
-                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
-                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
-                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
-                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
-                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
-                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
-                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
-                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0"],inplace=True,errors='ignore')
-
-                searchoutput.rename(columns={"Protein.Group":"PG.ProteinGroups",
-                                            "Protein.Ids":"PG.ProteinAccessions",
-                                            "Protein.Names":"PG.ProteinNames",
-                                            "Genes":"PG.Genes",
-                                            "PG.Quantity":"PG.MS2Quantity",
-                                            "Modified.Sequence":"EG.ModifiedPeptide",
-                                            "Stripped.Sequence":"PEP.StrippedSequence",
-                                            "Precursor.Charge":"FG.Charge",
-                                            "Q.Value":"EG.Qvalue",
-                                            "PG.Q.Value":"PG.Qvalue",
-                                            "Precursor.Quantity":"FG.MS2Quantity",
-                                            "Precursor.Normalized":"FG.MS2RawQuantity",
-                                            "RT":"EG.ApexRT",
-                                            "Predicted.RT":"EG.RTPredicted",
-                                            "CScore":"EG.CScore",
-                                            "Proteotypic":"PEP.IsProteotypic",
-                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
-
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
             if input.software()=="fragpipe":
                 searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
+                
+                searchoutput["FG.CalibratedMassAccuracy (PPM)"]=(searchoutput["Delta Mass"]/searchoutput["Calculated M/Z"])*10^6
 
                 searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length",
                                         "Observed Mass","Calibrated Observed Mass","Calibrated Observed M/Z",
-                                        "Calculated Peptide Mass","Calculated M/Z","Delta Mass",#"SpectralSim",
-                                        #"RTScore",
-                                        "Expectation","Hyperscore","Nextscore",#"Probability",
+                                        "Calculated Peptide Mass","Calculated M/Z","Delta Mass",
+                                        "Expectation","Hyperscore","Nextscore",
                                         "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start",
                                         "Protein End","Assigned Modifications","Observed Modifications",
                                         "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
@@ -1112,28 +1250,190 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
                 searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
         
+        #for BPS input
+        if ".zip" in input.searchreport()[0]["name"]:
+            if input.software()=="bps_timsrescore":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.searchreport()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                samplename_list=[]
+                for run in runlist:
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
+                    #read files from each processing run subfolder, I think only ones that are neeed are pgfdr.peptide and summary-results
+                    #candidates=pd.read_parquet("candidates.candidates.parquet")
+                    #timsrescorer=pd.read_parquet("timsrescorer.psm.parquet")
+                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")
+                    #pgfdr_protein=pd.read_parquet("pgfdr.protein.parquet")
+                    #summary_results=pd.read_parquet("summary-results.results.parquet")
+                    #samplename=summary_results["sample_name"][0]
+                    #samplename_list.append(samplename)
+                    
+                    peptide_dict[run]=pgfdr_peptide
+
+                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                for key in peptide_dict.keys():
+                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
+                    df=df.rename(columns={"sample_name":"R.FileName",
+                                    "stripped_peptide":"PEP.StrippedSequence",
+                                    "precursor_mz":"FG.PrecMz",
+                                    "rt":"EG.ApexRT",
+                                    "charge":"FG.Charge",
+                                    "ook0":"EG.IonMobility",
+                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=df["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+                    df["PG.ProteinGroups"]=proteingroups
+                    df["PG.ProteinNames"]=proteinnames
+                    
+                    #adding a q-value filter before dropping the column
+                    df=df[df["global_peptide_qvalue"]<=0.01]
+
+                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    
+                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({
+                        "42.010565":"Acetyl (Protein N-term)",
+                        "57.021464":"Carbamidomethyl (C)",
+                        "79.966331":"Phospho (STY)",
+                        "15.994915":"Oxidation (M)"},regex=True)
+
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.software()=="bps_timsdiann":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.searchreport()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                for run in runlist:
+                    os.chdir(cwd)
+                    os.chdir(os.getcwd()+"\\"+run)
+                    bps_resultzip=ZipFile("tims-diann.result.zip")
+                    bps_resultzip.extractall()
+                    results=pd.read_csv("results.tsv",sep="\t")
+                    searchoutput=pd.concat([searchoutput,results])
+
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"File.Name":"R.FileName",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Ids":"PG.ProteinAccessions",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "PG.Quantity":"PG.MS2Quantity",
+                                            "Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Q.Value":"EG.Qvalue",
+                                            "PG.Q.Value":"PG.Qvalue",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            "Precursor.Normalized":"FG.MS2RawQuantity",
+                                            "RT":"EG.ApexRT",
+                                            "Predicted.RT":"EG.RTPredicted",
+                                            "CScore":"EG.CScore",
+                                            "Proteotypic":"PEP.IsProteotypic",
+                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                    "UniMod:1":"Acetyl (Protein N-term)",
+                    "UniMod:4":"Carbamidomethyl (C)",
+                    "UniMod:21":"Phospho (STY)",
+                    "UniMod:35":"Oxidation (M)"},regex=True)
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         searchoutput=searchoutput.sort_values('R.FileName')
 
-        if ".zip" in input.searchreport()[0]["name"]:
-            bpszip=ZipFile(input.searchreport()[0]["datapath"])
-            bpszip.extractall()
-            metadata_bps=pd.read_csv("metadata.csv")
-            runlist=metadata_bps["processing_run_uuid"].tolist()
-            cwd=os.getcwd()+"\\processing-run"
-            os.chdir(cwd)
-
-            bps_dict=dict()
-            for run in runlist:
-                os.chdir(cwd+"\\"+run)
-
-
-
-            searchoutput=pd.DataFrame()
-            for key in bps_dict.keys():
-                searchoutput=pd.concat([searchoutput,bps_dict[key]],ignore_index=True)
-            searchoutput=searchoutput.reset_index(drop=True).drop(columns="index")
-            
         return searchoutput
     
     #render the metadata table in the window
@@ -1183,18 +1483,20 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.text
     def metadata_reminder():
         if input.software()=="spectronaut":
-            return "Spectronaut: Make sure to use Shiny report format when exporting search results"
+            return "Use the Shiny report format when exporting search results. R.Condition and R.Replicate are automatically updated in the metadata based on this file. Click on 'Apply Changes' even if the metadata table was not updated"
         if input.software()=="diann":
-            return "DIA-NN: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
+            return "Use the report.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches"
         if input.software()=="ddalibrary":
-            return "DDA Library: DDA libraries have limited functionality, can only plot ID metrics"
-        if input.software()=="timsdiann":
-            return "BPS tims-DIANN: to access results file, unzip the bps_timsDIANN folder, open the processing-run folder and its subfolder, then unzip the tims-diann.result folder. Upload the results.tsv and then make sure to fill out R.Condition and R.Replicate columns in the metadata"
+            return "DDA libraries have limited functionality, can only plot ID metrics"
         if input.software()=="fragpipe":
-            return "FragPipe: Make sure to fill out R.Condition and R.Replicate columns in the metadata"
+            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches"
         if input.software()=="fragpipe_glyco":
-            return "FragPipe (Glyco): Make sure to fill out R.Condition and R.Replicate columns in the metadata. Use the Glycoproteomics tab for processing"
-    
+            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches. Use the Glycoproteomics tab for processing"
+        if input.software()=="bps_timsrescore":
+            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+        if input.software()=="bps_timsdiann":
+            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+
     #download metadata table as shown
     @render.download(filename="metadata_"+str(date.today())+".csv")
     def metadata_download():
@@ -1518,6 +1820,29 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         return pepsperprotein_condition,pepsperprotein_run
 
+    #peak widths
+    @reactive.calc
+    def peakwidths():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        fwhm_df=pd.DataFrame()
+        fwhm_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+        peakwidths=[]
+        peakwidths_95=[]
+        for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+            peakwidthlist=(searchoutput[searchoutput["Cond_Rep"]==run]["EG.PeakWidth"]*60).tolist()
+            peakwidths.append(peakwidthlist)
+            top95=np.percentile(peakwidthlist,95)
+            top95list=[]
+            for i in peakwidthlist:
+                if i <= top95:
+                    top95list.append(i)
+            peakwidths_95.append(top95list)
+        fwhm_df["Peak Width"]=peakwidths
+        fwhm_df["Peak Width 95%"]=peakwidths_95
+
+        return fwhm_df
+
 #endregion
 
 # =============================# Sidebar Tabs #================================
@@ -1666,10 +1991,10 @@ def server(input: Inputs, output: Outputs, session: Session):
     def customcolors_table1():
         try:
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            conditioncolordf1=pd.DataFrame({"Run":sampleconditions})
+            conditioncolordf1=pd.DataFrame({"Condition":sampleconditions})
             return conditioncolordf1
         except:
-            conditioncolordf1=pd.DataFrame({"Run":[]})
+            conditioncolordf1=pd.DataFrame({"Condition":[]})
             return conditioncolordf1
 
     #show the conditions and color options for each condition
@@ -1788,7 +2113,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 resultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
                 ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax3.set_ylim(top=max(resultdf["peptides"].tolist())+(y_padding+0.1)*max(resultdf["peptides"].tolist()))
-                ax3.set_title("Modified Peptides",fontsize=titlefont)
+                ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.set_xlabel("Condition",fontsize=axisfont)
                 ax3.set_ylabel("  ",fontsize=axisfont)
                 ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
@@ -1821,7 +2146,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if plotinput=="proteins2pepts":
                     titleprop="Protein Groups with >2 Peptides"
                 if plotinput=="peptides":
-                    titleprop="Modified Peptides"
+                    titleprop="Peptides"
                 if plotinput=="precursors":
                     titleprop="Precursors"
 
@@ -1882,7 +2207,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 bars3=ax3.bar(averagedf["R.Condition"],averagedf["peptides_avg"],yerr=averagedf["peptides_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
                 ax3.bar_label(bars3,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
                 ax3.set_ylim(top=max(averagedf["peptides_avg"].tolist())+y_padding*max(averagedf["peptides_avg"].tolist()))
-                ax3.set_title("Modified Peptides",fontsize=titlefont)
+                ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.tick_params(axis='y',labelsize=axisfont)
                 ax3.tick_params(axis='x',labelsize=axisfont,rotation=input.xaxis_label_rotation())
                 ax3.set_xlabel("Condition",fontsize=axisfont)
@@ -1918,7 +2243,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if avgplotinput=="proteins2pepts":
                     titleprop="Protein Groups with >2 Peptides"
                 if avgplotinput=="peptides":
-                    titleprop="Modified Peptides"
+                    titleprop="Peptides"
                 if avgplotinput=="precursors":
                     titleprop="Precursors"
 
@@ -1965,12 +2290,12 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             if cutoff95==True:
                 bplot=ax.boxplot(cvcalc_df[cvplotinput+" 95% CVs"],medianprops=lineprops,flierprops=flierprops)
-                plot=ax.violinplot(cvcalc_df[cvplotinput+" 95% CVs"],showextrema=False)#,showmeans=True)
+                plot=ax.violinplot(cvcalc_df[cvplotinput+" 95% CVs"],showextrema=False)
                 ax.set_title(cvplotinput+" CVs, 95% Cutoff",fontsize=titlefont)
 
             elif cutoff95==False:
                 bplot=ax.boxplot(cvcalc_df[cvplotinput+" CVs"],medianprops=lineprops,flierprops=flierprops)
-                plot=ax.violinplot(cvcalc_df[cvplotinput+" CVs"],showextrema=False)#,showmeans=True)
+                plot=ax.violinplot(cvcalc_df[cvplotinput+" CVs"],showextrema=False)
                 ax.set_title(cvplotinput+" CVs",fontsize=titlefont)
 
             ax.set_xticks(x+1,labels=cvcalc_df["R.Condition"],fontsize=axisfont,rotation=input.xaxis_label_rotation())
@@ -1996,55 +2321,55 @@ def server(input: Inputs, output: Outputs, session: Session):
     #show a table of mean/median CV values per condition 
     @render.table
     def cv_table():
-            cvcalc_df=cvcalc()
+        cvcalc_df=cvcalc()
 
-            cvplotinput=input.proteins_precursors_cvplot()
-            cutoff95=input.removetop5percent()
+        cvplotinput=input.proteins_precursors_cvplot()
+        cutoff95=input.removetop5percent()
 
-            cvtable_protein=pd.DataFrame()
-            cvtable_precursor=pd.DataFrame()
-            protein_meanlist=[]
-            protein_medianlist=[]
-            protein_meanlist95=[]
-            protein_medianlist95=[]
+        cvtable_protein=pd.DataFrame()
+        cvtable_precursor=pd.DataFrame()
+        protein_meanlist=[]
+        protein_medianlist=[]
+        protein_meanlist95=[]
+        protein_medianlist95=[]
 
-            for run in cvcalc_df["R.Condition"]:
-                protein_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein CVs"].tolist()))
-                protein_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein 95% CVs"].tolist()))
-                protein_medianlist.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein CVs"].tolist()))
-                protein_medianlist95.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein 95% CVs"].tolist()))
-            cvtable_protein["R.Condition"]=cvcalc_df["R.Condition"]
-            cvtable_protein["Protein_Mean CVs"]=protein_meanlist
-            cvtable_protein["Protein_Mean CVs_95%"]=protein_meanlist95
-            cvtable_protein["Protein_Median CVs"]=protein_medianlist
-            cvtable_protein["Protein_Median CVs_95%"]=protein_medianlist95
+        for run in cvcalc_df["R.Condition"]:
+            protein_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein CVs"].tolist()))
+            protein_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein 95% CVs"].tolist()))
+            protein_medianlist.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein CVs"].tolist()))
+            protein_medianlist95.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein 95% CVs"].tolist()))
+        cvtable_protein["R.Condition"]=cvcalc_df["R.Condition"]
+        cvtable_protein["Protein Mean CVs"]=protein_meanlist
+        cvtable_protein["Protein Mean CVs 95%"]=protein_meanlist95
+        cvtable_protein["Protein Median CVs"]=protein_medianlist
+        cvtable_protein["Protein Median CVs 95%"]=protein_medianlist95
 
-            precursor_meanlist=[]
-            precursor_medianlist=[]
-            precursor_meanlist95=[]
-            precursor_medianlist95=[]
+        precursor_meanlist=[]
+        precursor_medianlist=[]
+        precursor_meanlist95=[]
+        precursor_medianlist95=[]
 
-            for run in cvcalc_df["R.Condition"]:
-                precursor_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor CVs"].tolist()))
-                precursor_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor 95% CVs"].tolist()))
-                precursor_medianlist.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor CVs"].tolist()))
-                precursor_medianlist95.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor 95% CVs"].tolist()))
-            cvtable_precursor["R.Condition"]=cvcalc_df["R.Condition"]
-            cvtable_precursor["Precursor_Mean CVs"]=precursor_meanlist
-            cvtable_precursor["Precursor_Mean CVs_95%"]=precursor_meanlist95
-            cvtable_precursor["Precursor_Median CVs"]=precursor_medianlist
-            cvtable_precursor["Precursor_Median CVs_95%"]=precursor_medianlist95         
+        for run in cvcalc_df["R.Condition"]:
+            precursor_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor CVs"].tolist()))
+            precursor_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor 95% CVs"].tolist()))
+            precursor_medianlist.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor CVs"].tolist()))
+            precursor_medianlist95.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor 95% CVs"].tolist()))
+        cvtable_precursor["R.Condition"]=cvcalc_df["R.Condition"]
+        cvtable_precursor["Precursor Mean CVs"]=precursor_meanlist
+        cvtable_precursor["Precursor Mean CVs 95%"]=precursor_meanlist95
+        cvtable_precursor["Precursor Median CVs"]=precursor_medianlist
+        cvtable_precursor["Precursor Median CVs 95%"]=precursor_medianlist95         
 
-            if cvplotinput=="Protein":
-                if cutoff95==True:
-                    return cvtable_protein[["R.Condition","Protein_Mean CVs_95%","Protein_Median CVs_95%"]]
-                if cutoff95==False:
-                    return cvtable_protein[["R.Condition","Protein_Mean CVs","Protein_Median CVs"]]
-            if cvplotinput=="Precursor":
-                if cutoff95==True:
-                    return cvtable_precursor[["R.Condition","Precursor_Mean CVs_95%","Precursor_Median CVs_95%"]]
-                if cutoff95==False:
-                    return cvtable_precursor[["R.Condition","Precursor_Mean CVs","Precursor_Median CVs"]]
+        if cvplotinput=="Protein":
+            if cutoff95==True:
+                return cvtable_protein[["R.Condition","Protein Mean CVs 95%","Protein Median CVs 95%"]]
+            if cutoff95==False:
+                return cvtable_protein[["R.Condition","Protein Mean CVs","Protein Median CVs"]]
+        if cvplotinput=="Precursor":
+            if cutoff95==True:
+                return cvtable_precursor[["R.Condition","Precursor Mean CVs 95%","Precursor Median CVs 95%"]]
+            if cutoff95==False:
+                return cvtable_precursor[["R.Condition","Precursor Mean CVs","Precursor Median CVs"]]
 
     #plot counts with CV cutoffs
     @reactive.effect
@@ -2146,8 +2471,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _():
         @render.plot(width=input.chargestate_width(),height=input.chargestate_height())
         def chargestateplot():
-            
-            figsize=(12,5)
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
             labelfont=input.labelfont()
@@ -2162,8 +2486,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 plottingdf=chargestatedf_run
                 chargestatecolor=replicatecolors()
 
+            #condition for when there's only a single sample in searchoutput
             if len(plottingdf)==1:
-                fig,ax=plt.subplots(figsize=(5,5))
+                fig,ax=plt.subplots()
                 x=list(set(plottingdf["Charge States"][0]))
                 frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][0]))]
                 
@@ -2181,8 +2506,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_xticks(np.arange(1,max(x)+1,1))
                 ax.set_xlabel("Charge State",fontsize=axisfont)             
                 ax.set_ylabel("Frequency (%)",fontsize=axisfont)
+            #for when there's more than a single sample in searchoutput
             else:
-                fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=figsize)
+                fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf))
                 for i in range(len(plottingdf)):
                     x=list(set(plottingdf["Charge States"][i]))
                     frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][i]))]
@@ -2190,7 +2516,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                     totals=sum(frequencies)
                     for y,ele in enumerate(frequencies):
                         frequencies[y]=round((ele/totals)*100,1)
-                    ax[i].bar(x,frequencies,color=chargestatecolor[i],edgecolor="k")
+                    #check if there's only one sample condition, the loop will try and split the color name/code which will result in an error
+                    if numconditions==1:
+                        ax[i].bar(x,frequencies,color=chargestatecolor,edgecolor="k")
+                    else:
+                        ax[i].bar(x,frequencies,color=chargestatecolor[i],edgecolor="k")
                     ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
@@ -2211,13 +2541,14 @@ def server(input: Inputs, output: Outputs, session: Session):
             maxlength=30
             opts=[item for item in range(minlength,maxlength+1)]
             opts.insert(0,0)
-            return ui.row(ui.input_selectize("lengthmark_pick","Pick peptide length to mark on bar plot (use 0 for maximum)",choices=opts),ui.input_switch("hide_lengthmark","Hide peptide length marker"))
+            return ui.column(4,ui.input_switch("hide_lengthmark","Hide peptide length marker"),ui.input_selectize("lengthmark_pick","Pick peptide length to mark on bar plot (use 0 for maximum)",choices=opts))
 
     #plot peptide legnths
     @reactive.effect
     def _():
         @render.plot(width=input.peptidelength_width(),height=input.peptidelength_height())
         def peptidelengthplot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             colors=colorpicker()
 
             titlefont=input.titlefont()
@@ -2247,7 +2578,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                     else:
                         x=list(set(plottingdf["Peptide Lengths"][i]))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][i]))]
-                        ax.plot(x,frequencies,color=colors[i],linewidth=2)
+                        if numconditions==1:
+                            ax.plot(x,frequencies,color=colors,linewidth=2)
+                        else:
+                            ax.plot(x,frequencies,color=colors[i],linewidth=2)
                         legendlist.append(plottingdf["Sample Names"][i])
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_xlabel("Peptide Length",fontsize=axisfont)
@@ -2255,7 +2589,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.legend(legendlist,fontsize=legendfont)
-                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             if input.peplengthinput()=="barplot":
                 lengthmark=int(input.lengthmark_pick())
@@ -2270,33 +2603,38 @@ def server(input: Inputs, output: Outputs, session: Session):
                     if input.hide_lengthmark()==False:
                         if lengthmark!=0:
                             ax.vlines(x=x[lengthmark-min(x)],ymin=frequencies[lengthmark-min(x)],ymax=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],color="k")
-                            ax.text(x=x[lengthmark-min(x)],y=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],s=str(x[lengthmark-min(x)])+", "+str(frequencies[lengthmark-min(x)]),fontsize=labelfont)
+                            ax.text(x=x[lengthmark-min(x)],y=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],s=str(x[lengthmark-min(x)])+": "+str(frequencies[lengthmark-min(x)]),fontsize=labelfont)
                         if lengthmark==0:
                             ax.vlines(x=x[np.argmax(frequencies)],ymin=max(frequencies),ymax=max(frequencies)+0.2*max(frequencies),color="k")
-                            ax.text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+", "+str(max(frequencies)),fontsize=labelfont)
+                            ax.text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+": "+str(max(frequencies)),fontsize=labelfont)
                             ax.set_ylim(top=max(frequencies)+y_padding*max(frequencies))
                     ax.tick_params(axis="both",labelsize=axisfont)
                     ax.set_xlabel("Peptide Length",fontsize=axisfont)
                     ax.set_ylabel("Counts",fontsize=axisfont)
+                    ax.xaxis.set_minor_locator(MultipleLocator(1))
                 else:
                     fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
                     for i in range(len(plottingdf)):
                         x=list(set(plottingdf["Peptide Lengths"][i]))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][i]))]
-                        ax[i].bar(x,frequencies,color=colors[i],edgecolor="k")
+                        if numconditions==1:
+                            ax[i].bar(x,frequencies,color=colors,edgecolor="k")
+                        else:
+                            ax[i].bar(x,frequencies,color=colors[i],edgecolor="k")
                         ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                         ax[i].set_axisbelow(True)
                         ax[i].grid(linestyle="--")
                         if input.hide_lengthmark()==False:
                             if lengthmark!=0:
                                 ax[i].vlines(x=x[lengthmark-min(x)],ymin=frequencies[lengthmark-min(x)],ymax=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],color="k")
-                                ax[i].text(x=x[lengthmark-min(x)],y=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],s=str(x[lengthmark-min(x)])+", "+str(frequencies[lengthmark-min(x)]),fontsize=labelfont)
+                                ax[i].text(x=x[lengthmark-min(x)],y=frequencies[lengthmark-min(x)]+0.2*frequencies[lengthmark-min(x)],s=str(x[lengthmark-min(x)])+": "+str(frequencies[lengthmark-min(x)]),fontsize=labelfont)
                             if lengthmark==0:
                                 ax[i].vlines(x=x[np.argmax(frequencies)],ymin=max(frequencies),ymax=max(frequencies)+0.2*max(frequencies),color="k")
-                                ax[i].text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+", "+str(max(frequencies)),fontsize=labelfont)
+                                ax[i].text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+": "+str(max(frequencies)),fontsize=labelfont)
                                 ax[i].set_ylim(top=max(frequencies)+y_padding*max(frequencies))
                         ax[i].tick_params(axis="both",labelsize=axisfont)
                         ax[i].set_xlabel("Peptide Length",fontsize=axisfont)
+                        ax[i].xaxis.set_minor_locator(MultipleLocator(1))
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
             fig.set_tight_layout(True)
     
@@ -2305,7 +2643,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _():
         @render.plot(width=input.pepsperprotein_width(),height=input.pepsperprotein_height())
         def pepsperproteinplot():
-
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
             labelfont=input.labelfont()
@@ -2333,12 +2671,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                     for i in range(len(plottingdf)):
                         x=sorted(list(set(plottingdf["Peptides per Protein"][i])))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][i]))]
-                        ax.plot(x,frequencies,color=colors[i],linewidth=2)
+                        if numconditions==1:
+                            ax.plot(x,frequencies,color=colors,linewidth=2)
+                        else:
+                            ax.plot(x,frequencies,color=colors[i],linewidth=2)
                         legendlist.append(plottingdf["Sample Names"][i])
 
-                if max(x)>=100:
-                    ax.set_xlim(left=0,right=100)
-                ax.set_xlim(left=0)
+                ax.set_xlim(left=0,right=input.pepsperprotein_xrange())
                 ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_xlabel("Peptides per Protein",fontsize=axisfont)
                 ax.set_ylabel("Counts",fontsize=axisfont)
@@ -2362,15 +2701,16 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax.set_xticks(np.arange(0,max(x)+1,25))
                         ax.set_xlabel("# Peptides",fontsize=axisfont)
                         ax.set_ylabel("Counts",fontsize=axisfont)
-                    if max(x)>=100:
-                        ax.set_xlim(left=0,right=100)
+                        ax.set_xlim(left=0,right=input.pepsperprotein_xrange())
                 else:
                     fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
                     for i in range(len(plottingdf)):
                         x=list(set(plottingdf["Peptides per Protein"][i]))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][i]))]
-
-                        ax[i].bar(x,frequencies,color=colors[i])
+                        if numconditions==1:
+                            ax[i].bar(x,frequencies,color=colors)
+                        else:
+                            ax[i].bar(x,frequencies,color=colors[i])
                         ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
                         ax[i].set_axisbelow(True)
                         ax[i].grid(linestyle="--")
@@ -2378,8 +2718,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax[i].tick_params(axis="both",labelsize=axisfont)
                         ax[i].set_xticks(np.arange(0,max(x)+1,25))
                         ax[i].set_xlabel("# Peptides",fontsize=axisfont)
-                        if max(x)>=100:
-                            ax[i].set_xlim(left=0,right=100)
+                        ax[i].set_xlim(left=0,right=input.pepsperprotein_xrange())
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
                 fig.set_tight_layout(True)
     
@@ -2444,6 +2783,67 @@ def server(input: Inputs, output: Outputs, session: Session):
         intensitydf=intensitydf.sort_values("PG.MS2Quantity",ascending=False).reset_index(drop=True)
 
         return render.DataGrid(intensitydf.iloc[:input.top_n()],editable=False)
+
+    @render.ui
+    def massaccuracy_bins_ui():
+        if input.massaccuracy_violin_hist()=="histogram":
+            return ui.input_slider("massaccuracy_hist_bins","Number of bins",min=10,max=200,value=100,step=10,ticks=True,width="300px")
+    #plot mass accuracy
+    @reactive.effect
+    def _():
+        @render.plot(width=input.massaccuracy_width(),height=input.massaccuracy_height())
+        def massaccuracy_plot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            massaccuracy_df=pd.DataFrame()
+            massaccuracy_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+            massaccuracy=[]
+            for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                massaccuracylist=searchoutput[searchoutput["Cond_Rep"]==run]["FG.CalibratedMassAccuracy (PPM)"].dropna().tolist()
+                massaccuracy.append(massaccuracylist)
+
+            massaccuracy_df["Mass Accuracy"]=massaccuracy
+
+            violincolors=replicatecolors()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+
+            if input.massaccuracy_violin_hist()=="violin":
+                fig,ax=plt.subplots()
+                medianlineprops=dict(linestyle="--",color="black")
+                flierprops=dict(markersize=3)
+                x=np.arange(len(massaccuracy_df["Cond_Rep"].tolist()))
+                plot=ax.violinplot(massaccuracy_df["Mass Accuracy"],showextrema=False)
+                ax.boxplot(massaccuracy_df["Mass Accuracy"],medianprops=medianlineprops,flierprops=flierprops)
+                ax.set_ylabel("Calibrated Mass Accuracy (ppm)",fontsize=axisfont)
+                ax.set_xlabel("Run",fontsize=axisfont)
+                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.grid(linestyle="--")
+                ax.set_axisbelow(True)
+
+                if numconditions==1:
+                    for z in plot["bodies"]:
+                        z.set_facecolor(violincolors)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
+                else:
+                    for z,color in zip(plot["bodies"],violincolors):
+                        z.set_facecolor(color)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
+
+            if input.massaccuracy_violin_hist()=="histogram":
+                fig,ax=plt.subplots(ncols=len(massaccuracy_df["Cond_Rep"]))
+                for i,run in enumerate(massaccuracy_df["Cond_Rep"]):
+                    if numconditions==1:
+                        ax.hist(massaccuracy_df["Mass Accuracy"],bins=input.massaccuracy_hist_bins(),color=violincolors)
+                    else:
+                        ax.hist(massaccuracy_df["Mass Accuracy"],bins=input.massaccuracy_hist_bins(),color=violincolors[i])
+                    ax.set_ylabel("Frequency",fontsize=axisfont)
+                    ax.set_xlabel("Calibrated Mass Accuracy (ppm)",fontsize=axisfont)
+                    ax.grid(linestyle="--")
+                    ax.set_axisbelow(True)
+                    ax.set_title(run,fontsize=titlefont)
 
     #plot data completeness
     @reactive.effect
@@ -2518,24 +2918,62 @@ def server(input: Inputs, output: Outputs, session: Session):
             titlefont=input.titlefont()
             axisfont=input.axisfont()
 
-            fwhm_dict=[]
-            for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
-                fwhm_dict.append(searchoutput[searchoutput["Cond_Rep"]==run]["EG.PeakWidth"]*60)
-            x=np.arange(len(searchoutput["Cond_Rep"].drop_duplicates().tolist()))
+            fwhm_df=peakwidths()
+
+            x=np.arange(len(fwhm_df["Cond_Rep"].tolist()))
             fig,ax=plt.subplots()
             medianlineprops=dict(linestyle="--",color="black")
             flierprops=dict(markersize=3)
-            plot=ax.violinplot(fwhm_dict,showextrema=False)
-            bplot=ax.boxplot(fwhm_dict,medianprops=medianlineprops,flierprops=flierprops)
+            if input.peakwidth_removetop5percent()==False:
+                plot=ax.violinplot(fwhm_df["Peak Width"],showextrema=False)
+                bplot=ax.boxplot(fwhm_df["Peak Width"],medianprops=medianlineprops,flierprops=flierprops)
+            elif input.peakwidth_removetop5percent()==True:
+                plot=ax.violinplot(fwhm_df["Peak Width 95%"],showextrema=False)
+                bplot=ax.boxplot(fwhm_df["Peak Width 95%"],medianprops=medianlineprops,flierprops=flierprops)
+
             ax.set_ylabel("Peak Width (s)",fontsize=axisfont)
             ax.set_xlabel("Run",fontsize=axisfont)
-            ax.set_xticks(x+1,labels=searchoutput["Cond_Rep"].drop_duplicates().tolist(),rotation=input.xaxis_label_rotation())
+            ax.set_xticks(x+1,labels=fwhm_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
             ax.grid(linestyle="--")
             ax.set_axisbelow(True)
-            for z,color in zip(plot["bodies"],violincolors):
-                z.set_facecolor(color)
-                z.set_edgecolor("black")
-                z.set_alpha(0.7)
+
+            if numconditions==1:
+                for z in plot["bodies"]:
+                    z.set_facecolor(violincolors)
+                    z.set_edgecolor("black")
+                    z.set_alpha(0.7)
+            else:
+                for z,color in zip(plot["bodies"],violincolors):
+                    z.set_facecolor(color)
+                    z.set_edgecolor("black")
+                    z.set_alpha(0.7)              
+    #show a table of mean/median peak widths per run 
+    @render.table
+    def peakwidth_table():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            fwhm_df=peakwidths()
+            peakwidthtable=pd.DataFrame()
+
+            meanlist=[]
+            medianlist=[]
+            meanlist95=[]
+            medianlist95=[]
+            for run in fwhm_df["Cond_Rep"]:
+                meanlist.append(np.mean(fwhm_df[fwhm_df["Cond_Rep"]==run]["Peak Width"].tolist()))
+                meanlist95.append(np.mean(fwhm_df[fwhm_df["Cond_Rep"]==run]["Peak Width 95%"].tolist()))
+                medianlist.append(np.median(fwhm_df[fwhm_df["Cond_Rep"]==run]["Peak Width"].tolist()))
+                medianlist95.append(np.median(fwhm_df[fwhm_df["Cond_Rep"]==run]["Peak Width 95%"].tolist()))
+
+            peakwidthtable["Run"]=fwhm_df["Cond_Rep"]
+            peakwidthtable["Mean Peak Width (s)"]=meanlist
+            peakwidthtable["Median Peak Width (s)"]=medianlist
+            peakwidthtable["Mean Peak Width 95% (s)"]=meanlist95
+            peakwidthtable["Median Peak Width 95% (s)"]=medianlist95
+
+            if input.peakwidth_removetop5percent()==True:
+                return peakwidthtable[["Run","Mean Peak Width 95% (s)","Median Peak Width 95% (s)"]]
+            elif input.peakwidth_removetop5percent()==False:
+                return peakwidthtable[["Run","Mean Peak Width (s)","Median Peak Width (s)"]]
 
 #endregion
 
@@ -2565,22 +3003,21 @@ def server(input: Inputs, output: Outputs, session: Session):
         numptmproteins2pepts=[]
         numptmpeptides=[]
         numptmprecursors=[]
-        for condition in sampleconditions:
-            for j in range(max(maxreplicatelist)+1):
-                df=searchoutput[(searchoutput["R.Condition"]==condition)&(searchoutput["R.Replicate"]==j)][["R.Condition","R.Replicate","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]]
-                if df.empty:
-                    continue
-                #number of proteins with specified PTM
-                numptmproteins.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["PG.ProteinGroups"].nunique())
+        for i in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            df=searchoutput[searchoutput["Cond_Rep"]==i][["R.Condition","R.Replicate","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]]
+            if df.empty:
+                continue
+            #number of proteins with specified PTM
+            numptmproteins.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["PG.ProteinGroups"].nunique())
 
-                #number of proteins with 2 peptides and specified PTM
-                numptmproteins2pepts.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["PG.ProteinGroups","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinGroups").size().reset_index(name="peptides").query("peptides>1")))
+            #number of proteins with 2 peptides and specified PTM
+            numptmproteins2pepts.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["PG.ProteinGroups","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinGroups").size().reset_index(name="peptides").query("peptides>1")))
 
-                #number of peptides with specified PTM
-                numptmpeptides.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["EG.ModifiedPeptide"].nunique())
+            #number of peptides with specified PTM
+            numptmpeptides.append(df[df["EG.ModifiedPeptide"].str.contains(ptm)]["EG.ModifiedPeptide"].nunique())
 
-                #number of precursors with specified PTM
-                numptmprecursors.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
+            #number of precursors with specified PTM
+            numptmprecursors.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
 
         ptmresultdf=pd.DataFrame({"Cond_Rep":resultdf["Cond_Rep"],"proteins":numptmproteins,"proteins2pepts":numptmproteins2pepts,"peptides":numptmpeptides,"precursors":numptmprecursors})
 
@@ -2589,6 +3026,67 @@ def server(input: Inputs, output: Outputs, session: Session):
         for column in propcolumnlist:
             exec(f'ptmresultdf["{column}_enrich%"]=round((ptmresultdf["{column}"]/resultdf["{column}"])*100,1)')
         return ptmresultdf,ptm
+
+    #calculate CVs for selected PTM
+    @reactive.calc
+    def ptmcvs_calc():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        resultdf,averagedf=idmetrics()
+        ptmresultdf,ptm=ptmcounts()
+
+        ptmcvs=pd.DataFrame()
+        ptmcvs["R.Condition"]=averagedf["R.Condition"]
+        proteincv=[]
+        proteinptmcv95=[]
+        precursorcv=[]
+        precursorptmcv95=[]
+
+        df=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+        for x,condition in enumerate(averagedf["R.Condition"]):
+            ptmdf=df[df["R.Condition"]==condition][["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+            
+            if maxreplicatelist[x]==1:
+                emptylist=[]
+                proteincv.append(emptylist)
+                proteinptmcv95.append(emptylist)
+                precursorcv.append(emptylist)
+                precursorptmcv95.append(emptylist)
+            else:
+                #protein CVs for specified PTMs
+                mean=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"PTM Protein Mean"}).reset_index(drop=True)
+                stdev=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"PTM Protein Stdev"}).reset_index(drop=True)
+                cvptmproteintable=pd.concat([mean,stdev],axis=1)
+                cvptmproteintable["PTM CV"]=(cvptmproteintable["PTM Protein Stdev"]/cvptmproteintable["PTM Protein Mean"]*100).tolist()
+                cvptmproteintable.drop(columns=["PTM Protein Mean","PTM Protein Stdev"],inplace=True)
+                cvptmproteintable.dropna(inplace=True)
+                proteincv.append(cvptmproteintable["PTM CV"].tolist())
+                top95=np.percentile(cvptmproteintable,95)
+                ptmcvlist95=[]
+                for i in cvptmproteintable["PTM CV"].tolist():
+                    if i <=top95:
+                        ptmcvlist95.append(i)
+                proteinptmcv95.append(ptmcvlist95)
+                
+                #precursor CVs for specified PTMs
+                mean=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"PTM Precursor Mean"}).reset_index(drop=True)
+                stdev=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"PTM Precursor Stdev"}).reset_index(drop=True)
+                cvptmprecursortable=pd.concat([mean,stdev],axis=1)
+                cvptmprecursortable["PTM CV"]=(cvptmprecursortable["PTM Precursor Stdev"]/cvptmprecursortable["PTM Precursor Mean"]*100).tolist()
+                cvptmprecursortable.drop(columns=["PTM Precursor Mean","PTM Precursor Stdev"],inplace=True)
+                cvptmprecursortable.dropna(inplace=True)
+                precursorcv.append(cvptmprecursortable["PTM CV"].tolist())
+                top95=np.percentile(cvptmprecursortable,95)
+                ptmcvlist95=[]
+                for i in cvptmprecursortable["PTM CV"].tolist():
+                    if i <=top95:
+                        ptmcvlist95.append(i)
+                precursorptmcv95.append(ptmcvlist95)
+        ptmcvs["Protein CVs"]=proteincv
+        ptmcvs["Protein 95% CVs"]=proteinptmcv95
+        ptmcvs["Precursor CVs"]=precursorcv
+        ptmcvs["Precursor 95% CVs"]=precursorptmcv95
+
+        return ptmcvs
 
     #generate list to pull from to pick PTMs
     @render.ui
@@ -2711,74 +3209,22 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _():
         @render.plot(width=input.ptmcvplot_width(),height=input.ptmcvplot_height())
         def ptm_cvplot():
-            #colorblocks,colors,matplottabcolors,tabcolorsblocks=colordfs()
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             resultdf,averagedf=idmetrics()
             ptmresultdf,ptm=ptmcounts()
+            ptmcvs=ptmcvs_calc()
+
             colors=colorpicker()
             cvplotinput=input.ptm_proteins_precursors()
             cutoff95=input.ptm_removetop5percent()
             
-            figsize=(15,10)
             titlefont=input.titlefont()
             axisfont=input.axisfont()
-
-            ptmcvs=pd.DataFrame()
-            ptmcvs["R.Condition"]=averagedf["R.Condition"]
-            proteincv=[]
-            proteinptmcv95=[]
-            precursorcv=[]
-            precursorptmcv95=[]
-
-            df=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-            for x,condition in enumerate(averagedf["R.Condition"]):
-                ptmdf=df[df["R.Condition"]==condition][["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity","FG.Charge","EG.ModifiedPeptide","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-                
-                if maxreplicatelist[x]==1:
-                    emptylist=[]
-                    proteincv.append(emptylist)
-                    proteinptmcv95.append(emptylist)
-                    precursorcv.append(emptylist)
-                    precursorptmcv95.append(emptylist)
-                else:
-                    #protein CVs for specified PTMs
-                    mean=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"PTM Protein Mean"}).reset_index(drop=True)
-                    stdev=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"PTM Protein Stdev"}).reset_index(drop=True)
-                    cvptmproteintable=pd.concat([mean,stdev],axis=1)
-                    cvptmproteintable["PTM CV"]=(cvptmproteintable["PTM Protein Stdev"]/cvptmproteintable["PTM Protein Mean"]*100).tolist()
-                    cvptmproteintable.drop(columns=["PTM Protein Mean","PTM Protein Stdev"],inplace=True)
-                    cvptmproteintable.dropna(inplace=True)
-                    proteincv.append(cvptmproteintable["PTM CV"].tolist())
-                    top95=np.percentile(cvptmproteintable,95)
-                    ptmcvlist95=[]
-                    for i in cvptmproteintable["PTM CV"].tolist():
-                        if i <=top95:
-                            ptmcvlist95.append(i)
-                    proteinptmcv95.append(ptmcvlist95)
-                    
-                    #precursor CVs for specified PTMs
-                    mean=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"PTM Precursor Mean"}).reset_index(drop=True)
-                    stdev=ptmdf[ptmdf["EG.ModifiedPeptide"].str.contains(ptm)!=False][["R.Condition","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"PTM Precursor Stdev"}).reset_index(drop=True)
-                    cvptmprecursortable=pd.concat([mean,stdev],axis=1)
-                    cvptmprecursortable["PTM CV"]=(cvptmprecursortable["PTM Precursor Stdev"]/cvptmprecursortable["PTM Precursor Mean"]*100).tolist()
-                    cvptmprecursortable.drop(columns=["PTM Precursor Mean","PTM Precursor Stdev"],inplace=True)
-                    cvptmprecursortable.dropna(inplace=True)
-                    precursorcv.append(cvptmprecursortable["PTM CV"].tolist())
-                    top95=np.percentile(cvptmprecursortable,95)
-                    ptmcvlist95=[]
-                    for i in cvptmprecursortable["PTM CV"].tolist():
-                        if i <=top95:
-                            ptmcvlist95.append(i)
-                    precursorptmcv95.append(ptmcvlist95)
-            ptmcvs["Protein CVs"]=proteincv
-            ptmcvs["Protein 95% CVs"]=proteinptmcv95
-            ptmcvs["Precursor CVs"]=precursorcv
-            ptmcvs["Precursor 95% CVs"]=precursorptmcv95
 
             n=len(sampleconditions)
             x=np.arange(n)
 
-            fig,ax=plt.subplots(figsize=figsize)
+            fig,ax=plt.subplots()
 
             medianlineprops=dict(linestyle="--",color="black")
             flierprops=dict(markersize=3)
@@ -2806,6 +3252,58 @@ def server(input: Inputs, output: Outputs, session: Session):
                 z.set_facecolor(color)
                 z.set_edgecolor("black")
                 z.set_alpha(0.7)
+
+    #show a table of mean/median CV values per condition for selected PTM
+    @render.table
+    def ptm_cvtable():
+        ptmcvs=ptmcvs_calc()
+
+        ptmcvs_summary=pd.DataFrame()
+        proteinptmcv_mean=[]
+        proteinptmcv95_mean=[]
+        precursorptmcv_mean=[]
+        precursorptmcv95_mean=[]
+
+        proteinptmcv_median=[]
+        proteinptmcv95_median=[]
+        precursorptmcv_median=[]
+        precursorptmcv95_median=[]
+        for i,run in enumerate(ptmcvs["R.Condition"].tolist()):
+            proteinptmcv_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Protein CVs"][i]))
+            proteinptmcv95_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Protein 95% CVs"][i]))
+            
+            precursorptmcv_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor CVs"][i]))
+            precursorptmcv95_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor 95% CVs"][i]))
+            
+            proteinptmcv_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Protein CVs"][i]))
+            proteinptmcv95_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Protein 95% CVs"][i]))
+            
+            precursorptmcv_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor CVs"][i]))
+            precursorptmcv95_median.append((np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor 95% CVs"][i])))
+        
+        ptmcvs_summary["R.Condition"]=ptmcvs["R.Condition"]
+        ptmcvs_summary["Protein Mean CVs"]=proteinptmcv_mean
+        ptmcvs_summary["Protein Median CVs"]=proteinptmcv_median
+        ptmcvs_summary["Protein Mean CVs 95%"]=proteinptmcv95_mean
+        ptmcvs_summary["Protein Median CVs 95%"]=proteinptmcv95_median
+
+        ptmcvs_summary["Precursor Mean CVs"]=precursorptmcv_mean
+        ptmcvs_summary["Precursor Median CVs"]=precursorptmcv_median
+        ptmcvs_summary["Precursor Mean CVs 95%"]=precursorptmcv95_mean
+        ptmcvs_summary["Precursor Median CVs 95%"]=precursorptmcv95_median
+
+        cvplotinput=input.ptm_proteins_precursors()
+        cutoff95=input.ptm_removetop5percent()
+        if cvplotinput=="Protein":
+            if cutoff95==True:
+                return ptmcvs_summary[["R.Condition","Protein Mean CVs 95%","Protein Median CVs 95%"]]
+            if cutoff95==False:
+                return ptmcvs_summary[["R.Condition","Protein Mean CVs","Protein Median CVs"]]
+        if cvplotinput=="Precursor":
+            if cutoff95==True:
+                return ptmcvs_summary[["R.Condition","Precursor Mean CVs 95%","Precursor Median CVs 95%"]]
+            if cutoff95==False:
+                return ptmcvs_summary[["R.Condition","Precursor Mean CVs","Precursor Median CVs"]]
 
     #plot PTMs per precursor
     @reactive.effect
@@ -2855,6 +3353,70 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_title("# of PTMs per Precursor",fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+
+    @render.ui
+    def ptm_massaccuracy_bins_ui():
+        if input.ptm_massaccuracy_violin_hist()=="histogram":
+            return ui.input_slider("ptm_massaccuracy_hist_bins","Number of bins",min=10,max=200,value=100,step=10,ticks=True,width="300px")
+    #plot mass accuracy
+    @reactive.effect
+    def _():
+        @render.plot(width=input.ptm_massaccuracy_width(),height=input.ptm_massaccuracy_height())
+        def ptm_massaccuracy_plot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            ptmresultdf,ptm=ptmcounts()
+
+            massaccuracy_df=pd.DataFrame()
+            massaccuracy_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
+            massaccuracy=[]
+            for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                massaccuracylist=searchoutput[(searchoutput["Cond_Rep"]==run)&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))]["FG.CalibratedMassAccuracy (PPM)"].dropna().tolist()
+                massaccuracy.append(massaccuracylist)
+
+            massaccuracy_df["Mass Accuracy"]=massaccuracy
+
+            violincolors=replicatecolors()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+
+            if input.ptm_massaccuracy_violin_hist()=="violin":
+                fig,ax=plt.subplots()
+                medianlineprops=dict(linestyle="--",color="black")
+                flierprops=dict(markersize=3)
+                x=np.arange(len(massaccuracy_df["Cond_Rep"].tolist()))
+                plot=ax.violinplot(massaccuracy_df["Mass Accuracy"],showextrema=False)
+                ax.boxplot(massaccuracy_df["Mass Accuracy"],medianprops=medianlineprops,flierprops=flierprops)
+                ax.set_ylabel("Calibrated Mass Accuracy (ppm)",fontsize=axisfont)
+                ax.set_xlabel("Run",fontsize=axisfont)
+                ax.set_title("Mass Accuracy_"+ptm+"Precursors",fontsize=titlefont)
+                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.grid(linestyle="--")
+                ax.set_axisbelow(True)
+
+                if numconditions==1:
+                    for z in plot["bodies"]:
+                        z.set_facecolor(violincolors)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
+                else:
+                    for z,color in zip(plot["bodies"],violincolors):
+                        z.set_facecolor(color)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
+
+            if input.ptm_massaccuracy_violin_hist()=="histogram":
+                fig,ax=plt.subplots(ncols=len(massaccuracy_df["Cond_Rep"]))
+                for i,run in enumerate(massaccuracy_df["Cond_Rep"]):
+                    if numconditions==1:
+                        ax.hist(massaccuracy_df["Mass Accuracy"],bins=input.ptm_massaccuracy_hist_bins(),color=violincolors)
+                    else:
+                        ax.hist(massaccuracy_df["Mass Accuracy"],bins=input.ptm_massaccuracy_hist_bins(),color=violincolors[i])
+                    ax.set_ylabel("Frequency",fontsize=axisfont)
+                    ax.set_xlabel("Calibrated Mass Accuracy (ppm)",fontsize=axisfont)
+                    ax.grid(linestyle="--")
+                    ax.set_axisbelow(True)
+                    ax.set_title(run,fontsize=titlefont)
 
 #endregion    
 
@@ -2988,7 +3550,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         nonedict={"None":"None"}
         ptmdict=(nonedict | ptmdict)
         return ui.input_selectize("ptm_chargeptmheatmap_list","Pick PTM to plot data for (use None for all precursors):",choices=ptmdict,selected="None")
-
     #Charge/PTM precursor heatmap
     @render.plot(width=1000,height=500)
     def chargeptmheatmap():
@@ -2996,6 +3557,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         charge=input.chargestates_chargeptmheatmap_list()
         ptm=input.ptm_chargeptmheatmap_list()
+
         numbins_x=input.chargeptm_numbins_x()
         numbins_y=input.chargeptm_numbins_y()
         numbins=[numbins_x,numbins_y]
@@ -3051,8 +3613,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             for i in range(len(diawindows)):
                 rect=matplotlib.patches.Rectangle(xy=diawindows["xy"][i],width=diawindows["W"][i],height=diawindows["H"][i],facecolor="red",alpha=0.1,edgecolor="grey")
                 ax.add_patch(rect) 
-        
-        return fig
 
     #render ui call for dropdown calling Cond_Rep column
     @render.ui
@@ -3060,25 +3620,27 @@ def server(input: Inputs, output: Outputs, session: Session):
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         opts=resultdf["Cond_Rep"].tolist()
         return ui.input_selectize("chargeptmscatter_cond_rep_pick","Pick run:",choices=opts)
-
-    #render ui call for dropdown options
+    #render ui call for dropdown calling PTMs that were detected
     @render.ui
-    def charge_ptm_dropdown():
+    def ptm_chargeptmscatter_ui():
+        listofptms=find_ptms()
+        ptmshortened=[]
+        for i in range(len(listofptms)):
+            ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
+        ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
+        nonedict={"None":"None"}
+        ptmdict=(nonedict | ptmdict)
+        return ui.input_selectize("ptm_chargeptmscatter_list","Pick PTM to plot data for (use None for all precursors):",choices=ptmdict,selected="None")
+    #render ui call for dropdown calling charge states that were detected
+    @render.ui
+    def chargestates_chargeptmscatter_ui():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-        if input.charge_or_ptm()=="charge":
-            mincharge=min(searchoutput["FG.Charge"])
-            maxcharge=max(searchoutput["FG.Charge"])
-            opts=[item for item in range(mincharge,maxcharge+1)]
-            return ui.input_selectize("charge_ptm_list","Pick charge to plot data for:",choices=opts)
-        if input.charge_or_ptm()=="ptm":
-            listofptms=find_ptms()
-            ptmshortened=[]
-            for i in range(len(listofptms)):
-                ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
-            ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
-            return ui.input_selectize("charge_ptm_list","Pick PTM to plot data for:",choices=ptmdict)
-
+        mincharge=min(searchoutput["FG.Charge"])
+        maxcharge=max(searchoutput["FG.Charge"])
+        opts=[item for item in range(mincharge,maxcharge+1)]
+        if input.ptm_chargeptmscatter_list()!="None":
+            opts.insert(0,0)
+        return ui.input_selectize("chargestates_chargeptmscatter_list","Pick charge to plot data for (use 0 for all):",choices=opts)
     #scatterplot of picked PTM or charge against the rest of the detected precursors (better for DDA to show charge groups in the heatmap)
     @reactive.effect
     def _():
@@ -3086,37 +3648,79 @@ def server(input: Inputs, output: Outputs, session: Session):
         def chargeptmscatter():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             
-            titlefont=input.titlefont()
             axisfont=input.axisfont()
             legendfont=input.legendfont()
 
+            ptm=input.ptm_chargeptmscatter_list()
+            charge=int(input.chargestates_chargeptmscatter_list())
             cond_rep_pick=input.chargeptmscatter_cond_rep_pick()
 
-            if input.charge_or_ptm()=="charge":
-                charge=int(input.charge_ptm_list())
+            # if input.charge_or_ptm()=="charge":
+            #     charge=int(input.charge_ptm_list())
+            #     precursor_pick=searchoutput[((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+            #     precursor_other=searchoutput[((searchoutput["FG.Charge"]==charge)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+            #     titlemod=str(charge)+"+ Precursors"
+            # if input.charge_or_ptm()=="ptm":
+            #     ptm=input.charge_ptm_list()
+            #     precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+            #     precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+            #     titlemod=ptm.split("(")[0]+"Precursors"
+
+            if ptm=="None":
+                #all ptms, specific charge
                 precursor_pick=searchoutput[((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
                 precursor_other=searchoutput[((searchoutput["FG.Charge"]==charge)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
                 titlemod=str(charge)+"+ Precursors"
-            if input.charge_or_ptm()=="ptm":
-                ptm=input.charge_ptm_list()
-                precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                titlemod=ptm.split("(")[0]+"Precursors"
+            if ptm!="None":
+                #specific ptm, all charges
+                if charge==0:
+                    precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+                    precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+                    titlemod=ptm.split("(")[0]+"Precursors"
+                #specific ptm, specific charge
+                elif charge!=0:
+                    precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+                    #for some reason there's a bug with only +2 charge where the precursor_other wouldn't display correctly
+                    precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]#&((searchoutput["FG.Charge"]==charge)==False)
+                    titlemod=ptm.split("(")[0]+str(charge)+"+ Precursors"
 
             fig,ax=plt.subplots()
             ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Other Precursors")
             ax.scatter(x=precursor_pick["FG.PrecMz"],y=precursor_pick["EG.IonMobility"],s=2,label=titlemod)
             ax.set_xlabel("m/z",fontsize=axisfont)
             ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
-            #ax.set_title(titlemod,fontsize=titlefont)
             ax.legend(loc="upper left",fontsize=legendfont,markerscale=5)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+    #show table of # of precursors selected in charge-ptm scatterplot
+    @render.table
+    def chargeptmscatter_table():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        ptm=input.ptm_chargeptmscatter_list()
+        cond_rep_pick=input.chargeptmscatter_cond_rep_pick()
+
+        if ptm=="None":
+            #all ptms
+            precursor_pick=searchoutput[(searchoutput["Cond_Rep"]==cond_rep_pick)]
+        if ptm!="None":
+            #specific ptm
+            precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
+
+        sortedchargelist=sorted(precursor_pick["FG.Charge"].drop_duplicates().tolist())
+        charge_populationlist=[]
+        for charge in sortedchargelist:
+            charge_populationlist.append(len(precursor_pick[precursor_pick["FG.Charge"]==charge]))
+
+        sortedchargelist.insert(0,"Sum")
+        charge_populationlist.insert(0,sum(charge_populationlist))
+
+        df=pd.DataFrame({"Charge":sortedchargelist,"# Precursors":charge_populationlist})
+        
+        return df
 
     @render.ui
     def binslider_ui():
         return ui.input_slider("binslider","Number of RT bins:",min=100,max=1000,step=50,value=500,ticks=True)
-
     #render ui for checkboxes to plot specific runs
     @render.ui
     def ids_vs_rt_checkbox():
@@ -3126,7 +3730,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         for x in keys:
             opts[x]=x
         return ui.input_checkbox_group("ids_vs_rt_checkbox_pick","Pick runs to plot data for:",choices=opts)
-
     #plot # of IDs vs RT for each run
     @reactive.effect
     def _():
@@ -3182,7 +3785,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.venn_condition_or_run()=="individual":
             opts=resultdf["Cond_Rep"].tolist()
             return ui.input_selectize("cond_rep2","Pick second run to compare:",choices=opts)
-
     #plot venn diagram comparing IDs between runs
     @render.plot
     def venndiagram():
@@ -3335,7 +3937,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             merged_download.to_csv(buf,index=False)
             yield buf.getvalue()
 
-    #volcano plot 
+    #volcano plot
     @reactive.effect
     def _():
         @render.plot(width=input.volcano_width(),height=input.volcano_height())
@@ -3366,7 +3968,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.show_labels()==True:
                 for protein in merged.index:
                     if np.absolute(merged.loc[protein]["log2_FoldChange"]) >= foldchange_cutoff and np.absolute(merged.loc[protein]["-log10_pvalue"]) >= pvalue_cutoff:
-                        ax.annotate(protein,merged.loc[protein]["label"],fontsize=4)
+                        ax.annotate(protein,merged.loc[protein]["label"],fontsize=input.label_fontsize())
                     else:
                         pass
 
@@ -3443,6 +4045,396 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 #endregion
 
+# ============================================================================= Immunopeptidomics
+#region
+
+    @reactive.calc
+    def ipep_charge_peplength():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        fillvalue="0"
+
+        #run function by individual run
+        dict_chargecountdf_run=dict()
+        dict_peplengthcountdf_run=dict()
+
+        for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+            df=searchoutput[searchoutput["Cond_Rep"]==run][["EG.ModifiedPeptide","FG.Charge","EG.ApexRT"]]
+            charges=sorted(df["FG.Charge"].drop_duplicates(ignore_index=True))
+            df_pivot=pd.pivot_table(df,index=["EG.ModifiedPeptide"],columns=["FG.Charge"],fill_value=fillvalue)
+
+            chargedf=pd.DataFrame()
+            chargedf["EG.ModifiedPeptide"]=df_pivot.index
+            chargedf.set_index(["EG.ModifiedPeptide"],inplace=True)
+
+            for charge in charges:
+                #pivot table of just peptides of specific charge
+                df_pivot_column=pd.DataFrame(df_pivot[('EG.ApexRT', charge)][df_pivot[('EG.ApexRT', charge)]!=fillvalue])
+                #make an extra column of just the charge value
+                df_pivot_column["Charge"]=[str(charge)]*len(df_pivot_column)
+                #make an extra column in our final df to update from the initial pivot table
+                chargedf["Charge"]=[fillvalue]*len(chargedf)
+                #update the final df from the pivot table along same indices
+                chargedf.update(df_pivot_column["Charge"])
+                #change the name of the column so we can make the next one in the next loop
+                chargedf=chargedf.rename(columns={"Charge":charge})
+
+            #get list of charges present for peptides as a list
+            chargelist=[]
+            for pep in chargedf.index:
+                listperpep=[]
+                for item in chargedf.loc[pep].tolist():
+                    if item!="0":
+                        listperpep.append(item)
+                    else:
+                        pass
+                chargelist.append(listperpep)
+            #unpack each list as strings for better visualization and downstream use
+            unpackedcharges=[]
+            for ele in chargelist:
+                if len(ele)==1:
+                    unpackedcharges.append(ele[0])
+                else:
+                    placeholder=""
+                    for i,string in enumerate(ele):
+                        if i==0:
+                            placeholder=placeholder+string
+                        else:
+                            placeholder=placeholder+","+string
+                    unpackedcharges.append(placeholder)
+
+            chargedf["list"]=unpackedcharges
+            chargedf=chargedf.reset_index()
+            chargegroups=sorted(chargedf["list"].drop_duplicates())
+
+            #add in the StrippedSequence column
+            strippedseq=searchoutput[searchoutput["Cond_Rep"]==run][["EG.ModifiedPeptide","PEP.StrippedSequence"]].drop_duplicates().sort_values("EG.ModifiedPeptide")
+            chargedf["PEP.StrippedSequence"]=strippedseq["PEP.StrippedSequence"].reset_index(drop=True)
+
+            #calculate peptide lengths
+            lengthlist=[]
+            for pep in chargedf["PEP.StrippedSequence"]:
+                lengthlist.append(len(pep))
+            chargedf["Peptide Length"]=lengthlist
+
+            #df for plotting charge states only
+            chargecountdf=pd.DataFrame(chargedf["list"].value_counts()).reset_index().sort_values("list").reset_index(drop=True)
+            totals=sum(chargecountdf["count"])
+            frequencies=[]
+            for ele in chargecountdf["count"]:
+                frequencies.append(round((ele/totals)*100,5))
+            chargecountdf["frequency%"]=frequencies
+            
+            #df for plotting intersection of peptide length and charge state
+            charge_length_df=chargedf[["list","Peptide Length"]]
+            peplengths=list(set(charge_length_df["Peptide Length"]))
+            peplengthcountdf=pd.DataFrame()
+            peplengthcountdf["Peptide Length"]=peplengths
+            for charge in chargecountdf["list"]:
+                countpercharge=[]
+                for peplength in peplengths:
+                    val_count=charge_length_df[charge_length_df["Peptide Length"]==peplength]["list"].value_counts().get(charge)
+                    if val_count is None:
+                        countpercharge.append(0)
+                    else:
+                        countpercharge.append(val_count)
+                peplengthcountdf[charge]=countpercharge
+            
+            #dump the chargedf and chargecountdf generated in the loop into a dict
+            dict_chargecountdf_run[run]=chargecountdf
+            dict_peplengthcountdf_run[run]=peplengthcountdf
+            
+        #run function by condition
+        dict_chargecountdf_condition=dict()
+        dict_peplengthcountdf_condition=dict()
+
+        for run in sampleconditions:
+            df=searchoutput[searchoutput["R.Condition"]==run][["EG.ModifiedPeptide","FG.Charge","EG.ApexRT"]]
+            charges=sorted(df["FG.Charge"].drop_duplicates(ignore_index=True))
+            df_pivot=pd.pivot_table(df,index=["EG.ModifiedPeptide"],columns=["FG.Charge"],fill_value=fillvalue)
+
+            chargedf=pd.DataFrame()
+            chargedf["EG.ModifiedPeptide"]=df_pivot.index
+            chargedf.set_index(["EG.ModifiedPeptide"],inplace=True)
+
+            for charge in charges:
+                #pivot table of just peptides of specific charge
+                df_pivot_column=pd.DataFrame(df_pivot[('EG.ApexRT', charge)][df_pivot[('EG.ApexRT', charge)]!=fillvalue])
+                #make an extra column of just the charge value
+                df_pivot_column["Charge"]=[str(charge)]*len(df_pivot_column)
+                #make an extra column in our final df to update from the initial pivot table
+                chargedf["Charge"]=[fillvalue]*len(chargedf)
+                #update the final df from the pivot table along same indices
+                chargedf.update(df_pivot_column["Charge"])
+                #change the name of the column so we can make the next one in the next loop
+                chargedf=chargedf.rename(columns={"Charge":charge})
+
+            #get list of charges present for peptides as a list
+            chargelist=[]
+            for pep in chargedf.index:
+                listperpep=[]
+                for item in chargedf.loc[pep].tolist():
+                    if item!="0":
+                        listperpep.append(item)
+                    else:
+                        pass
+                chargelist.append(listperpep)
+            #unpack each list as strings for better visualization and downstream use
+            unpackedcharges=[]
+            for ele in chargelist:
+                if len(ele)==1:
+                    unpackedcharges.append(ele[0])
+                else:
+                    placeholder=""
+                    for i,string in enumerate(ele):
+                        if i==0:
+                            placeholder=placeholder+string
+                        else:
+                            placeholder=placeholder+","+string
+                    unpackedcharges.append(placeholder)
+
+            chargedf["list"]=unpackedcharges
+            chargedf=chargedf.reset_index()
+            chargegroups=sorted(chargedf["list"].drop_duplicates())
+
+            #add in the StrippedSequence column
+            strippedseq=searchoutput[searchoutput["R.Condition"]==run][["EG.ModifiedPeptide","PEP.StrippedSequence"]].drop_duplicates().sort_values("EG.ModifiedPeptide")
+            chargedf["PEP.StrippedSequence"]=strippedseq["PEP.StrippedSequence"].reset_index(drop=True)
+            #calculate peptide lengths
+            lengthlist=[]
+            for pep in chargedf["PEP.StrippedSequence"]:
+                lengthlist.append(len(pep))
+            chargedf["Peptide Length"]=lengthlist
+
+            #df for plotting charge states only
+            chargecountdf=pd.DataFrame(chargedf["list"].value_counts()).reset_index().sort_values("list").reset_index(drop=True)
+            totals=sum(chargecountdf["count"])
+            frequencies=[]
+            for ele in chargecountdf["count"]:
+                frequencies.append(round((ele/totals)*100,5))
+            chargecountdf["frequency%"]=frequencies
+            
+            #df for plotting intersection of peptide length and charge state
+            charge_length_df=chargedf[["list","Peptide Length"]]
+            peplengths=list(set(charge_length_df["Peptide Length"]))
+            peplengthcountdf=pd.DataFrame()
+            peplengthcountdf["Peptide Length"]=peplengths
+            for charge in chargecountdf["list"]:
+                countpercharge=[]
+                for peplength in peplengths:
+                    val_count=charge_length_df[charge_length_df["Peptide Length"]==peplength]["list"].value_counts().get(charge)
+                    if val_count is None:
+                        countpercharge.append(0)
+                    else:
+                        countpercharge.append(val_count)
+                peplengthcountdf[charge]=countpercharge
+
+            #dump the chargedf and chargecountdf generated in the loop into a dict
+            dict_chargecountdf_condition[run]=chargecountdf
+            dict_peplengthcountdf_condition[run]=peplengthcountdf
+
+        return dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition
+    
+    @render.ui
+    def chargestate_charges_ui():
+        dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+        if input.chargestate_peplength_condition_or_run()=="condition":
+            plottingdf=dict_peplengthcountdf_condition
+        if input.chargestate_peplength_condition_or_run()=="individual":
+            plottingdf=dict_peplengthcountdf_run
+        chargelist=[]
+        for key in plottingdf.keys():
+            chargelist.append(plottingdf[key].columns.tolist())
+        chargelist=sorted(list(set(itertools.chain(*chargelist))))
+        chargelist.remove("Peptide Length")
+
+        return ui.input_checkbox_group("chargestate_charges","Charges to plot:",choices=chargelist)
+    #bar chart of charge state counts
+    @reactive.effect
+    def _():
+        @render.plot(width=input.charge_barchart_width(),height=input.charge_barchart_height())
+        def charge_barchart():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+            if input.chargestate_bar_condition_or_run()=="condition":
+                plottingdf=dict_chargecountdf_condition
+                colors=colorpicker()
+            if input.chargestate_bar_condition_or_run()=="individual":
+                plottingdf=dict_chargecountdf_run
+                colors=replicatecolors()
+
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+
+            if input.chargestate_charges_usepickedcharges()==True:
+                chargelist=list(input.chargestate_charges())
+                plottingdf_picked=dict()
+                for key in plottingdf.keys():
+                    plottingdf_picked[key]=plottingdf[key].set_index("list").loc[chargelist].reset_index()
+                plottingdf=plottingdf_picked
+
+            if len(plottingdf)==1:
+                fig,ax=plt.subplots()
+                key=list(plottingdf.keys())[0]
+                x=np.arange(1,len(plottingdf[key]["list"])+1)
+                ax.bar(x,plottingdf[key]["count"],edgecolor="k")
+                ax.set_xticks(x,plottingdf[key]["list"],rotation=input.xaxis_label_rotation())
+                ax.set_ylabel("Counts (%)",fontsize=axisfont)
+                ax.set_xlabel("Charge(s)",fontsize=axisfont)
+                ax.set_title(key,fontsize=titlefont)
+                ax.set_axisbelow(True)
+                ax.grid(linestyle="--")
+
+            else:
+                fig,ax=plt.subplots(ncols=len(plottingdf))
+
+                for i,key in enumerate(plottingdf.keys()):
+                    x=np.arange(1,len(plottingdf[key]["list"])+1)
+                    if numconditions==1:
+                        ax[i].bar(x,plottingdf[key]["count"],edgecolor="k",color=colorpicker())
+                    else:
+                        ax[i].bar(x,plottingdf[key]["count"],edgecolor="k",color=colors[i])
+                    ax[i].set_xticks(x,plottingdf[key]["list"],rotation=input.xaxis_label_rotation())
+                    ax[i].set_title(key,fontsize=titlefont)
+                    ax[i].set_xlabel("Charge(s)",fontsize=axisfont)
+                    ax[i].set_axisbelow(True)
+                    ax[i].grid(linestyle="--")
+                ax[0].set_ylabel("Counts",fontsize=axisfont)
+            fig.set_tight_layout(True)
+
+    #stacked bar chart of charge frequencies
+    @reactive.effect
+    def _():
+        @render.plot(width=input.charge_stackedbarchart_width(),height=input.charge_stackedbarchart_height())
+        def charge_stacked_barchart():
+            dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+            if input.chargestate_stacked_condition_or_run()=="condition":
+                plottingdf=dict_chargecountdf_condition
+            if input.chargestate_stacked_condition_or_run()=="individual":
+                plottingdf=dict_chargecountdf_run
+
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+
+            fig,ax=plt.subplots()
+            for i,key in enumerate(plottingdf.keys()):
+                bottom=np.zeros(1)
+                for x in range(len(plottingdf[key])):
+                    ax.bar(i,plottingdf[key]["frequency%"][x],bottom=bottom,label=plottingdf[key]["list"][x])
+                    bottom+=plottingdf[key]["frequency%"][x]
+            ax.set_xticks(np.arange(0,len(plottingdf)),list(plottingdf.keys()),rotation=input.xaxis_label_rotation())
+            ax.set_ylabel("Frequency (%)",fontsize=axisfont)
+            ax.set_xlabel("Condition",fontsize=axisfont)
+            ax.set_axisbelow(True)
+            ax.grid(linestyle="--")
+            handles,labels=plt.gca().get_legend_handles_labels()
+            by_label=OrderedDict(zip(labels,handles))
+            ax.legend(by_label.values(), by_label.keys(),loc="center",bbox_to_anchor=(1.1,0.5))
+    #table of frequencies for the stacked bar chart
+    @render.data_frame
+    def charge_stacked_table():
+        dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+        if input.chargestate_stacked_condition_or_run()=="condition":
+            plottingdf=dict_chargecountdf_condition
+        if input.chargestate_stacked_condition_or_run()=="individual":
+            plottingdf=dict_chargecountdf_run
+        displaydf=pd.DataFrame()
+        for i,key in enumerate(plottingdf.keys()):
+            displaydf=pd.concat([displaydf,plottingdf[key][["list","frequency%"]].rename(columns={"list":key,"frequency%":"frequency%_"+str(i)})],axis=1)
+
+        return render.DataGrid(displaydf,editable=False)
+
+    @render.ui
+    def chargestate_peplength_plotrange_ui():
+        dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+        if input.chargestate_peplength_condition_or_run()=="condition":
+            plottingdf=dict_peplengthcountdf_condition
+        if input.chargestate_peplength_condition_or_run()=="individual":
+            plottingdf=dict_peplengthcountdf_run
+
+        min=7
+        max=30
+        
+        return ui.input_slider("chargestate_peplength_plotrange","Plot Range",min=1,max=50,value=[min,max],step=1,ticks=True,width="300px",drag_range=True)
+    @render.ui
+    def chargestate_peplength_charges_ui():
+        dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+        if input.chargestate_peplength_condition_or_run()=="condition":
+            plottingdf=dict_peplengthcountdf_condition
+        if input.chargestate_peplength_condition_or_run()=="individual":
+            plottingdf=dict_peplengthcountdf_run
+        chargelist=[]
+        for key in plottingdf.keys():
+            chargelist.append(plottingdf[key].columns.tolist())
+        chargelist=sorted(list(set(itertools.chain(*chargelist))))
+        chargelist.remove("Peptide Length")
+
+        return ui.input_checkbox_group("chargestate_peplength_charges","Charges to plot:",choices=chargelist)
+    #plot charge states per peptide length
+    @reactive.effect
+    def _():
+        @render.plot(width=input.chargestate_peplength_width(),height=input.chargestate_peplength_height())
+        def chargestate_peplength():
+            dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+            if input.chargestate_peplength_condition_or_run()=="condition":
+                plottingdf=dict_peplengthcountdf_condition
+            if input.chargestate_peplength_condition_or_run()=="individual":
+                plottingdf=dict_peplengthcountdf_run
+
+            axisfont=input.axisfont()
+            titlefont=input.titlefont()
+
+            if len(plottingdf)==1:
+                fig,ax=plt.subplots()
+                key=list(plottingdf.keys())[0]
+                plotdf=plottingdf[key].set_index("Peptide Length")
+                if input.usepickedcharges()==True:
+                    columns=input.chargestate_peplength_charges()
+                else:
+                    columns=plotdf.columns.tolist()
+                x=plotdf.index.tolist()
+                bottom=np.zeros(len(plotdf))
+                for col in columns:
+                    ax.bar(x,plotdf[col],label=col)
+                    bottom+=plotdf[col].tolist()
+                ax.set_xlabel("Peptide Length",fontsize=axisfont)
+                ax.set_title(key,fontsize=titlefont)
+                ax.legend(loc="upper right",prop={'size':8})
+                ax.set_axisbelow(True)
+                ax.grid(linestyle="--")
+                ax.set_ylabel("Counts",fontsize=axisfont)
+                ax.set_xlim(left=input.chargestate_peplength_plotrange()[0]-0.75,right=input.chargestate_peplength_plotrange()[1]+0.5)
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.xaxis.set_minor_locator(MultipleLocator(1))
+                fig.set_tight_layout(True)
+
+            else:
+                fig,ax=plt.subplots(ncols=len(plottingdf))
+                for i,key in enumerate(plottingdf.keys()):
+                    plotdf=plottingdf[key].set_index("Peptide Length")
+                    if input.usepickedcharges()==True:
+                        columns=input.chargestate_peplength_charges()
+                    else:
+                        columns=plotdf.columns.tolist()
+                    x=plotdf.index.tolist()
+                    bottom=np.zeros(len(plotdf))
+                    for col in columns:
+                        ax[i].bar(x,plotdf[col],label=col,bottom=bottom)
+                        bottom+=plotdf[col].tolist()
+
+                    ax[i].set_xlabel("Peptide Length",fontsize=axisfont)
+                    ax[i].set_title(key,fontsize=titlefont)
+                    ax[i].legend(loc="upper right",prop={'size':8})
+                    ax[i].set_axisbelow(True)
+                    ax[i].grid(linestyle="--")
+                    ax[i].set_xlim(left=input.chargestate_peplength_plotrange()[0]-0.75,right=input.chargestate_peplength_plotrange()[1]+0.5)
+                    ax[i].xaxis.set_major_locator(MaxNLocator(integer=True))
+                    ax[i].xaxis.set_minor_locator(MultipleLocator(1))
+
+                ax[0].set_ylabel("Counts",fontsize=axisfont)
+                fig.set_tight_layout(True)
+
+#endregion
+
 # ============================================================================= Mixed Proteome
 #region
 
@@ -3487,7 +4479,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 df=searchoutput[searchoutput["Cond_Rep"]==run]
                 summedintensitylist.append(df[df["PG.ProteinNames"].str.contains(organism)]["PG.MS2Quantity"].drop_duplicates().reset_index(drop=True).sum())
                 proteincountlist.append(df[(df["PG.ProteinNames"].str.contains(organism))&(df["PG.MS2Quantity"]>0)]["PG.ProteinNames"].drop_duplicates().reset_index(drop=True).count())
-                peptidecountlist.append(df[(df["PG.ProteinNames"].str.contains(organism))&(df["FG.MS2Quantity"]>0)]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True).count())
+                peptidecountlist.append(df[(df["PG.ProteinNames"].str.contains(organism))&(df["FG.MS2Quantity"]>0)]["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True).count())
                 precursorcountlist.append(len(df[(df["PG.ProteinNames"].str.contains(organism))&(df["FG.MS2Quantity"]>0)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)))
             mixedproteomeintensity[organism+"_summedintensity"]=summedintensitylist
             mixedproteomecounts[organism+"_proteins"]=proteincountlist
@@ -3633,12 +4625,20 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         for organism in organismlist:
             df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-            df_reference=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+            if input.quantratios_mean_median()=="mean":
+                df_reference=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+            if input.quantratios_mean_median()=="median":
+                df_reference=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+
             df_reference[referencecondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
             df_reference[referencecondition+"_CV"]=df_reference[referencecondition+"_stdev"]/df_reference[referencecondition]*100
             
             df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-            df_test=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+            if input.quantratios_mean_median()=="mean":
+                df_test=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+            if input.quantratios_mean_median()=="median":
+                df_test=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+
             df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
             df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
             
@@ -3652,7 +4652,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.cvcutoff_switch()==True:
                 cv_cutoff=input.cvcutofflevel()
                 organism_merged[organism]=organism_merged[organism][(organism_merged[organism][referencecondition+"_CV"]<cv_cutoff)&(organism_merged[organism][testcondition+"_CV"]<cv_cutoff)]
-            
+
         ratio_average["Experimental_Ratio"]=averagelist
 
         fig,ax=plt.subplots(nrows=1,ncols=3,gridspec_kw={"width_ratios":[2,5,2]})
@@ -3691,6 +4691,59 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         ax[2].set_xlabel("Density",fontsize=axisfont)
         ax[2].set_ylabel("log2 Ratio, Test/Reference",fontsize=axisfont)
+    #show table of quant ratios
+    @render.table
+    def quantratios_table():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        organismlist=organism_list_from_table()
+        organism_table=organismtable.data_view()
+
+        referencecondition=input.referencecondition_list()
+        testcondition=input.testcondition_list()
+
+        testcolumn=organism_table[[col for col in organism_table if testcondition in col]].columns[0]
+        referencecolumn=organism_table[[col for col in organism_table if referencecondition in col]].columns[0]
+
+        testratios=organism_table.sort_values("Order")[testcolumn].astype(int).tolist()
+        referenceratios=organism_table.sort_values("Order")[referencecolumn].astype(int).tolist()
+        
+        organism_merged=dict()
+        ratio_average=pd.DataFrame()
+        ratio_average["Organism"]=organismlist
+        ratio_average["Theoretical_Ratio (log2)"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
+        averagelist=[]
+
+        for organism in organismlist:
+            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+            if input.quantratios_mean_median()=="mean":
+                df_reference=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+            if input.quantratios_mean_median()=="median":
+                df_reference=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+            df_reference[referencecondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+            df_reference[referencecondition+"_CV"]=df_reference[referencecondition+"_stdev"]/df_reference[referencecondition]*100
+            
+            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+            if input.quantratios_mean_median()=="mean":
+                df_test=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+            if input.quantratios_mean_median()=="median":
+                df_test=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+            df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+            df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
+            
+            merged=df_reference.merge(df_test,how="inner").dropna()
+            merged["log10_reference"]=np.log10(merged[referencecondition])
+            merged["log2_ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
+            averagelist.append(np.average(merged["log2_ratio"]))
+
+            organism_merged[organism]=merged
+
+            if input.cvcutoff_switch()==True:
+                cv_cutoff=input.cvcutofflevel()
+                organism_merged[organism]=organism_merged[organism][(organism_merged[organism][referencecondition+"_CV"]<cv_cutoff)&(organism_merged[organism][testcondition+"_CV"]<cv_cutoff)]
+            
+        ratio_average["Experimental_Ratio (log2)"]=averagelist
+        return ratio_average
+
 
 #endregion
 
@@ -3940,36 +4993,40 @@ def server(input: Inputs, output: Outputs, session: Session):
         opts=sampleconditions
         return ui.input_selectize("normalizingcondition_pick","Pick normalizing condition",choices=opts)
 
+    @reactive.calc
+    def dilutionseries_calc():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        sortedconditions=[]
+        concentrations=searchoutput["Concentration"].drop_duplicates().tolist()
+        sortedconcentrations=sorted(concentrations)
+        for i in sortedconcentrations:
+            sortedconditions.append(searchoutput[searchoutput["Concentration"]==i]["R.Condition"].values[0])
+
+        normalizingcondition=input.normalizingcondition_pick()
+
+        dilutionseries=[]
+        theoreticalratio=[]
+        norm=searchoutput[searchoutput["R.Condition"]==normalizingcondition][["PG.ProteinGroups","PG.MS2Quantity"]].groupby("PG.ProteinGroups").mean().reset_index()
+
+        for condition in sortedconditions:
+            test=searchoutput[searchoutput["R.Condition"]==condition][["PG.ProteinGroups","PG.MS2Quantity"]].groupby("PG.ProteinGroups").mean().reset_index()
+            merge=norm.merge(test,how="left",on="PG.ProteinGroups",suffixes=("_norm","_test"))
+            merge["Ratio"]=merge["PG.MS2Quantity_test"]/merge["PG.MS2Quantity_norm"]
+            merge=merge.dropna()
+            dilutionseries.append(merge["Ratio"])
+            
+            norm_conc=searchoutput[searchoutput["R.Condition"]==normalizingcondition]["Concentration"].drop_duplicates().reset_index(drop=True)[0]
+            conc=searchoutput[searchoutput["R.Condition"]==condition]["Concentration"].drop_duplicates().reset_index(drop=True)[0]
+            theoreticalratio.append(conc/norm_conc)
+        
+        return sortedconditions,dilutionseries,theoreticalratio
+
     @reactive.effect
     def _():
         @render.plot(width=input.dilutionseries_width(),height=input.dilutionseries_height())
         def dilutionseries_plot(width=input.dilutionseries_width(),height=input.dilutionseries_height()):
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
+            sortedconditions,dilutionseries,theoreticalratio=dilutionseries_calc()
             axisfont=input.axisfont()
-
-            sortedconditions=[]
-            concentrations=searchoutput["Concentration"].drop_duplicates().tolist()
-            sortedconcentrations=sorted(concentrations)
-            for i in sortedconcentrations:
-                sortedconditions.append(searchoutput[searchoutput["Concentration"]==i]["R.Condition"].values[0])
-
-            normalizingcondition=input.normalizingcondition_pick()
-
-            dilutionseries=[]
-            theoreticalratio=[]
-            norm=searchoutput[searchoutput["R.Condition"]==normalizingcondition][["PG.ProteinGroups","PG.MS2Quantity"]].groupby("PG.ProteinGroups").mean().reset_index()
-
-            for condition in sortedconditions:
-                test=searchoutput[searchoutput["R.Condition"]==condition][["PG.ProteinGroups","PG.MS2Quantity"]].groupby("PG.ProteinGroups").mean().reset_index()
-                merge=norm.merge(test,how="left",on="PG.ProteinGroups",suffixes=("_norm","_test"))
-                merge["Ratio"]=merge["PG.MS2Quantity_test"]/merge["PG.MS2Quantity_norm"]
-                merge=merge.dropna()
-                dilutionseries.append(merge["Ratio"])
-                
-                norm_conc=searchoutput[searchoutput["R.Condition"]==normalizingcondition]["Concentration"].drop_duplicates().reset_index(drop=True)[0]
-                conc=searchoutput[searchoutput["R.Condition"]==condition]["Concentration"].drop_duplicates().reset_index(drop=True)[0]
-                theoreticalratio.append(conc/norm_conc)
 
             fig,ax=plt.subplots()
 
@@ -3993,390 +5050,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 z.set_facecolor(color)
                 z.set_edgecolor("black")
                 z.set_alpha(0.7)   
-
-#endregion
-
-# ============================================================================= Raw Data
-#region
-
-    #take text input for data paths and make dictionaries of frame data
-    @reactive.calc
-    def rawfile_list():
-        filelist=list(input.rawfile_input().split("\n"))
-        MSframedict=dict()
-        precursordict=dict()
-        samplenames=[]
-        for run in filelist:
-            frames=pd.DataFrame(atb.read_bruker_sql(run)[2])
-            MSframedict[run]=frames[frames["MsMsType"]==0].reset_index(drop=True)
-            precursordict[run]=pd.DataFrame(atb.read_bruker_sql(run)[3])
-            samplenames.append(run.split("\\")[-1])
-        return MSframedict,precursordict,samplenames        
-
-    #render ui for checkboxes to plot specific runs
-    @render.ui
-    def rawfile_checkboxes_tic():
-        MSframedict,precursordict,samplenames=rawfile_list()
-        opts=dict()
-        keys=input.rawfile_input().split("\n")
-        labels=samplenames
-        for x,y in zip(keys,labels):
-            opts[x]=y
-        return ui.input_checkbox_group("rawfile_pick_tic","Pick files to plot data for:",choices=opts,width="800px")
-    #plot TIC from raw data
-    @reactive.effect
-    def _():
-        @render.plot(width=input.tic_width(),height=input.tic_height())
-        def TIC_plot():
-            MSframedict,precursordict,samplenames=rawfile_list()
-            checkgroup=input.rawfile_pick_tic()
-            colors=list(mcolors.TABLEAU_COLORS)
-            if input.stacked_tic()==True:
-                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
-                for i,run in enumerate(checkgroup):
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["SummedIntensities"]
-                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Intensity")
-                    ax[i].set_axisbelow(True)
-                    ax[i].grid(linestyle="--")
-                    legend=ax[i].legend(loc="upper left")
-                    for z in legend.legend_handles:
-                        z.set_linewidth(5)
-            else:
-                fig,ax=plt.subplots()
-                for run in checkgroup:
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["SummedIntensities"]
-                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)")
-                ax.set_ylabel("Intensity")
-                ax.set_axisbelow(True)
-                ax.grid(linestyle="--")
-                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
-                legend=ax.legend(loc="upper left")
-                for z in legend.legend_handles:
-                    z.set_linewidth(5)
-        
-    #render ui for checkboxes to plot specific runs
-    @render.ui
-    def rawfile_checkboxes_bpc():
-        MSframedict,precursordict,samplenames=rawfile_list()
-        opts=dict()
-        keys=input.rawfile_input().split("\n")
-        labels=samplenames
-        for x,y in zip(keys,labels):
-            opts[x]=y
-        return ui.input_checkbox_group("rawfile_pick_bpc","Pick files to plot data for:",choices=opts,width="800px")
-    #plot BPC from raw data
-    @reactive.effect
-    def _():
-        @render.plot(width=input.bpc_width(),height=input.bpc_height())
-        def BPC_plot():
-            MSframedict,precursordict,samplenames=rawfile_list()
-            checkgroup=input.rawfile_pick_bpc()
-            colors=list(mcolors.TABLEAU_COLORS)
-            if input.stacked_bpc()==True:
-                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
-                for i,run in enumerate(checkgroup):
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["MaxIntensity"]
-                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Intensity")
-                    ax[i].set_axisbelow(True)
-                    ax[i].grid(linestyle="--")
-                    legend=ax[i].legend(loc="upper left")
-                    for z in legend.legend_handles:
-                        z.set_linewidth(5)
-            else:
-                fig,ax=plt.subplots()
-                for run in checkgroup:
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["MaxIntensity"]
-                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)")
-                ax.set_ylabel("Intensity")
-                ax.set_axisbelow(True)
-                ax.grid(linestyle="--")
-                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
-                legend=ax.legend(loc='upper left')
-                for z in legend.legend_handles:
-                    z.set_linewidth(5)      
-
-    #render ui for checkboxes to plot specific runs
-    @render.ui
-    def rawfile_checkboxes_accutime():
-        MSframedict,precursordict,samplenames=rawfile_list()
-        opts=dict()
-        keys=input.rawfile_input().split("\n")
-        labels=samplenames
-        for x,y in zip(keys,labels):
-            opts[x]=y
-        return ui.input_checkbox_group("rawfile_pick_accutime","Pick files to plot data for:",choices=opts,width="800px")
-    #plot accumulation time from raw data
-    @reactive.effect
-    def _():
-        @render.plot(width=input.accutime_width(),height=input.accutime_height())
-        def accutime_plot():
-            MSframedict,precursordict,samplenames=rawfile_list()
-            checkgroup=input.rawfile_pick_accutime()
-            colors=list(mcolors.TABLEAU_COLORS)
-            if input.stacked_accutime()==True:
-                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
-                for i,run in enumerate(checkgroup):
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["AccumulationTime"]
-                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Accumulation Time (ms)")
-                    ax[i].set_axisbelow(True)
-                    ax[i].grid(linestyle="--")
-                    legend=ax[i].legend(loc="upper left")
-                    for z in legend.legend_handles:
-                        z.set_linewidth(5)
-            else:
-                fig,ax=plt.subplots()
-                for run in checkgroup:
-                    x=MSframedict[run]["Time"]/60
-                    y=MSframedict[run]["AccumulationTime"]
-                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)")
-                ax.set_ylabel("Accumulation Time (ms)")
-                ax.set_axisbelow(True)
-                ax.grid(linestyle="--")
-                legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
-                for z in legend.legend_handles:
-                    z.set_linewidth(5)
-
-    @render.ui
-    def rawfile_buttons_eic():
-        MSframedict,precursordict,samplenames=rawfile_list()
-        opts=dict()
-        keys=input.rawfile_input().split("\n")
-        labels=samplenames
-        for x,y in zip(keys,labels):
-            opts[x]=y
-        return ui.input_radio_buttons("rawfile_pick_eic","Pick file to plot data for:",choices=opts,width="800px")
-    
-    #input for mobility add-on for EICs
-    @render.ui
-    def mobility_input():
-        if input.include_mobility()==True:
-            return ui.input_text("mobility_input_value","Input mobility for EIC:"),ui.input_text("mobility_input_window","Input mobility window (1/k0) for EIC:")
-        
-    @reactive.calc
-    @reactive.event(input.load_eic)
-    def eic_setup():
-        mz=float(input.eic_mz_input())
-        ppm_error=float(input.eic_ppm_input())
-        rawfile=atb.TimsTOF(input.rawfile_pick_eic())
-
-        low_mz=mz/(1+ppm_error/10**6)
-        high_mz=mz*(1+ppm_error/10**6)
-
-        if input.include_mobility()==True:
-            mobility=float(input.mobility_input_value())
-            window=float(input.mobility_input_window())
-            low_mobility=mobility-window
-            high_mobility=mobility+window
-            eic_df=rawfile[:,low_mobility: high_mobility,0,low_mz: high_mz]
-        else:
-            eic_df=rawfile[:,:,0,low_mz: high_mz]
-
-        return eic_df
-
-    #plot EIC for input mass
-    @reactive.effect
-    def _():
-        @render.plot(width=input.eic_width(),height=input.eic_height())
-        def eic():
-            eic_df=eic_setup()
-            fig,ax=plt.subplots(figsize=(10,5))
-            ax.plot(eic_df["rt_values_min"],eic_df["intensity_values"],linewidth=0.5)
-            ax.set_xlabel("Time (min)")
-            ax.set_ylabel("Intensity")
-            if input.include_mobility()==True:
-                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()))
-            else:
-                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()))
-
-    @render.ui
-    def rawfile_buttons_eim():
-        MSframedict,precursordict,samplenames=rawfile_list()
-        opts=dict()
-        keys=input.rawfile_input().split("\n")
-        labels=samplenames
-        for x,y in zip(keys,labels):
-            opts[x]=y
-        return ui.input_radio_buttons("rawfile_pick_eim","Pick file to plot data for:",choices=opts,width="800px")
-
-    @reactive.calc
-    @reactive.event(input.load_eim)
-    def eim_setup():
-        mz=float(input.eim_mz_input())
-        ppm_error=float(input.eim_ppm_input())
-        rawfile=atb.TimsTOF(input.rawfile_pick_eim())
-
-        low_mz=mz/(1+ppm_error/10**6)
-        high_mz=mz*(1+ppm_error/10**6)
-
-        eim_df=rawfile[:,:,0,low_mz: high_mz].sort_values("mobility_values")
-        return eim_df
-
-    #plot EIM for input mass
-    @reactive.effect
-    def _():
-        @render.plot(width=input.eim_width(),height=input.eim_height())
-        def eim():
-            eim_df=eim_setup()
-            fig,ax=plt.subplots(figsize=(10,5))
-            ax.plot(eim_df["mobility_values"],eim_df["intensity_values"],linewidth=0.5)
-            ax.set_xlabel("Ion Mobility ($1/K_{0}$)")
-            ax.set_ylabel("Intensity")
-            ax.set_title(input.rawfile_pick_eim().split("\\")[-1]+"\n"+"EIM: "+str(input.eim_mz_input()))
-
-#endregion
-
-# ============================================================================= Export Tables 
-#region 
-
-    #download table of peptide IDs
-    @render.download(filename=lambda: f"Peptide List_{input.searchreport()[0]['name']}.csv")
-    def peptidelist():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        peptidetable=searchoutput[["R.Condition","R.Replicate","PG.Genes","PG.ProteinAccessions","PG.ProteinNames","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
-        with io.BytesIO() as buf:
-            peptidetable.to_csv(buf,index=False)
-            yield buf.getvalue()
-
-    #condition or run dropdown for stripped peptide list export
-    @render.ui
-    def peptidelist_dropdown():
-        if input.peptidelist_condition_or_run()=="condition":
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            opts=sampleconditions
-            return ui.input_selectize("peptidelist_dropdown_pick","Pick run to export peptide list from",choices=opts)
-        if input.peptidelist_condition_or_run()=="individual":
-            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            opts=resultdf["Cond_Rep"].tolist()
-            return ui.input_selectize("peptidelist_dropdown_pick","Pick run to export peptide list from",choices=opts)
-
-    #download list of stripped peptide IDs of specific length
-    @render.download(filename=lambda: f"Stripped Peptide List_{input.peptidelist_dropdown_pick()}_{input.strippedpeptidelength()}-mers.csv")
-    def strippedpeptidelist():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        if input.peptidelist_condition_or_run()=="condition":
-            placeholder=searchoutput[searchoutput["R.Condition"]==input.peptidelist_dropdown_pick()]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True)
-
-            df=pd.DataFrame()
-            df["PEP.StrippedSequence"]=placeholder
-            lengths=[]
-            for pep in placeholder:
-                lengths.append(len(pep))
-            df["Peptide Length"]=lengths
-            outputdf=df[df["Peptide Length"]==input.strippedpeptidelength()].drop(columns=["Peptide Length"])
-            with io.BytesIO() as buf:
-                outputdf.to_csv(buf,header=False,index=False)
-                yield buf.getvalue()
-        if input.peptidelist_condition_or_run()=="individual":
-            placeholder=searchoutput[searchoutput["Cond_Rep"]==input.peptidelist_dropdown_pick()]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True)
-
-            df=pd.DataFrame()
-            df["PEP.StrippedSequence"]=placeholder
-            lengths=[]
-            for pep in placeholder:
-                lengths.append(len(pep))
-            df["Peptide Length"]=lengths
-            outputdf=df[df["Peptide Length"]==input.strippedpeptidelength()].drop(columns=["Peptide Length"])
-            with io.BytesIO() as buf:
-                outputdf.to_csv(buf,header=False,index=False)
-                yield buf.getvalue()
-
-    #download table of protein ID metrics/CVs
-    @render.download(filename=lambda: f"Protein CV Table_{input.searchreport()[0]['name']}.csv")
-    def proteinidmetrics_download():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        cvproteingroup=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-        cvproteinmean=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"Mean"})
-        cvproteinstdev=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"Stdev"})
-        cvproteincount=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).size().reset_index(drop=True)
-        cvproteintable=pd.concat([cvproteinmean,cvproteinstdev],axis=1).reindex(cvproteinmean.index)
-        cvproteintable["CV"]=cvproteintable["Stdev"]/cvproteintable["Mean"]*100
-        cvproteintable["# replicates observed"]=cvproteincount.tolist()
-        with io.BytesIO() as buf:
-            cvproteintable.to_csv(buf,index=False)
-            yield buf.getvalue()
-    
-    #download table of precursor ID metrics/CVs
-    @render.download(filename=lambda: f"Precursor CV Table_{input.searchreport()[0]['name']}.csv")
-    def precursoridmetrics_download():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        cvprecursorgroup=searchoutput[["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-
-        cvprecursormean=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"Mean"})
-        cvprecursorstdev=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Stdev"})
-        cvprecursorcount=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).size().reset_index(drop=True)
-        cvprecursortable=pd.concat([cvprecursormean,cvprecursorstdev],axis=1).reindex(cvprecursormean.index)
-        cvprecursortable["CV"]=cvprecursortable["Stdev"]/cvprecursortable["Mean"]*100
-        cvprecursortable["# replicates observed"]=cvprecursorcount.tolist()
-        with io.BytesIO() as buf:
-            cvprecursortable.to_csv(buf,index=False)
-            yield buf.getvalue()
-    
-    #download table of MOMA precursors for a specified run
-    @render.download(filename=lambda: f"MOMA Table_{input.searchreport()[0]['name']}.csv")
-    def moma_download():
-        #RT tolerance in %
-        rttolerance=input.rttolerance()
-        #MZ tolerance in m/z
-        mztolerance=input.mztolerance()
-
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-        sample=input.cond_rep()
-
-        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]
-        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
-        coelutingpeptides=pd.DataFrame(columns=columns)
-        for i in range(len(df)):
-            if i+1 not in range(len(df)):
-                break
-            rtpercentdiff=(abs(df["EG.ApexRT"][i]-df["EG.ApexRT"][i+1])/df["EG.ApexRT"][i])*100
-            mzdiff=abs(df["FG.PrecMz"][i]-df["FG.PrecMz"][i+1])
-            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
-                coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i].tolist()
-                coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i+1].tolist()
-
-        #adding a column for a rough group number for each group of peptides detected
-        for i in range(len(coelutingpeptides)):
-            if i+1 not in range(len(coelutingpeptides)):
-                break
-            rtpercentdiff=(abs(coelutingpeptides["EG.ApexRT"][i]-coelutingpeptides["EG.ApexRT"][i+1])/coelutingpeptides["EG.ApexRT"][i])*100
-            mzdiff=abs(coelutingpeptides["FG.PrecMz"][i]-coelutingpeptides["FG.PrecMz"][i+1])
-            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
-                coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
-
-        with io.BytesIO() as buf:
-            coelutingpeptides.to_csv(buf,index=False)
-            yield buf.getvalue()
-
-    #download table of PTMs per precursor
-    @render.download(filename=lambda: f"PTM List_{input.searchreport()[0]['name']}.csv")
-    def ptmlist_download():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        ptmdf=pd.DataFrame()
-        for condition in sampleconditions:
-            df=searchoutput[searchoutput["R.Condition"]==condition][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
-            dfptmlist=[]
-            numptms=[]
-            for i in df["EG.ModifiedPeptide"]:
-                foundptms=re.findall(r"[^[]*\[([^]]*)\]",i)
-                dfptmlist.append(foundptms)
-                numptms.append(len(foundptms))
-            dfptmlist=pd.Series(dfptmlist).value_counts().to_frame().reset_index().rename(columns={"index":condition,"count":condition+"_count"})
-            ptmdf=pd.concat([ptmdf,dfptmlist],axis=1)
-        with io.BytesIO() as buf:
-            ptmdf.to_csv(buf,index=False)
-            yield buf.getvalue()
 
 #endregion
 
@@ -4670,4 +5343,447 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 #endregion
 
+# ============================================================================= Raw Data
+#region
+
+    #choose whether to import data from individual file names or from a directory
+    @render.ui
+    def rawfile_input_ui():
+        if input.file_or_folder()=="individual":
+            return ui.input_text_area("rawfile_input","Paste the path for each .d file you want to upload (note: do not leave whitespace at the end):",width="1500px",autoresize=True,placeholder="ex - C:\\Users\\Data\\K562_500ng_1_Slot1-49_1_3838.d")
+        if input.file_or_folder()=="directory":
+            return ui.input_text_area("rawfile_input","Paste the path for the directory containing the raw files to upload (note: do not leave whitespace at the end):",width="1500px",autoresize=True,placeholder="ex - C:\\Users\\Data")
+
+    #take text input for data paths and make dictionaries of frame data
+    @reactive.calc
+    def rawfile_list():
+        if input.file_or_folder()=="individual":
+            filelist=list(input.rawfile_input().split("\n"))
+            MSframedict=dict()
+            precursordict=dict()
+            samplenames=[]
+            for run in filelist:
+                frames=pd.DataFrame(atb.read_bruker_sql(run)[2])
+                MSframedict[run]=frames[frames["MsMsType"]==0].reset_index(drop=True)
+                precursordict[run]=pd.DataFrame(atb.read_bruker_sql(run)[3])
+                samplenames.append(run.split("\\")[-1])
+            return MSframedict,precursordict,samplenames
+        if input.file_or_folder()=="directory":
+            os.chdir(input.rawfile_input())
+            cwd=os.getcwd()
+            filelist=[]
+            for file in os.listdir():
+                if ".d" in file:
+                    filelist.append(cwd+"\\"+file)
+            MSframedict=dict()
+            precursordict=dict()
+            samplenames=[]
+            for run in filelist:
+                frames=pd.DataFrame(atb.read_bruker_sql(run)[2])
+                MSframedict[run]=frames[frames["MsMsType"]==0].reset_index(drop=True)
+                precursordict[run]=pd.DataFrame(atb.read_bruker_sql(run)[3])
+                samplenames.append(run.split("\\")[-1])
+            return MSframedict,precursordict,samplenames  
+
+    #for directory input, show what files were found in the directory
+    @render.text
+    def uploadedfiles():
+        if input.file_or_folder()=="directory":
+            try:
+                MSframedict,precursordict,samplenames=rawfile_list()
+                printsamplenames="\n".join(str(el) for el in samplenames)
+            except:
+                return ""
+            return printsamplenames
+
+    #render ui for checkboxes to plot specific runs
+    @render.ui
+    def rawfile_checkboxes_tic():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=MSframedict.keys()
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_checkbox_group("rawfile_pick_tic","Pick files to plot data for:",choices=opts,width="800px")
+    #plot TIC from raw data
+    @reactive.effect
+    def _():
+        @render.plot(width=input.tic_width(),height=input.tic_height())
+        def TIC_plot():
+            MSframedict,precursordict,samplenames=rawfile_list()
+            checkgroup=input.rawfile_pick_tic()
+            colors=list(mcolors.TABLEAU_COLORS)
+            if input.stacked_tic()==True:
+                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
+                for i,run in enumerate(checkgroup):
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["SummedIntensities"]
+                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
+                    ax[i].set_ylabel("Intensity")
+                    ax[i].set_axisbelow(True)
+                    ax[i].grid(linestyle="--")
+                    legend=ax[i].legend(loc="upper left")
+                    for z in legend.legend_handles:
+                        z.set_linewidth(5)
+            else:
+                fig,ax=plt.subplots()
+                for run in checkgroup:
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["SummedIntensities"]
+                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
+                ax.set_xlabel("Time (min)")
+                ax.set_ylabel("Intensity")
+                ax.set_axisbelow(True)
+                ax.grid(linestyle="--")
+                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
+                legend=ax.legend(loc="upper left")
+                for z in legend.legend_handles:
+                    z.set_linewidth(5)
+        
+    #render ui for checkboxes to plot specific runs
+    @render.ui
+    def rawfile_checkboxes_bpc():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=MSframedict.keys()
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_checkbox_group("rawfile_pick_bpc","Pick files to plot data for:",choices=opts,width="800px")
+    #plot BPC from raw data
+    @reactive.effect
+    def _():
+        @render.plot(width=input.bpc_width(),height=input.bpc_height())
+        def BPC_plot():
+            MSframedict,precursordict,samplenames=rawfile_list()
+            checkgroup=input.rawfile_pick_bpc()
+            colors=list(mcolors.TABLEAU_COLORS)
+            if input.stacked_bpc()==True:
+                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
+                for i,run in enumerate(checkgroup):
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["MaxIntensity"]
+                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
+                    ax[i].set_ylabel("Intensity")
+                    ax[i].set_axisbelow(True)
+                    ax[i].grid(linestyle="--")
+                    legend=ax[i].legend(loc="upper left")
+                    for z in legend.legend_handles:
+                        z.set_linewidth(5)
+            else:
+                fig,ax=plt.subplots()
+                for run in checkgroup:
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["MaxIntensity"]
+                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
+                ax.set_xlabel("Time (min)")
+                ax.set_ylabel("Intensity")
+                ax.set_axisbelow(True)
+                ax.grid(linestyle="--")
+                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
+                legend=ax.legend(loc='upper left')
+                for z in legend.legend_handles:
+                    z.set_linewidth(5)      
+
+    #render ui for checkboxes to plot specific runs
+    @render.ui
+    def rawfile_checkboxes_accutime():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=MSframedict.keys()
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_checkbox_group("rawfile_pick_accutime","Pick files to plot data for:",choices=opts,width="800px")
+    #plot accumulation time from raw data
+    @reactive.effect
+    def _():
+        @render.plot(width=input.accutime_width(),height=input.accutime_height())
+        def accutime_plot():
+            MSframedict,precursordict,samplenames=rawfile_list()
+            checkgroup=input.rawfile_pick_accutime()
+            colors=list(mcolors.TABLEAU_COLORS)
+            if input.stacked_accutime()==True:
+                fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
+                for i,run in enumerate(checkgroup):
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["AccumulationTime"]
+                    ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
+                    ax[i].set_ylabel("Accumulation Time (ms)")
+                    ax[i].set_axisbelow(True)
+                    ax[i].grid(linestyle="--")
+                    legend=ax[i].legend(loc="upper left")
+                    for z in legend.legend_handles:
+                        z.set_linewidth(5)
+            else:
+                fig,ax=plt.subplots()
+                for run in checkgroup:
+                    x=MSframedict[run]["Time"]/60
+                    y=MSframedict[run]["AccumulationTime"]
+                    ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
+                ax.set_xlabel("Time (min)")
+                ax.set_ylabel("Accumulation Time (ms)")
+                ax.set_axisbelow(True)
+                ax.grid(linestyle="--")
+                legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
+                for z in legend.legend_handles:
+                    z.set_linewidth(5)
+
+    @render.ui
+    def rawfile_buttons_eic():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=MSframedict.keys()
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_radio_buttons("rawfile_pick_eic","Pick file to plot data for:",choices=opts,width="800px")
+    #input for mobility add-on for EICs
+    @render.ui
+    def mobility_input():
+        if input.include_mobility()==True:
+            return ui.input_text("mobility_input_value","Input mobility for EIC:"),ui.input_text("mobility_input_window","Input mobility window (1/k0) for EIC:")
+    @reactive.calc
+    @reactive.event(input.load_eic)
+    def eic_setup():
+        mz=float(input.eic_mz_input())
+        ppm_error=float(input.eic_ppm_input())
+        rawfile=atb.TimsTOF(input.rawfile_pick_eic())
+
+        low_mz=mz/(1+ppm_error/10**6)
+        high_mz=mz*(1+ppm_error/10**6)
+
+        if input.include_mobility()==True:
+            mobility=float(input.mobility_input_value())
+            window=float(input.mobility_input_window())
+            low_mobility=mobility-window
+            high_mobility=mobility+window
+            eic_df=rawfile[:,low_mobility: high_mobility,0,low_mz: high_mz]
+        else:
+            eic_df=rawfile[:,:,0,low_mz: high_mz]
+
+        return eic_df
+    #plot EIC for input mass
+    @reactive.effect
+    def _():
+        @render.plot(width=input.eic_width(),height=input.eic_height())
+        def eic():
+            eic_df=eic_setup()
+            fig,ax=plt.subplots(figsize=(10,5))
+            ax.plot(eic_df["rt_values_min"],eic_df["intensity_values"],linewidth=0.5)
+            ax.set_xlabel("Time (min)")
+            ax.set_ylabel("Intensity")
+            if input.include_mobility()==True:
+                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()))
+            else:
+                ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()))
+
+    @render.ui
+    def rawfile_buttons_eim():
+        MSframedict,precursordict,samplenames=rawfile_list()
+        opts=dict()
+        keys=MSframedict.keys()
+        labels=samplenames
+        for x,y in zip(keys,labels):
+            opts[x]=y
+        return ui.input_radio_buttons("rawfile_pick_eim","Pick file to plot data for:",choices=opts,width="800px")
+    @reactive.calc
+    @reactive.event(input.load_eim)
+    def eim_setup():
+        mz=float(input.eim_mz_input())
+        ppm_error=float(input.eim_ppm_input())
+        rawfile=atb.TimsTOF(input.rawfile_pick_eim())
+
+        low_mz=mz/(1+ppm_error/10**6)
+        high_mz=mz*(1+ppm_error/10**6)
+
+        eim_df=rawfile[:,:,0,low_mz: high_mz].sort_values("mobility_values")
+        return eim_df
+    #plot EIM for input mass
+    @reactive.effect
+    def _():
+        @render.plot(width=input.eim_width(),height=input.eim_height())
+        def eim():
+            eim_df=eim_setup()
+            fig,ax=plt.subplots(figsize=(10,5))
+            ax.plot(eim_df["mobility_values"],eim_df["intensity_values"],linewidth=0.5)
+            ax.set_xlabel("Ion Mobility ($1/K_{0}$)")
+            ax.set_ylabel("Intensity")
+            ax.set_title(input.rawfile_pick_eim().split("\\")[-1]+"\n"+"EIM: "+str(input.eim_mz_input()))
+
+#endregion
+
+# ============================================================================= Export Tables 
+#region 
+
+    #download table of peptide IDs
+    @render.download(filename=lambda: f"Peptide List_{input.searchreport()[0]['name']}.csv")
+    def peptidelist():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        peptidetable=searchoutput[["R.Condition","R.Replicate","PG.Genes","PG.ProteinAccessions","PG.ProteinNames","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+        with io.BytesIO() as buf:
+            peptidetable.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #condition or run dropdown for stripped peptide list export
+    @render.ui
+    def peptidelist_dropdown():
+        if input.peptidelist_condition_or_run()=="condition":
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            opts=sampleconditions
+            return ui.input_selectize("peptidelist_dropdown_pick","Pick run to export peptide list from",choices=opts)
+        if input.peptidelist_condition_or_run()=="individual":
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            opts=resultdf["Cond_Rep"].tolist()
+            return ui.input_selectize("peptidelist_dropdown_pick","Pick run to export peptide list from",choices=opts)
+
+    #download list of stripped peptide IDs of specific length
+    @render.download(filename=lambda: f"Stripped Peptide List_{input.peptidelist_dropdown_pick()}_{input.strippedpeptidelength()}-mers.csv")
+    def strippedpeptidelist():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        if input.peptidelist_condition_or_run()=="condition":
+            placeholder=searchoutput[searchoutput["R.Condition"]==input.peptidelist_dropdown_pick()]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True)
+
+            df=pd.DataFrame()
+            df["PEP.StrippedSequence"]=placeholder
+            lengths=[]
+            for pep in placeholder:
+                lengths.append(len(pep))
+            df["Peptide Length"]=lengths
+            outputdf=df[df["Peptide Length"]==input.strippedpeptidelength()].drop(columns=["Peptide Length"])
+            with io.BytesIO() as buf:
+                outputdf.to_csv(buf,header=False,index=False)
+                yield buf.getvalue()
+        if input.peptidelist_condition_or_run()=="individual":
+            placeholder=searchoutput[searchoutput["Cond_Rep"]==input.peptidelist_dropdown_pick()]["PEP.StrippedSequence"].drop_duplicates().reset_index(drop=True)
+
+            df=pd.DataFrame()
+            df["PEP.StrippedSequence"]=placeholder
+            lengths=[]
+            for pep in placeholder:
+                lengths.append(len(pep))
+            df["Peptide Length"]=lengths
+            outputdf=df[df["Peptide Length"]==input.strippedpeptidelength()].drop(columns=["Peptide Length"])
+            with io.BytesIO() as buf:
+                outputdf.to_csv(buf,header=False,index=False)
+                yield buf.getvalue()
+
+    #download table of protein ID metrics/CVs
+    @render.download(filename=lambda: f"Protein CV Table_{input.searchreport()[0]['name']}.csv")
+    def proteinidmetrics_download():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        cvproteingroup=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+        cvproteinmean=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"Mean"})
+        cvproteinstdev=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"Stdev"})
+        cvproteincount=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).size().reset_index(drop=True)
+        cvproteintable=pd.concat([cvproteinmean,cvproteinstdev],axis=1).reindex(cvproteinmean.index)
+        cvproteintable["CV"]=cvproteintable["Stdev"]/cvproteintable["Mean"]*100
+        cvproteintable["# replicates observed"]=cvproteincount.tolist()
+        with io.BytesIO() as buf:
+            cvproteintable.to_csv(buf,index=False)
+            yield buf.getvalue()
+    
+    #download table of precursor ID metrics/CVs
+    @render.download(filename=lambda: f"Precursor CV Table_{input.searchreport()[0]['name']}.csv")
+    def precursoridmetrics_download():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        cvprecursorgroup=searchoutput[["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+
+        cvprecursormean=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"Mean"})
+        cvprecursorstdev=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Stdev"})
+        cvprecursorcount=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).size().reset_index(drop=True)
+        cvprecursortable=pd.concat([cvprecursormean,cvprecursorstdev],axis=1).reindex(cvprecursormean.index)
+        cvprecursortable["CV"]=cvprecursortable["Stdev"]/cvprecursortable["Mean"]*100
+        cvprecursortable["# replicates observed"]=cvprecursorcount.tolist()
+        with io.BytesIO() as buf:
+            cvprecursortable.to_csv(buf,index=False)
+            yield buf.getvalue()
+    
+    #download table of MOMA precursors for a specified run
+    @render.download(filename=lambda: f"MOMA Table_{input.searchreport()[0]['name']}.csv")
+    def moma_download():
+        #RT tolerance in %
+        rttolerance=input.rttolerance()
+        #MZ tolerance in m/z
+        mztolerance=input.mztolerance()
+
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+        sample=input.cond_rep()
+
+        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]
+        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
+        coelutingpeptides=pd.DataFrame(columns=columns)
+        for i in range(len(df)):
+            if i+1 not in range(len(df)):
+                break
+            rtpercentdiff=(abs(df["EG.ApexRT"][i]-df["EG.ApexRT"][i+1])/df["EG.ApexRT"][i])*100
+            mzdiff=abs(df["FG.PrecMz"][i]-df["FG.PrecMz"][i+1])
+            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
+                coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i].tolist()
+                coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i+1].tolist()
+
+        #adding a column for a rough group number for each group of peptides detected
+        for i in range(len(coelutingpeptides)):
+            if i+1 not in range(len(coelutingpeptides)):
+                break
+            rtpercentdiff=(abs(coelutingpeptides["EG.ApexRT"][i]-coelutingpeptides["EG.ApexRT"][i+1])/coelutingpeptides["EG.ApexRT"][i])*100
+            mzdiff=abs(coelutingpeptides["FG.PrecMz"][i]-coelutingpeptides["FG.PrecMz"][i+1])
+            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
+                coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
+
+        with io.BytesIO() as buf:
+            coelutingpeptides.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #download table of PTMs per precursor
+    @render.download(filename=lambda: f"PTM List_{input.searchreport()[0]['name']}.csv")
+    def ptmlist_download():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        ptmdf=pd.DataFrame()
+        for condition in sampleconditions:
+            df=searchoutput[searchoutput["R.Condition"]==condition][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+            dfptmlist=[]
+            numptms=[]
+            for i in df["EG.ModifiedPeptide"]:
+                foundptms=re.findall(r"[^[]*\[([^]]*)\]",i)
+                dfptmlist.append(foundptms)
+                numptms.append(len(foundptms))
+            dfptmlist=pd.Series(dfptmlist).value_counts().to_frame().reset_index().rename(columns={"index":condition,"count":condition+"_count"})
+            ptmdf=pd.concat([ptmdf,dfptmlist],axis=1)
+        with io.BytesIO() as buf:
+            ptmdf.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+#endregion
+
+# ============================================================================= UI calls for use around the app
+#region
+
+    #render ui call for dropdown calling sample condition names
+    @render.ui
+    def sampleconditions_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=sampleconditions
+        return ui.input_selectize("conditionname","Pick sample condition",choices=opts)
+
+    #render ui call for dropdown calling replicate number
+    @render.ui
+    def replicates_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=np.arange(1,max(repspercondition)+1,1)
+        return ui.input.selectize("replicate","Replicate number",opts)
+
+    #render ui call for dropdown calling Cond_Rep column
+    @render.ui
+    def cond_rep_list():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("cond_rep","Pick run:",choices=opts)
+
+#endregion
+
 app=App(app_ui,server)
+
+
