@@ -22,6 +22,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
   - faicons
   - hvplot
   - matplotlib-venn
+  - pyarrow
   - scikit-learn
   - shiny
   - shinyswatch
