@@ -38,7 +38,6 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 - Spectronaut: Use the report template listed as "Shiny Report Format.rs" to export the search results.
 - DIA-NN: The input is the main report .tsv file.
 - FragPipe: The input is the psm.tsv result file.
-- tims-DIA-NN: To access results file, unzip the bps_timsDIANN folder, open the processing-run folder and its subfolder, then unzip the tims-diann.result folder. Upload the results.tsv file.
 
 # Disclaimer
 This application is not supported by or affiliated with Bruker.
