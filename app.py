@@ -1163,7 +1163,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 
-                searchoutput["FG.CalibratedMassAccuracy (PPM)"]=(searchoutput["Delta Mass"]/searchoutput["Calculated M/Z"])*10^6
+                searchoutput["FG.CalibratedMassAccuracy (PPM)"]=(searchoutput["Delta Mass"]/searchoutput["Calculated M/Z"])*10E6
 
                 searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length",
                                         "Observed Mass","Calibrated Observed Mass","Calibrated Observed M/Z",
