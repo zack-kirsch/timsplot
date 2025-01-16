@@ -1,0 +1,164 @@
+# Changelog
+
+## 2025.
+
+
+## 2024.12.12
+- General
+  - added descriptions for some plotting sections to help clarify what's happening under the hood
+- File Import
+  - updated reminder text for each search software
+  - modified file import to include multiple files in upload
+  - modified inputfile() function that if there are more than 1 file uploaded, concatenate them row-wise before moving on to column rename/drop
+    - the function first checks if the first file uploaded is a .tsv to keep with differentiating BPS vs other software output
+  - added a line in the fragger file input that calculates mass accuracy and adds it as a column to the search report
+  - added handling for tims-DIANN and tims-rescore data from BPS, can only import one .zip file at a time for now
+  - adjusted visual of the file import window
+- Metrics
+  - added a calculation of peak widths to its own function, redid how the calculation is put together (more similarly to how CVs are calculated and tabulated for plotting)
+  - added a table of mean and median peak widths
+  - added an option to show all peak widths or remove outlier 5% peak widths from violin plot
+  - added error handling for charge state, pep length, and peps per protein where the plotting color was being unnecessarily split when there was only one condition present (but with replicates)
+  - added a slider to Peptides per Protein to explicitly set the high end of the x axis range
+  - changed how the marker is shown in Peptide Lengths to avoid confusion because of the comma previously used
+  - added minor x ticks to the Peptide Lengths bar plots
+  - added Mass Accuracy plot (violin or histogram options)
+- PTMs
+  - moved CV calculation to its own function to avoid redundancy in plotting and generating table
+  - added a table like for ID Counts CV plot
+  - added the same mass accuracy plotting from the Metrics section to just precursors with a specified PTM
+- Heatmaps
+  - changed how charge/ptm scatter is plotted
+  - added a table to charge/ptm scatter to show the number of precursors of each charge state present in the scatter depending on the selection
+- Statistics
+  - fixed an issue where the label size for the volcano plot wasn't set to the input variable
+- Immunopeptidomics
+  - added section
+  - added different modes of charge state plotting requested by Kristina Marx which specifies peptides that are detected at multiple charge states instead of lumping them together
+  - included for two of the plotting modes the ability to only plot specific charges of interest
+- Mixed Proteome
+  - adjusted peptide count for each organism to match how ID counts are done (unique values from EG.ModifiedPeptide)
+  - added a data table to the Quant Ratios plot
+  - added an option to use mean or median quant values for calculating Quant Ratios
+- Dilution Series
+  - moved calculations to make the plot into a separate function so that changing the plot size with the sliders doesn't need re-execution of the calcuation
+- Raw Data
+  - added an option to paste a directory containing raw data files instead of individually pasting the whole file path for each raw file
+
+- File Import
+  - fixed an issue with DIA-NN input where the filenames weren't sorted (as assumed from other software) and ended up duplicating condition and replicate values across each file name. Fixed by adding a sort_values before returning searchoutput df
+- ID Counts
+  - fixed an issue with CV plotting where it would error out when there was only one sample condition
+
+## 2024.11.15
+- General
+  - adjusted width and height slider ranges
+  - *important* changed ProteinNames to ProteinGroups in calculations throughout, that way all calculations are based on PG.ProteinGroups (except for mixed proteome which needs PG.ProteinNames)
+  - added an option in Setitngs for rotating the x labels on most plots (especially those that have condition names as the x labels)
+- File Import
+  - adjusted how fragger glyco input is handled in case the Spectrum File column has no distinct values
+- ID Counts
+  - added an option in UpSet Plot to plot by condition or by run instead of just by run
+  - changed "Peptides" title to "Modified Peptides"
+  - added a table to the CV Plots that shows the mean and median CV values that updates based on selections for precursor/protein and 5% outlier cutoff
+- Metrics
+  - changed the top N slider for dynamic range to int values instead of float
+  - added an option in Peptide Length to hide the length marker
+  - changed rotation of charge state labels to 90 deg that way they don't overlap
+  - adjusted the calculation behind charge states function, was using stripped sequence instead of modified sequence and was ultimately under-counting the number of precursors 
+- PTMs
+  - fixed an error with fragpipe data where Acetyl modifications were not being renamed correctly
+  - removed PTM enrichment tab and changed how PTM ID counts are plotted similarly to the glycoproteomics ID counts enrichment
+    - Radio button to switch between ID counts and % of total IDs per run (enrichment)
+- Heatmaps
+  - added an option in Venn Diagram to plot by condition or by run instead of just by run
+  - added an option in Venn Diagram to download the list of IDs that are shown in the Venn diagram
+  - added an option in Charge/PTM Precursor Scatter to choose to plot based on Cond_Rep
+  - added an option in IDs vs RT to choose runs from a checklist
+- PCA
+  - adjusted PC bar graph to just show first 3 components
+  - added volcano plot calculation and plotting
+- Mixed Proteome
+  - complete overhaul of how the calculations were performed. Added a table in the Info tab to simplify input
+  - everything back to previous working condition but with new logic for the calculations
+- PRM
+  - adjusted how intensity across runs is plotted such that the x axis order is what we'd expect. Missing values are added as zeros
+  - changed plotting setup for individual peptide tracker. Plots should be generated a lot more cleanly and if signal is missing for the lowest concentration, we set all values of measured ratio to 0
+- Dilution Series
+  - added a theoretical ratio line to the plot
+- Export Tables
+  - added index=False to the .to_csv for each function to get rid of unnecessary index column in the output .csv
+  - added an option to export a list of stripped peptide sequences of specific length (specifically for use in weblogo)
+- Glycoproteomics
+  - added Total Glycan Composition to the glycopeptide df that's used in the dictionary and df generation
+  - changed language in Glycan Tracker to % of IDs instead of enrichment
+  - simplified the two functions (glyco_variables, glyco_dataframes) since the dictionaries generated by glyco_variables weren't being used except to generate the dataframes
+
+## 2024.10.28
+- File Import
+  - added the capability to download the metadata table as-shown as well as upload your own metadata table
+  - added error handling for different software search reports. If columns are missing, it will ignore them in the .drop function
+- PTMs
+  - adjusted ptmcounts function, no need for MS2Quantity columns and made it more comparable to the idmetrics function
+- Glycoproteomics
+  - added section, working on adding different visualization functions
+- reordered some side tabs
+
+## 2024.10.21
+- metadata
+  - changed how metadata works. Added 2nd table that only shows conditions so it makes reordering and concentration input much easier
+  - it should update with removal of entire conditions' replicates in the replicate-based metadata table so long as the switch is active
+  - changed how R.Condition, R.Replicate, and concentration are updated from the metadata, substantially faster by not going row-by-row 
+- throughout 
+  - changed .str.contains(condition) to ==condition. There was a bug where - in the condition name would make the code interpret as an invalid decimal and mess up how it interpreted the conditions
+  - adjusted titlefont, axisfont, labelfont, and legendfont throughout such that changing the sliders in the control panel adjusts the right groupings
+- idmetrics
+  - added a sort for resultdf so that the conditions are ordered when it's generated. There was a bug where the ordering for the conditions would be correct based on the metadata (as in the x axis labels) in the idmetrics plot but the actual data were in order of condition because of the way the loop works
+- Settings
+  - Control Panel 
+    - tab added for font size control and other plotting customization
+    - new variables to add throughout in plotting functions
+      - titlefont=input.titlefont()
+      - axisfont=input.axisfont()
+      - labelfont=input.labelfont()
+      - legendfont=input.legendfont()
+      - ypadding=input.ypadding()
+  - Column Check 
+    - tab added to make sure necessary columns are present
+  - Color Settings
+    - changed the matplotlib and css color groups to images that were explicitly saved to \images under the Spectronaut_Vis_App folder
+    - this makes them load faster and stay present even when the tab is reloaded
+    - the functions are still present to render them as plots under
+  - File Stats
+    - added panel with useful information about the input file
+- Metrics
+  - added separate functions for explicitly calculating metrics instead of using the idmetrics function. Should help in error handling
+  - Peptide Lengths
+    - adjusted x axis such that it always uses integer ticks for the x axis
+  - Peptides per Protein  
+    - adjusted plotting such that there is a hard cutoff to the high x range
+    - adjusted plotting such that values were sorted properly, preventing odd plotting artefacts
+  - Data Completeness
+    - adjusted y padding and spacing for data labels
+  - Added Peak Width section
+- PTMs
+  - PTMs per Precursor
+    - adjusted ylim top and x axis tick position
+- Heatmaps
+  - RT, m/z, IM Heatmaps
+    - adjusted single replicate choice to == instead of .str.contains
+  - Charge/PTM Precursor Heatmap 
+    - adjusted syntax in uploading custom dia windows
+  - IDs vs RT
+    - adjusted rtmax to just the nearest whole number instead of the nearest ten
+  - Venn Diagram of IDs    
+    - adjusted single replicate choice to == instead of .str.contains
+  - Charge/PTM Scatter
+    - added as a plotting option, shows precursors of picked charge or ptm against all the other precursors to show how charges/ptms group in the heatmap
+- Mixed Proteome
+  - Counts per Organism
+    - Added options for plotting peptides and precursors per organism instead of just proteins
+- Raw Data
+  - Added EIM section
+- Added Dilution Series section
+- Added PCA section    
