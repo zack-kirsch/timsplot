@@ -41,4 +41,4 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 - tims-rescore and tims-DIANN: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
 
 # Disclaimer
-This application is not supported by or affiliated with Bruker.
+This application is not supported by or affiliated with Bruker. It has been developed and tested to the best of the author's abilities, but please use caution when using the application as it may not have had the same level of testing and scrutiny as officially supported software. 
