@@ -1,7 +1,30 @@
 # Changelog
 
-## 2025.
-
+## 2025.01.21
+- General
+  - split library import into two sections. First just to call the necessary libraries to open the app and the rest closer to the server code, this should make the app launch faster
+  - adjusted slider range for plot width/height and added sliders for all plots in the app
+  - added functionality for BPS Novor results
+- File Import
+  - added a switch for DIANN import to filter Q values based on whether or not MBR was used in the search
+- Settings
+  - added a switch to change the DPI to 300 for publication-quality figures, conditional for this put under the variables_dfs function. Changing the switch makes a direct change, no need for a button or anything
+- Metrics
+  - added an option to plot Data Completeness by condition instead of just grouping all runs in the search file together
+- Metrics/PTM
+  - adjusted how the mass accuracy histograms are put together, fixed handling of multiple runs
+- Heatmaps
+  - changed logic for Venn diagrams to make it simpler, added capability for 3-sided comparison and comparison of peptides and precursors of specified lengths
+  - added Bremen DIA windows for Charge/PTM Precursor Heatmap
+- Statistics
+  - added up/down regulated proteins bar plot to show highest -log10 pvalues that fall above the fold change cutoff
+- De Novo
+  - added section and new plot capabilities for BPS Novor data
+  - added ability to compare BPS Novor with secondary software with individual upload page for the secondary
+- Raw Data
+  - added axis labels, axis label font sizes, minor ticks, plot titles to all plots
+- Export Tables
+  - for protein and precursor tables, made sure to include the condition and protein/precursor information that wasn't being added as a result of being used as the index to the table
 
 ## 2024.12.12
 - General
