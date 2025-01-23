@@ -6371,7 +6371,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         peplist_subItoL=[]
         for pep in secondary_df["PEP.StrippedSequence"]:
             peplist_subItoL.append(pep.replace("I","L"))
-        secondary_df["PEP.StrippedSequence (converted)"]=peplist_subItoL
+        secondary_df["PEP.StrippedSequence"]=peplist_subItoL
 
         #calculate and add peptide lengths column to both dfs
         bps_peplen=[]
