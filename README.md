@@ -1,5 +1,5 @@
 # timsplot: A Python Shiny App for Visualizing tims-TOF Proteomics Results
-The app is a Shiny App designed to facilitate quick and easy data visualization for Bruker timsTOF data. The app uses the reports from common software (Spectronaut, DIA-NN, FragPipe, and tims DIA-NN) to generate informative figures that can be adjusted on-the-fly for data inspection and presentation. 
+This is a Shiny App designed to facilitate quick and easy data visualization for Bruker timsTOF data. The app uses the reports from common software (Spectronaut, DIA-NN, FragPipe, and Bruker ProteoScape) to generate informative figures that can be adjusted on-the-fly for data inspection and presentation. 
 
 # Tutorial
 Instructions on how to install and use the app can be found in 'timsTOF Visualization App Tutorial' in the main directory.
@@ -35,6 +35,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 6. **Run and access the app:** Set the downloaded app directory as the working directory under the Explorer tab in Visual Studio Code and open the app.py file. Click the play button in the top right to launch the Shiny app. If the extensions have been installed properly, you should see `Run Shiny App` when hovering over the button.
 
 ## Input File Format
+Note: multiple files from the same software can be uploaded at a time. In the Upload Search Report section, just select the multiple files in the file explorer window that pops up.
 - Spectronaut: Use the report template listed as "Shiny Report Format.rs" to export the search results.
 - DIA-NN: The input is the main report .tsv file.
 - FragPipe (and FragPipe Glyco): The input is the psm.tsv result file.
