@@ -1853,8 +1853,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                         else:
                             ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
                             ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            if "" in ptmlocs:
-                                ptmlocs.remove("")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
                             ptms_for_loop=[]
                             for ele in ptms:
                                 ptms_for_loop.append("["+ele+"]")
