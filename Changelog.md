@@ -1,5 +1,34 @@
 # Changelog
 
+## 2025.02.28
+- added some instructions in the file import tab
+- File Import
+  - switched the filtering for DIANN MBR, it was the opposite of what it should have been
+  - added support for DIA-NN 2.0 parquet files in main file import, de novo comparison, and two-software comparison
+- Settings
+  - added a line to both color table images to make sure that the original working directory is used to pull the images file
+  - specific case where going to raw data first and then going to Settings tab had an error since the code was looking for the images files in the directory where the raw data was taken from
+- Heatmaps
+  - added an option to use stripped peptides in Venn Diagram and an option to remove terminal AAs from the comparison
+- Immunopeptidomics
+  - added sequence motifs plot using logomaker Python package
+- Mixed Proteome
+  - added handling for when one condition only has a single replicate
+  - added an option to change axis scaling for quant ratios plot
+- Glycoproteomics
+  - added support for Glycoscape
+  - added Venn diagram to compare glycoprotein, glycopeptide, and glycoPSM IDs
+- De Novo
+  - added tab for comparing sequence motifs from BPS Novor and secondary software
+  - added switch to only use unique BPS novor IDs in sequence motifs plot
+  - fixed an issue with file import and converting the stripped peptide sequence to the modified sequence where blank values for the ptm locations were causing an error
+  - added a switch for the stripped peptide comparison to only do the comparison between the sequences with the first and last 2 residues cut off
+- Export Tables
+  - added a slider for an IM difference tolerance to avoid MOMA events with very similar IM
+- Two-Software Comparison
+  - added tab for comparing results from two different search software
+
+
 ## 2025.01.21
 - General
   - split library import into two sections. First just to call the necessary libraries to open the app and the rest closer to the server code, this should make the app launch faster
