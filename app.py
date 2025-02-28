@@ -1,21 +1,10 @@
-
-#known misalignments with software reports
-    #tims-DIANN
-        #Protein counts are correct
-        #Peptides and precursors are lower in the app than displayed in BPS
-    #DIANN
-        #compared to report.stats:
-        #Precursor counts match
-        #Proteins.Identified is lower than Protein Groups in ID Counts
-    #BPS Novor
-        #peptide counts are correct
-        #precursor counts are lower than reported in BPS because duplicate IDs (EG.ModifiedPeptide/FG.Charge) are not filtered by BPS
-            #numbers match if you don't remove duplicates
+#Changelog
 
 # =============================================================================
 # Library Imports (only necessary for launch)
 # =============================================================================
 #region
+
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui, module
 from shinyswatch import theme
 #https://rstudio.github.io/shinythemes/
@@ -26,60 +15,40 @@ from faicons import icon_svg
 #endregion
 
 # =============================================================================
-# Changelog
-# =============================================================================
-#region
-
-#2025.1.
-#region
-
-
-
-#endregion
-
-#endregion
-
-# =============================================================================
 # UI
 # =============================================================================
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization"),
+    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.02.28)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
-                    #  ui.card(
-                    #      ui.card_header("Upload Search Report"),
-                        #  ui.input_selectize("software","Search software:",{"spectronaut":"Spectronaut",
-                        #                                                    "diann":"DIA-NN",
-                        #                                                    "fragpipe":"FragPipe",
-                        #                                                    "fragpipe_glyco":"FragPipe (Glyco)",
-                        #                                                    "bps_timsrescore":"tims-rescore (BPS)",
-                        #                                                    "bps_timsdiann":"tims-DIANN (BPS)",
-                        #                                                    "ddalibrary":"Spectronaut Library"
-                        #                                                    }
-                        #                                                    ),
-                    #      ui.output_text("metadata_reminder"),
-                    #      ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip"],multiple=True),
-                    #      height="350px"
-                    #      ),
                      ui.card(
                          ui.card_header("Upload Search Report"),
                          ui.row(
                             ui.column(3,
                                       ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut",
-                                                                                            "diann":"DIA-NN",
+                                                                                            "diann":"DIA-NN (pre 2.0)",
+                                                                                            "diann2.0":"DIA-NN (2.0)",
                                                                                             "fragpipe":"FragPipe",
                                                                                             "fragpipe_glyco":"FragPipe (Glyco)",
+                                                                                            "glycoscape":"GlycoScape",
                                                                                             "bps_timsrescore":"tims-rescore (BPS)",
                                                                                             "bps_timsdiann":"tims-DIANN (BPS)",
                                                                                             "bps_denovo":"BPS Novor",
                                                                                             "ddalibrary":"Spectronaut Library"}),
                                       ),
-                            ui.column(6,
-                                      ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip"],multiple=True),
+                            ui.column(4,
+                                      ui.input_file("searchreport","Upload search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
                                       ui.output_ui("diann_mbr_ui"),
                                       ui.output_text("metadata_reminder")
+                                      ),
+                            ui.column(5,
+                                      ui.p("Instructions:"),
+                                      ui.p("-Select software used for search and upload .tsv, .zip, or .parquet file"),
+                                      ui.p("-Fill out R.Condition and R.Replicate in the metadata table as needed"),
+                                      ui.p("-Select necessary switches under 'Update from Metadata Table' and click the 'Apply Changes' button"),
+                                      ui.p("-Note: click on the 'Apply Changes' button after upload even if metadata table was not updated")
                                       )
                                 ),
                             ),
@@ -87,7 +56,7 @@ app_ui=ui.page_fluid(
                          ui.card_header("Update from Metadata Table"),
                          ui.row(
                              ui.column(4,
-                                       ui.input_action_button("rerun_metadata","Apply Changes/Reinitialize",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
+                                       ui.input_action_button("rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
                                        ),
                              ui.column(4,
                                           ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
@@ -527,14 +496,6 @@ app_ui=ui.page_fluid(
                                         ui.column(3,ui.output_ui("ids_vs_rt_checkbox")),
                                         ui.column(8,ui.output_ui("binslider_ui"),ui.output_plot("ids_vs_rt")))
                                      ),
-                        # ui.nav_panel("Venn Diagram of IDs",
-                        #              ui.input_radio_buttons("venn_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                        #              ui.output_ui("cond_rep_list_venn1"),
-                        #              ui.output_ui("cond_rep_list_venn2"),
-                        #              ui.input_selectize("vennpick","Pick what metric to compare:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"}),
-                        #              ui.download_button("venn_table_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down")),
-                        #              ui.output_plot("venndiagram")
-                        #              ),
                         ui.nav_panel("Venn Diagram",
                                      ui.card(
                                          ui.row(
@@ -546,8 +507,14 @@ app_ui=ui.page_fluid(
                                          ui.column(4,
                                                    ui.input_radio_buttons("venn_numcircles","Pick number of runs to compare:",choices={"2":"2","3":"3"}),
                                                    ui.input_radio_buttons("venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                   ui.input_radio_buttons("venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups","peptides":"Peptides","peptides_len":"Peptides (specific length)","precursors":"Precursors","precursors_len":"Precursors (specific length)"}),
-                                                   ui.output_ui("venn_peplength_ui")
+                                                   ui.input_radio_buttons("venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups",
+                                                                                                                            "peptides":"Peptides",
+                                                                                                                            "precursors":"Precursors",
+                                                                                                                            "peptides_stripped":"Stripped Peptides",
+                                                                                                                            }),
+                                                   ui.input_switch("venn_specific_length","Compare specific peptide length?",value=False,width="300px"),
+                                                   ui.output_ui("venn_peplength_ui"),
+                                                   ui.output_ui("peptidecore_ui")
                                                    ),
                                          ui.column(4,
                                                    ui.output_ui("venn_run1_ui"),
@@ -611,9 +578,27 @@ app_ui=ui.page_fluid(
                                       ui.output_plot("pca_plot")
                                       )
                       ),icon=icon_svg("network-wired")
-                     ),
+                     ),       
         ui.nav_panel("Immunopeptidomics",
                      ui.navset_pill(
+                         ui.nav_panel("Sequence Motifs",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("seqmotif_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                            ui.input_slider("seqmotif_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                          )
+                                          ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.input_radio_buttons("seqmotif_plottype","Pick kind of matrix to plot:",choices={"information":"Information","counts":"Counts"}),
+                                                    ui.input_slider("seqmotif_peplengths","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True),
+                                                    ui.output_ui("seqmotif_run_ui"),
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("seqmotif_plot")
+                                                    )
+                                      )
+                                      ),
                          ui.nav_panel("Charge States (Bar)",
                                       ui.card(
                                           ui.row(
@@ -694,13 +679,25 @@ app_ui=ui.page_fluid(
                                           ui.card(
                                               ui.row(
                                                   ui.input_slider("quantratios_width","Plot width",min=100,max=7500,step=100,value=1200,ticks=True),
-                                                  ui.input_slider("quantratios_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                                  ui.input_slider("quantratios_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.column(6,
+                                                      ui.p("Experimental ratios will be shown as a dashed line and theoretical ratios will be shown as a solid line")
+                                                      )
                                               )
                                             ),
                                           ui.row(
                                               ui.column(3,
                                                         ui.output_ui("referencecondition"),
                                                         ui.output_ui("testcondition"),
+                                                        ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
+                                                        ui.row(
+                                                            ui.column(6,
+                                                                      ui.input_radio_buttons("x_log_scale","x-axis Log Scale",choices=["log2","log10"]),
+                                                                     ),
+                                                            ui.column(6,
+                                                                      ui.input_radio_buttons("y_log_scale","y-axis Log Scale",choices=["log2","log10"]),  
+                                                                     )
+                                                            )
                                                         ),
                                               ui.column(3,
                                                         ui.input_slider("plotrange","Plot Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
@@ -708,10 +705,8 @@ app_ui=ui.page_fluid(
                                                         ui.input_slider("cvcutofflevel","CV Cutoff Level (%)",min=10,max=50,value=20,step=10,ticks=True,width="400px"),
                                                         ui.input_switch("cvcutoff_switch","Include CV cutoff?")
                                                         ),
-                                              ui.column(5,
-                                                        ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
+                                              ui.column(6,
                                                         ui.output_table("quantratios_table"),
-                                                        ui.output_text("expectedratios_note")
                                                         )
                                                         ),
                                           ui.output_plot("quantratios")
@@ -780,6 +775,28 @@ app_ui=ui.page_fluid(
                                           ),
                                       ui.output_plot("glycoIDsplot")
                                       ),
+                         ui.nav_panel("Venn Diagram",
+                                     ui.card(
+                                         ui.row(
+                                            ui.input_slider("glyco_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                            ui.input_slider("glyco_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                            )
+                                        ),
+                                     ui.row(
+                                         ui.column(4,
+                                                   ui.input_radio_buttons("glyco_venn_numcircles","Pick number of runs to compare:",choices={"2":"2","3":"3"}),
+                                                   ui.input_radio_buttons("glyco_venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                   ui.input_radio_buttons("glyco_venn_plotproperty","Metric to compare:",choices={"glycoproteins":"Glycoproteins","glycopeptides":"Glycopeptides","glycoPSMs":"GlycoPSMs"}),
+                                                   ),
+                                         ui.column(4,
+                                                   ui.output_ui("glyco_venn_run1_ui"),
+                                                   ui.output_ui("glyco_venn_run2_ui"),
+                                                   ui.output_ui("glyco_venn_run3_ui"),
+                                                   ui.download_button("glyco_venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down"))
+                                                   )
+                                            ),
+                                     ui.output_plot("glyco_venn_plot")
+                                     ),
                          ui.nav_panel("Glyco ID Tables",
                                       ui.row(
                                           ui.column(3,
@@ -805,7 +822,8 @@ app_ui=ui.page_fluid(
                                           ),
                                       ui.row(
                                           ui.output_ui("glycomodlist_ui"),
-                                          ui.input_radio_buttons("counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
+                                          ui.input_radio_buttons("counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"}),
+                                          ui.output_ui("high_mannose_ui")
                                           ),
                                       ui.output_plot("glycomod_IDs")
                                       ),
@@ -825,6 +843,7 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("glycoscatter_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                             )
                                           ),
+                                      ui.output_ui("glycoscatter_ui"),
                                       ui.output_plot("glycoscatter")
                                       ),
                                 ),icon=icon_svg("cubes-stacked")
@@ -842,13 +861,15 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.column(3,
                                                         ui.input_radio_buttons("software_secondary","Search software:",{"spectronaut":"Spectronaut",
-                                                                                                                        "diann":"DIA-NN",
+                                                                                                                        "diann":"DIA-NN (pre 2.0)",
+                                                                                                                        "diann2.0":"DIA-NN (2.0)",
                                                                                                                         "fragpipe":"FragPipe",
                                                                                                                         "bps_timsrescore":"tims-rescore (BPS)",
-                                                                                                                        "bps_timsdiann":"tims-DIANN (BPS)"}),
+                                                                                                                        "bps_timsdiann":"tims-DIANN (BPS)",
+                                                                                                                        "bps_denovo":"BPS Novor"}),
                                                         ),
                                               ui.column(6,
-                                                        ui.input_file("searchreport_secondary","Upload search report:",accept=[".tsv",".zip"],multiple=True),
+                                                        ui.input_file("searchreport_secondary","Upload search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
                                                         ui.output_text("metadata_reminder_secondary")
                                                        )
                                                 ),
@@ -907,15 +928,45 @@ app_ui=ui.page_fluid(
                          ui.nav_panel("Compare - Stripped Peptide IDs",
                                       ui.card(
                                           ui.row(
-                                              ui.input_slider("compare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("compare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                              ui.input_slider("denovocompare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                              ui.input_slider("denovocompare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                             )
                                           ),
-                                      ui.output_ui("compare_venn_samplelist"),
-                                      ui.input_switch("compare_specific_length","Compare specific peptide length?",value=False,width="300px"),
-                                      ui.output_ui("compare_specific_length_ui"),
-                                      ui.download_button("compare_venn_download","Download Peptide List",width="300px",icon=icon_svg("file-arrow-down")),
-                                      ui.output_plot("compare_venn_plot")
+                                      ui.output_ui("denovocompare_venn_samplelist"),
+                                      ui.input_switch("denovocompare_specific_length","Compare specific peptide length?",value=False,width="300px"),
+                                      ui.output_ui("denovocompare_specific_length_ui"),
+                                      ui.input_switch("denovocompare_peptidecore","Only consider peptide core (cut first and last 2 residues)",value=False,width="300px"),
+                                      ui.download_button("denovocompare_venn_download","Download Peptide List",width="300px",icon=icon_svg("file-arrow-down")),
+                                      ui.output_plot("denovocompare_venn_plot")
+                                      ),
+                         ui.nav_panel("Compare - Sequence Motifs",
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.input_radio_buttons("seqmotif_compare_plottype","Pick kind of matrix to plot:",choices={"information":"Information","counts":"Counts"}),
+                                                    ui.input_switch("seqmotif_compare_onlyunique","Use only unique BPS Novor IDs",value=False),
+                                                    ui.input_slider("seqmotif_compare_peplengths","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True),
+                                                    ui.output_ui("seqmotif_compare_run_ui"),
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("seqmotif_compare_plot1"),
+                                                    ui.output_plot("seqmotif_compare_plot2")
+                                                    )
+                                      )
+                                      ),
+                         ui.nav_panel("Compare - Sequence Motifs (Stats)",
+                                      ui.row(
+                                          ui.column(6,
+                                                    ui.input_switch("seqmotif_compare_onlyunique2","Use only unique BPS Novor IDs",value=False),
+                                                    ui.input_slider("seqmotif_compare_peplengths2","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True),
+                                                    ui.output_ui("seqmotif_compare_run_ui2"),
+                                                    ui.output_plot("seqmotif_pca")
+                                                    ),
+                                          ui.column(6,
+                                                    ui.input_slider("seqmotif_3d_azimuth","3D Plot - Azimuth Angle",min=0,max=360,value=0,step=5,ticks=True),
+                                                    ui.input_slider("seqmotif_3d_elevation","3D Plot - Elevation Angle",min=0,max=90,value=0,step=5,ticks=True),
+                                                    ui.output_plot("seqmotif_3d")
+                                                    )
+                                      )
                                       ),
                          ui.nav_panel("IDs Found in Fasta",
                                       ui.card(
@@ -1077,7 +1128,10 @@ app_ui=ui.page_fluid(
                                               ui.column(4,
                                                         ui.input_slider("rttolerance","Retention time tolerance (%):",min=0.5,max=10,value=1,step=0.5,ticks=True),
                                                         ui.input_slider("mztolerance","m/z tolerance (m/z):",min=0.0005,max=0.1,value=0.005,step=0.0005,ticks=True)
-                                              )
+                                                        ),
+                                              ui.column(4,
+                                                        ui.input_slider("imtolerance","Ion mobility tolerance (1/K0)",min=0.01,max=0.1,value=0.05,step=0.005,ticks=True)
+                                                        )
                                           )
                                           ),
                                       ui.card(
@@ -1087,6 +1141,101 @@ app_ui=ui.page_fluid(
                                       )
                                 ),icon=icon_svg("file-export")
                      ),
+        ui.nav_panel("Two-Software Comparison",
+                     ui.navset_pill(
+                         ui.nav_panel("File Import",
+                                      ui.card(
+                                          ui.card_header("Upload Search Reports"),
+                                          ui.row(
+                                              ui.column(4,
+                                                  ui.input_file("compare_searchreport1","Upload first search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                                  ui.input_radio_buttons("compare_software1","First search software:",{"spectronaut":"Spectronaut",
+                                                                                            "diann":"DIA-NN (pre 2.0)",
+                                                                                            "diann2.0":"DIA-NN (2.0)",
+                                                                                            "fragpipe":"FragPipe",
+                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
+                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
+                                                                                            "bps_denovo":"BPS Novor"
+                                                                                            })
+                                                  ),
+                                              ui.column(4,
+                                                  ui.input_file("compare_searchreport2","Upload second search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                                  ui.input_radio_buttons("compare_software2","Second search software:",{"spectronaut":"Spectronaut",
+                                                                                            "diann":"DIA-NN (pre 2.0)",
+                                                                                            "diann2.0":"DIA-NN (2.0)",
+                                                                                            "fragpipe":"FragPipe",
+                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
+                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
+                                                                                            "bps_denovo":"BPS Novor"
+                                                                                            })
+                                                  )
+                                                ),
+                                            ),
+                                      ui.card(
+                                          ui.card_header("Update from Metadata Table"),
+                                          ui.row(
+                                              ui.column(4,
+                                                        ui.input_action_button("compare_rerun_metadata","Apply Changes/Reinitialize",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
+                                                        ),
+                                              ui.column(4,
+                                                        ui.input_switch("compare_remove","Remove selected runs"),
+                                                        ui.input_switch("compare_reorder","Reorder runs"),
+                                                        ui.input_switch("compare_concentration","Update 'Concentration' column")
+                                                        )
+                                          )
+                                          ),
+                                      ui.card(
+                                          ui.card_header("Metadata Tables"),
+                                          ui.row(
+                                              ui.column(4,
+                                                      ui.input_file("compare_metadata_upload","(Optional) Upload filled metadata table:",accept=".csv",multiple=False),
+                                                      ui.input_switch("compare_use_uploaded_metadata","Use uploaded metadata table"),
+                                                      ),
+                                              ui.column(4,
+                                                      ui.download_button("compare_metadata_download","Download metadata table as shown",width="300px",icon=icon_svg("file-arrow-down"))
+                                                      ),
+                                                ),
+                                          ui.row(
+                                              ui.column(9,
+                                                        ui.output_data_frame("compare_metadata_table"),
+                                                        ),
+                                              ui.column(3,
+                                                        ui.output_data_frame("compare_metadata_condition_table")
+                                                        )
+                                                ),
+                                            ),
+                                      ),
+                          ui.nav_panel("ID Counts",
+                                       ui.card(
+                                           ui.row(
+                                               ui.input_slider("compare_id_counts_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                               ui.input_slider("compare_id_counts_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
+                                               )
+                                            ),
+                                       ui.output_plot("compare_id_counts")
+                                       ),
+                          ui.nav_panel("Venn Diagram",
+                                       ui.card(
+                                           ui.row(
+                                               ui.input_slider("compare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                               ui.input_slider("compare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                            )
+                                        ),
+                                       ui.row(
+                                           ui.column(4,
+                                                     ui.input_radio_buttons("compare_venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                     ui.input_radio_buttons("compare_venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups","peptides":"Peptides","peptides_len":"Peptides (specific length)","precursors":"Precursors","precursors_len":"Precursors (specific length)"}),
+                                                     ui.output_ui("compare_venn_peplength_ui")
+                                                   ),
+                                           ui.column(4,
+                                                     ui.output_ui("compare_venn_run_ui"),
+                                                     ui.download_button("compare_venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down"))
+                                                   )
+                                       ),
+                                       ui.output_plot("compare_venn_plot")
+                                     ),
+                        ),icon=icon_svg("code-compare")
+                    ),
     widths=(2,8)
     ),
     theme=theme.cerulean()
@@ -1102,6 +1251,7 @@ from datetime import date
 import io
 import itertools
 from itertools import groupby
+import logomaker as lm
 import math
 import matplotlib
 import matplotlib.pyplot as plt
@@ -1431,9 +1581,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                if input.diann_mbr_switch()==True:
-                    searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
                 if input.diann_mbr_switch()==False:
+                    searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                if input.diann_mbr_switch()==True:
                     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
 
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
@@ -1576,9 +1726,13 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
                 searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
+
+                #remove the "% glycan m/z" from the Total Glycan Composition
+                searchoutput["Total Glycan Composition"]=searchoutput["Total Glycan Composition"].str.split("%",expand=True)[0]
         
         #for BPS input
         if ".zip" in input.searchreport()[0]["name"]:
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
             if input.software()=="bps_timsrescore":
                 searchoutput=pd.DataFrame()
 
@@ -1592,22 +1746,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                 peptide_dict=dict()
                 samplename_list=[]
                 for run in runlist:
-                    #change working dir to next processing run subfolder
+                    os.chdir(cwd)
                     os.chdir(cwd+"\\"+run)
-                    #read files from each processing run subfolder, I think only ones that are neeed are pgfdr.peptide and summary-results
-                    #candidates=pd.read_parquet("candidates.candidates.parquet")
-                    #timsrescorer=pd.read_parquet("timsrescorer.psm.parquet")
                     pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")
-                    #pgfdr_protein=pd.read_parquet("pgfdr.protein.parquet")
-                    #summary_results=pd.read_parquet("summary-results.results.parquet")
-                    #samplename=summary_results["sample_name"][0]
-                    #samplename_list.append(samplename)
-                    
                     peptide_dict[run]=pgfdr_peptide
 
                 #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
                 for key in peptide_dict.keys():
-                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
+                    df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)].reset_index(drop=True)
                     df=df.rename(columns={"sample_name":"R.FileName",
                                     "stripped_peptide":"PEP.StrippedSequence",
                                     "precursor_mz":"FG.PrecMz",
@@ -1675,6 +1821,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                         else:
                             ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
                             ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
                             ptms_for_loop=[]
                             for ele in ptms:
                                 ptms_for_loop.append("["+ele+"]")
@@ -1772,6 +1921,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 peptide_dict=dict()
                 protein_dict=dict()
                 for run in runlist:
+                    os.chdir(cwd)
                     #change working dir to next processing run subfolder
                     os.chdir(cwd+"\\"+run)
 
@@ -1830,10 +1980,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                 #rename PTMs
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
                 searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
-                                                                    "15.9949":"Oxidation (M)",
-                                                                    "79.966331":"Phospho (STY)",
-                                                                    "0.984":"Deamidation (NQ)",
-                                                                    },regex=True)
+                                                                   "15.994915":"Oxidation (M)",
+                                                                   "15.9949":"Oxidation (M)",
+                                                                   "79.966331":"Phospho (STY)",
+                                                                   "0.984":"Deamidation (NQ)",
+                                                                   },regex=True)
                 searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
                 searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
 
@@ -1872,12 +2023,234 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 #change the cwd back to the code file since we changed it to the uploaded file 
                 os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.software()=="glycoscape":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.searchreport()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                results_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
+
+                    results_dict[run]=pd.read_parquet("myriad-merger.glycopsm.parquet")
+
+                for key in results_dict.keys():
+                    parquet=results_dict[key]
+
+                    #filter parquet file
+                    parquet=parquet[parquet["mokapot_psm_qvalue"]<=0.01].reset_index(drop=True)
+
+                    parquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "observed_precursor_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "peptide_ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                },inplace=True)
+
+                    parquet.drop(columns=["index","processing_run_uuid","ms2_id","peptide_candidate_id","glycan_candidate_id",
+                                            "protein_group_parent_id","protein_group_name","leading_aa","trailing_aa","hexnac_modification",
+                                            "glycosylation_motif","is_contaminant","is_target","peptide_mh","peptide_calc_mh",
+                                            "peptide_isotope_offset","x_corr_score","delta_cn_score","number_matched_ions",
+                                            "mokapot_psm_score","mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep",
+                                            "global_peptide_score","Y1_mz","Y1_charge","experimental_glycan_mr","glycan_isotope_offset",
+                                            "glycan_composition_mass","filtered_glycan_rank","ambiguous_glycan_composition",
+                                            "glycan_rank","building_blocks_coverage","fucose_evidence","Y5Y1_evidence","has_core",
+                                            "sia_smaller_hn","composition_oxonium_count","composition_oxonium_intensity",
+                                            "spectrum_oxonium_count","oxonium_relative_intensity_sum","fucose_shadow_count",
+                                            "fucose_shadow_intensity_sum","bb_names","bb_oxonium_count","bb_oxonium_intensity",
+                                            "oxonium_ions_names","oxonium_ions_mzs","oxonium_ions_intensity","Y_ions_names",
+                                            "oxonium_relative_intensity_sum","Y_ions_mass_offset","Y_ions_intensity","extra_ions_names",
+                                            "extra_ions_mass_offset","extra_ions_intensity","Rec"    
+                                            ],inplace=True,errors="ignore")
+
+                    ### reordered how this works so that all the conversions are done in-loop instead of once the whole sheet has been concatenated
+                    ### this seems to run faster than concatenating everything and then doing conversions
+
+                    #convert glycan_composition column entries to format from fragger-glyco
+                    convert_dict={"H":"Hex","N":"HexNAc","F":"Fuc","S":"NeuAc","G":"NeuGc"}
+                    glycanlist=parquet["glycan_composition"].tolist()
+                    glycanlist_updated=[]
+                    glycanlist_ambiguous=[]
+                    for i,entry in enumerate(glycanlist):
+                        if entry is None or entry=="unidentified":
+                            glycanlist_updated.append(np.nan)
+                            glycanlist_ambiguous.append(np.nan)
+                        else:
+                            if "," in entry:
+                                entry=entry.split(",")[0]
+                                glycanlist_ambiguous.append(True)
+                            else:
+                                glycanlist_ambiguous.append(False)
+                            entrylist=list(entry)
+                            newglycanentry=[]
+                            for ele in entrylist:
+                                if ele.isnumeric()==True:
+                                    newglycanentry.append("("+ele+")")
+                                else:
+                                    newglycanentry.append(convert_dict[ele])
+                            glycanlist_updated.append("".join(newglycanentry))
+                    parquet["Total Glycan Composition"]=glycanlist_updated
+                    parquet["Ambiguous Glycan ID"]=glycanlist_ambiguous
+
+                    #unpack protein_list column
+                    proteinlist=parquet["protein_list"].str.split(";").tolist()
+
+                    truthlist=[]
+                    for entry in proteinlist:
+                        if "Reverse" not in entry[0] and "contaminant" not in str(entry):
+                            truthlist.append(True)
+                        else:
+                            truthlist.append(False)
+                    parquet=parquet[truthlist]
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=parquet["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+
+                    parquet["PG.ProteinGroups"]=proteingroups
+                    parquet["PG.ProteinNames"]=proteinnames
+                    parquet.drop(columns=["protein_list"],inplace=True)
+
+                    #make EG.ModifiedPeptide column
+                    parquet["ptms"]=parquet["ptms"].astype(str)
+                    parquet["ptms"]=parquet["ptms"].replace({
+                            "203.079373":"-HexNAc (N)",
+                            "42.010565":"Acetyl (Protein N-term)",
+                            "57.021464":"Carbamidomethyl (C)",
+                            "79.966331":"Phospho (STY)",
+                            "15.994915":"Oxidation (M)"},regex=True)
+                    parquet["ptm_locations"]=parquet["ptm_locations"].astype(str)
+                    parquet["ptm_locations"]=parquet["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+
+                    modifiedpeptides=[]
+                    for i,entry in enumerate(parquet["ptm_locations"]):
+                        if entry=="-1":
+                            modifiedpeptides.append(parquet["PEP.StrippedSequence"].tolist()[i])
+                        else:
+                            str_to_list=list(parquet["PEP.StrippedSequence"].tolist()[i])
+                            if len(parquet["ptm_locations"].tolist()[i])==1:
+                                mod_loc=int(parquet["ptm_locations"].tolist()[i])+1
+                                mod_add=parquet["ptms"].tolist()[i]
+                                str_to_list.insert(mod_loc,mod_add)
+                                modifiedpeptides.append("".join(str_to_list))
+                            #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                            else:
+                                ptmlocs=parquet["ptm_locations"].tolist()[i].strip().split(" ")
+                                ptms=parquet["ptms"].tolist()[i].replace("[","").replace("]","").replace(") ","),").replace("\n ",",").split(",")
+                                for ele in ptmlocs:
+                                    if ele=="":
+                                        ptmlocs.remove(ele)
+                                ptms_for_loop=[]
+                                for ele in ptms:
+                                    ptms_for_loop.append("["+ele+"]")
+                                for j,loc in enumerate(ptmlocs):
+                                    mod_loc=int(loc)+j+1
+                                    mod_add=ptms_for_loop[j]
+                                    str_to_list.insert(mod_loc,mod_add)
+                                modifiedpeptides.append("".join(str_to_list))
+                    parquet["EG.ModifiedPeptide"]=modifiedpeptides
+                    parquet=parquet.drop(columns=["ptms","ptm_locations"])
+
+                    searchoutput=pd.concat([searchoutput,parquet],ignore_index=True)
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+        
+        #for DIA-NN 2.0 input
+        if ".parquet" in input.searchreport()[0]["name"]:
+            if len(input.searchreport())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.searchreport())):
+                    run=pd.read_parquet(input.searchreport()[i]["datapath"])
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_parquet(input.searchreport()[0]["datapath"])
+            if input.software()=="diann2.0":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                if input.diann_mbr_switch()==False:
+                    searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                if input.diann_mbr_switch()==True:
+                    searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+
+                searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Precursor.Mz":"FG.PrecMz",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "RT":"EG.ApexRT",
+                                            "IM":"EG.IonMobility",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            },inplace=True)
+
+                searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
+                                        "Proteotypic","Protein.Ids","iRT","Predicted.RT","Predicted.iRT",
+                                        "iIM","Predicted.IM","Predicted.iIM","Precursor.Normalised",
+                                        "Ms1.Area","Ms1.Normalised","Ms1.Apex.Area","Ms1.Apex.Mz.Delta",
+                                        "Normalisation.Factor","Quantity.Quality","Empirical.Quality",
+                                        "Normalisation.Noise","Ms1.Profile.Corr","Evidence","Mass.Evidence",
+                                        "Channel.Evidence","Ms1.Total.Signal.Before","Ms1.Total.Signal.After",
+                                        "RT.Start","RT.Stop","FWHM","PG.TopN","PG.MaxLFQ","Genes.TopN",
+                                        "Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ.Quality",
+                                        "Genes.MaxLFQ.Quality","Genes.MaxLFQ.Unique.Quality","Q.Value",
+                                        "PEP","Global.Q.Value","Lib.Q.Value","Peptidoform.Q.Value",
+                                        "Global.Peptidoform.Q.Value","Lib.Peptidoform.Q.Value",
+                                        "PTM.Site.Confidence","Site.Occupancy.Probabilities","Protein.Sites",
+                                        "Lib.PTM.Site.Confidence","Translated.Q.Value","Channel.Q.Value",
+                                        "PG.Q.Value","PG.PEP","GG.Q.Value","Lib.PG.Q.Value"
+                                        ],inplace=True,errors="ignore")
+                    
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
 
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         searchoutput=searchoutput.sort_values('R.FileName')
 
         return searchoutput
     
+    #upload filled out metadata table
+    @reactive.calc
+    def inputmetadata():
+        if input.metadata_upload() is None:
+            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
+            return metadata
+        else:
+            metadata=pd.read_csv(input.metadata_upload()[0]["datapath"],sep=",")
+        return metadata
+
     #render the metadata table in the window
     @render.data_frame
     def metadata_table():
@@ -1925,21 +2298,25 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.text
     def metadata_reminder():
         if input.software()=="spectronaut":
-            return "Use the Shiny report format when exporting search results. R.Condition and R.Replicate are automatically updated in the metadata based on this file. Click on 'Apply Changes' even if the metadata table was not updated."
+            return "Use the Shiny report format when exporting search results to a .tsv file."
         if input.software()=="diann":
-            return "Use the report.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the report.tsv file as the file input."
+        if input.software()=="diann2.0":
+            return "Use the report.parquet file as the file input."
         if input.software()=="ddalibrary":
             return "DDA libraries have limited functionality, can only plot ID metrics."
         if input.software()=="fragpipe":
-            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the psm.tsv file as the file input."
         if input.software()=="fragpipe_glyco":
-            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches. Use the Glycoproteomics tab for processing."
+            return "Use the psm.tsv file as the file input. Use the Glycoproteomics tab for processing."
         if input.software()=="bps_timsrescore":
-            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the .zip file from the artefacts download."
         if input.software()=="bps_timsdiann":
-            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the .zip file from the artefacts download."
         if input.software()=="bps_denovo":
-            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the .zip file from the artefacts download."
+        if input.software()=="glycoscape":
+            return "Use the .zip file from the artefacts download. Use the Glycoproteomics tab for processing."
 
     #download metadata table as shown
     @render.download(filename="metadata_"+str(date.today())+".csv")
@@ -1949,7 +2326,6 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         orderlist=[]
         concentrationlist=[]
-        #metadata_fordownload=metadata
         metadata_fordownload=pd.DataFrame()
         for run in metadata_condition["R.Condition"]:
             fileindex=metadata_condition[metadata_condition["R.Condition"]==run].index.values[0]
@@ -1964,16 +2340,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         with io.BytesIO() as buf:
             metadata_fordownload.to_csv(buf,index=False)
             yield buf.getvalue()
-
-    #upload filled out metadata table
-    @reactive.calc
-    def inputmetadata():
-        if input.metadata_upload() is None:
-            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
-            return metadata
-        else:
-            metadata=pd.read_csv(input.metadata_upload()[0]["datapath"],sep=",")
-        return metadata
 
     #update the searchoutput df to match how we edited the metadata sheet
     @reactive.calc
@@ -2020,8 +2386,8 @@ def server(input: Inputs, output: Outputs, session: Session):
     #switch for if MBR was used in DIANN, chaanges how we'll filter for Q value
     @render.ui
     def diann_mbr_ui():
-        if input.software()=="diann":
-            return ui.input_switch("diann_mbr_switch","MBR used in DIA-NN? (Filter Protein.Q.Value if on, filter Global.PG.Q.Value if off)",value=False,width="700px")
+        if input.software()=="diann" or input.software()=="diann2.0":
+            return ui.input_switch("diann_mbr_switch","MBR used in DIA-NN? (Filter Protein.Q.Value if off, filter Global.PG.Q.Value if on)",value=False,width="700px")
 
 #endregion
 
@@ -2095,6 +2461,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     #render the color grids as images instead of plotting them explicitly
     @render.image
     def matplotcolors_image():
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
         cwd=os.getcwd()
         foldername="images"
         joined=[cwd,foldername]
@@ -2103,6 +2470,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         return img
     @render.image
     def csscolors_image():
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
         cwd=os.getcwd()
         foldername="images"
         joined=[cwd,foldername]
@@ -2285,25 +2653,24 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax3=ax[1,0]
                 ax4=ax[1,1]
 
-                resultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                resultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
                 ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax1.set_ylim(top=max(resultdf["proteins"].tolist())+y_padding*max(resultdf["proteins"].tolist()))
                 ax1.set_title("Protein Groups",fontsize=titlefont)
 
-                resultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                resultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
                 ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax2.set_ylim(top=max(resultdf["proteins2pepts"].tolist())+y_padding*max(resultdf["proteins2pepts"].tolist()))
                 ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
 
-                resultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                resultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
                 ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax3.set_ylim(top=max(resultdf["peptides"].tolist())+(y_padding+0.1)*max(resultdf["peptides"].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.set_xlabel("Condition",fontsize=axisfont)
-                ax3.set_ylabel("  ",fontsize=axisfont)
                 ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
 
-                resultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors",legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                resultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
                 ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
                 ax4.set_ylim(top=max(resultdf["precursors"].tolist())+(y_padding+0.1)*max(resultdf["precursors"].tolist()))
                 ax4.set_title("Precursors",fontsize=titlefont)
@@ -4020,101 +4387,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.grid(linestyle="--")
             ax.set_title("# of Precursor IDs vs RT",fontsize=titlefont)
 
-    # @render.ui
-    # def cond_rep_list_venn1():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-    #     if input.venn_condition_or_run()=="condition":
-    #         opts=resultdf["R.Condition"].drop_duplicates().tolist()
-    #         return ui.input_selectize("cond_rep1","Pick first condition to compare:",choices=opts)
-    #     if input.venn_condition_or_run()=="individual":
-    #         opts=resultdf["Cond_Rep"].tolist()
-    #         return ui.input_selectize("cond_rep1","Pick first run to compare:",choices=opts)
-    # @render.ui
-    # def cond_rep_list_venn2():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-    #     if input.venn_condition_or_run()=="condition":
-    #         opts=resultdf["R.Condition"].drop_duplicates().tolist()
-    #         return ui.input_selectize("cond_rep2","Pick second condition to compare:",choices=opts)
-    #     if input.venn_condition_or_run()=="individual":
-    #         opts=resultdf["Cond_Rep"].tolist()
-    #         return ui.input_selectize("cond_rep2","Pick second run to compare:",choices=opts)
-    # #plot venn diagram comparing IDs between runs
-    # @render.plot
-    # def venndiagram():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-    #     pickA=input.cond_rep1()
-    #     pickB=input.cond_rep2()
-    #     vennpick=input.vennpick()
-    #     if input.venn_condition_or_run()=="individual":
-    #         conditionA=searchoutput[searchoutput["Cond_Rep"]==(pickA)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #         conditionB=searchoutput[searchoutput["Cond_Rep"]==(pickB)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #     if input.venn_condition_or_run()=="condition":
-    #         conditionA=searchoutput[searchoutput["Cond_Rep"].str.contains(pickA)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #         conditionB=searchoutput[searchoutput["Cond_Rep"].str.contains(pickB)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #     if vennpick=="proteins":
-    #         A=conditionA["PG.ProteinGroups"].drop_duplicates().reset_index(drop=True)
-    #         B=conditionB["PG.ProteinGroups"].drop_duplicates().reset_index(drop=True)
-    #         AvsB=A.isin(B).tolist()
-    #         BvsA=B.isin(A).tolist()
-    #     elif vennpick=="peptides":
-    #         A=conditionA["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True)
-    #         B=conditionB["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True)
-    #         AvsB=A.isin(B).tolist()
-    #         BvsA=B.isin(A).tolist()
-    #     elif vennpick=="precursors":
-    #         A=conditionA["EG.ModifiedPeptide"]
-    #         B=conditionB["EG.ModifiedPeptide"]
-    #         AvsB=A.isin(B.drop_duplicates()).tolist()
-    #         BvsA=B.isin(A.drop_duplicates()).tolist()
-
-    #     AnotB=sum(1 for i in AvsB if i==False)
-    #     BnotA=sum(1 for i in BvsA if i==False)
-    #     bothAB=sum(1 for i in AvsB if i==True)
-    #     vennlist=[AnotB,BnotA,bothAB]
-
-    #     fig,ax=plt.subplots()
-    #     venn2(subsets=vennlist,set_labels=(pickA,pickB),set_colors=("tab:blue","tab:orange"),ax=ax)
-    #     venn2_circles(subsets=vennlist,linestyle="dashed",linewidth=0.5)
-    #     plt.title("Venn Diagram for "+vennpick)
-    # #download a table of unique and shared IDs from the Venn Diagram
-    # @render.download(filename=lambda: f"VennList_{input.cond_rep1()}_vs_{input.cond_rep2()}_{input.vennpick()}.csv")
-    # def venn_table_download():
-    #     searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-    #     pickA=input.cond_rep1()
-    #     pickB=input.cond_rep2()
-    #     vennpick=input.vennpick()
-    #     if input.venn_condition_or_run()=="individual":
-    #         conditionA=searchoutput[searchoutput["Cond_Rep"]==(pickA)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #         conditionB=searchoutput[searchoutput["Cond_Rep"]==(pickB)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #     if input.venn_condition_or_run()=="condition":
-    #         conditionA=searchoutput[searchoutput["Cond_Rep"].str.contains(pickA)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #         conditionB=searchoutput[searchoutput["Cond_Rep"].str.contains(pickB)][["PG.ProteinGroups","FG.Charge","PEP.StrippedSequence","EG.ModifiedPeptide"]]
-    #     if vennpick=="proteins":
-    #         A=conditionA["PG.ProteinGroups"].drop_duplicates().reset_index(drop=True)
-    #         B=conditionB["PG.ProteinGroups"].drop_duplicates().reset_index(drop=True)
-    #         AvsB=A.isin(B).tolist()
-    #         BvsA=B.isin(A).tolist()
-    #     elif vennpick=="peptides":
-    #         A=conditionA["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True)
-    #         B=conditionB["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True)
-    #         AvsB=A.isin(B).tolist()
-    #         BvsA=B.isin(A).tolist()
-    #     elif vennpick=="precursors":
-    #         A=conditionA["EG.ModifiedPeptide"]
-    #         B=conditionB["EG.ModifiedPeptide"]
-    #         AvsB=A.isin(B.drop_duplicates()).tolist()
-    #         BvsA=B.isin(A.drop_duplicates()).tolist()
-
-    #     df=pd.DataFrame()
-    #     df=pd.concat([df,pd.Series(pd.DataFrame(A.tolist(),index=AvsB).loc[False][0].tolist(),name=pickA)],axis=1)
-    #     df=pd.concat([df,pd.Series(pd.DataFrame(B.tolist(),index=BvsA).loc[False][0].tolist(),name=pickB)],axis=1)
-    #     df=pd.concat([df,pd.Series(pd.DataFrame(A.tolist(),index=AvsB).loc[True][0].tolist(),name="Both")],axis=1)
-    #     with io.BytesIO() as buf:
-    #         df.to_csv(buf,index=False)
-    #         yield buf.getvalue()
-
     # ====================================== Venn Diagram
     @render.ui
     def venn_run1_ui():
@@ -4146,10 +4418,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                 return ui.input_selectize("venn_run3_list","Pick third run to compare",choices=opts)
     @render.ui
     def venn_peplength_ui():
-        minlength=7
-        maxlength=30
-        opts=[item for item in range(minlength,maxlength+1)]
-        return ui.input_selectize("venn_peplength_list","Peptide/Precursor length to compare (if selected)",choices=opts)
+        if input.venn_specific_length()==True:
+            return ui.input_slider("venn_peplength_pick","Pick specific peptide length to compare:",min=3,max=30,value=9,step=1,ticks=True)
+    @render.ui
+    def peptidecore_ui():
+        if input.venn_plotproperty()=="peptides_stripped" or input.venn_plotproperty()=="peptides_stripped_len":
+            return ui.input_switch("peptidecore","Only consider peptide core (cut first and last 2 residues)",value=False)
     #plot Venn Diagram
     @reactive.effect
     def _():
@@ -4167,6 +4441,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if input.venn_numcircles()=="3":
                     C=searchoutput[searchoutput["Cond_Rep"]==input.venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
             
+            #add extra columns to df for peptide+charge and peptide lengths
             A["pep_charge"]=A["EG.ModifiedPeptide"]+A["FG.Charge"].astype(str)
             B["pep_charge"]=B["EG.ModifiedPeptide"]+B["FG.Charge"].astype(str)
             if input.venn_numcircles()=="3":
@@ -4175,16 +4450,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                 for pep in C["PEP.StrippedSequence"]:
                     C_peplength.append(len(pep))
                 C["Peptide Length"]=C_peplength
-
             A_peplength=[]
             for pep in A["PEP.StrippedSequence"]:
                 A_peplength.append(len(pep))
             A["Peptide Length"]=A_peplength
-
             B_peplength=[]
             for pep in B["PEP.StrippedSequence"]:
                 B_peplength.append(len(pep))
             B["Peptide Length"]=B_peplength
+
+            if input.venn_specific_length()==True:
+                A=A[A["Peptide Length"]==int(input.venn_peplength_pick())]
+                B=B[B["Peptide Length"]==int(input.venn_peplength_pick())]
+                if input.venn_numcircles()=="3":
+                    C=C[C["Peptide Length"]==int(input.venn_peplength_pick())]
+                titlemod_specificlength="_"+str(input.venn_peplength_pick())+"mers"
+            else:
+                A=A
+                B=B
+                if input.venn_numcircles()=="3":
+                    C=C
+                titlemod_specificlength=""
 
             if input.venn_plotproperty()=="proteingroups":
                 a=set(A["PG.ProteinGroups"])
@@ -4204,20 +4490,28 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if input.venn_numcircles()=="3":
                     c=set(C["pep_charge"])
                 titlemod="Precursors"
-
-            peplength_input=int(input.venn_peplength_list())
-            if input.venn_plotproperty()=="peptides_len":
-                a=set(A[A["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-                b=set(B[B["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-                if input.venn_numcircles()=="3":
-                    c=set(C[C["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-                titlemod="Peptides_"+input.venn_peplength_list()+"mers"
-            if input.venn_plotproperty()=="precursors_len":
-                a=set(A[A["Peptide Length"]==peplength_input]["pep_charge"])
-                b=set(B[B["Peptide Length"]==peplength_input]["pep_charge"])
-                if input.venn_numcircles()=="3":
-                    c=set(C[C["Peptide Length"]==peplength_input]["pep_charge"])
-                titlemod="Precursors_"+input.venn_peplength_list()+"mers"
+            if input.venn_plotproperty()=="peptides_stripped":
+                if input.peptidecore()==True:
+                    A_coreAA=[]
+                    B_coreAA=[]
+                    for pep in A["PEP.StrippedSequence"].tolist():
+                        A_coreAA.append(pep[2:-2])
+                    for pep in B["PEP.StrippedSequence"].tolist():
+                        B_coreAA.append(pep[2:-2])
+                    a=set(A_coreAA)
+                    b=set(B_coreAA)
+                    if input.venn_numcircles()=="3":
+                        C_coreAA=[]
+                        for pep in C["PEP.StrippedSequence"].tolist():
+                            C_coreAA.append(pep[2:-2])
+                        c=set(C_coreAA)
+                    titlemod="Stripped Peptides (no terminal AAs)"
+                else:
+                    a=set(A["PEP.StrippedSequence"])
+                    b=set(B["PEP.StrippedSequence"])
+                    if input.venn_numcircles()=="3":
+                        c=set(C["PEP.StrippedSequence"])
+                    titlemod="Stripped Peptides"
 
             fig,ax=plt.subplots()
             if input.venn_numcircles()=="2":
@@ -4226,7 +4520,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 AB=len(a&b)
                 venn2(subsets=(Ab,aB,AB),set_labels=(input.venn_run1_list(),input.venn_run2_list()),set_colors=("tab:blue","tab:orange"),ax=ax)
                 venn2_circles(subsets=(Ab,aB,AB),linestyle="dashed",linewidth=0.5)
-                plt.title("Venn Diagram for "+titlemod)
+                plt.title("Venn Diagram for "+titlemod+titlemod_specificlength)
             if input.venn_numcircles()=="3":
                 Abc=len(a-b-c)
                 aBc=len(b-a-c)
@@ -4237,7 +4531,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ABC=len(a&b&c)
                 venn3(subsets=(Abc,aBc,ABc,abC,AbC,aBC,ABC),set_labels=(input.venn_run1_list(),input.venn_run2_list(),input.venn_run3_list()),set_colors=("tab:blue","tab:orange","tab:green"),ax=ax)
                 venn3_circles(subsets=(Abc,aBc,ABc,abC,AbC,aBC,ABC),linestyle="dashed",linewidth=0.5)
-                plt.title("Venn Diagram for "+titlemod)
+                plt.title("Venn Diagram for "+titlemod+titlemod_specificlength)
     #download table of Venn Diagram intersections
     @reactive.effect
     def _():
@@ -4259,6 +4553,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if input.venn_numcircles()=="3":
                     C=searchoutput[searchoutput["Cond_Rep"]==input.venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
             
+            #add extra columns to df for peptide+charge and peptide lengths
             A["pep_charge"]=A["EG.ModifiedPeptide"]+A["FG.Charge"].astype(str)
             B["pep_charge"]=B["EG.ModifiedPeptide"]+B["FG.Charge"].astype(str)
             if input.venn_numcircles()=="3":
@@ -4267,16 +4562,25 @@ def server(input: Inputs, output: Outputs, session: Session):
                 for pep in C["PEP.StrippedSequence"]:
                     C_peplength.append(len(pep))
                 C["Peptide Length"]=C_peplength
-
             A_peplength=[]
             for pep in A["PEP.StrippedSequence"]:
                 A_peplength.append(len(pep))
             A["Peptide Length"]=A_peplength
-
             B_peplength=[]
             for pep in B["PEP.StrippedSequence"]:
                 B_peplength.append(len(pep))
             B["Peptide Length"]=B_peplength
+
+            if input.venn_specific_length()==True:
+                A=A[A["Peptide Length"]==int(input.venn_peplength_pick())]
+                B=B[B["Peptide Length"]==int(input.venn_peplength_pick())]
+                if input.venn_numcircles()=="3":
+                    C=C[C["Peptide Length"]==int(input.venn_peplength_pick())]
+            else:
+                A=A
+                B=B
+                if input.venn_numcircles()=="3":
+                    C=C
 
             if input.venn_plotproperty()=="proteingroups":
                 a=set(A["PG.ProteinGroups"])
@@ -4293,18 +4597,26 @@ def server(input: Inputs, output: Outputs, session: Session):
                 b=set(B["pep_charge"])
                 if input.venn_numcircles()=="3":
                     c=set(C["pep_charge"])
-
-            peplength_input=int(input.venn_peplength_list())
-            if input.venn_plotproperty()=="peptides_len":
-                a=set(A[A["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-                b=set(B[B["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-                if input.venn_numcircles()=="3":
-                    c=set(C[C["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
-            if input.venn_plotproperty()=="precursors_len":
-                a=set(A[A["Peptide Length"]==peplength_input]["pep_charge"])
-                b=set(B[B["Peptide Length"]==peplength_input]["pep_charge"])
-                if input.venn_numcircles()=="3":
-                    c=set(C[C["Peptide Length"]==peplength_input]["pep_charge"])
+            if input.venn_plotproperty()=="peptides_stripped":
+                if input.peptidecore()==True:
+                    A_coreAA=[]
+                    B_coreAA=[]
+                    for pep in A["PEP.StrippedSequence"].tolist():
+                        A_coreAA.append(pep[2:-2])
+                    for pep in B["PEP.StrippedSequence"].tolist():
+                        B_coreAA.append(pep[2:-2])
+                    a=set(A_coreAA)
+                    b=set(B_coreAA)
+                    if input.venn_numcircles()=="3":
+                        C_coreAA=[]
+                        for pep in C["PEP.StrippedSequence"].tolist():
+                            C_coreAA.append(pep[2:-2])
+                        c=set(C_coreAA)
+                else:
+                    a=set(A["PEP.StrippedSequence"])
+                    b=set(B["PEP.StrippedSequence"])
+                    if input.venn_numcircles()=="3":
+                        c=set(C["PEP.StrippedSequence"])
 
             df=pd.DataFrame()
             if input.venn_numcircles()=="2":
@@ -4510,7 +4822,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             X=np.array(concatenated_proteins).T
             pip=Pipeline([("scaler",StandardScaler()),("pca",PCA())]).fit(X)
             X_trans=pip.transform(X)
-            #each row is a principal component, each element of each row is a sample
+            #each row is a sample, each element of each row is a principal component
 
             figsize=(10,5)
             colors=colorpicker()
@@ -4561,7 +4873,41 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 # ============================================================================= Immunopeptidomics
 #region
+    # ====================================== Sequence Motifs
+    @render.ui
+    def seqmotif_run_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("seqmotif_run_pick","Pick run:",choices=opts)
+    #sequence motif plot
+    @reactive.effect
+    def _():
+        @render.plot(width=input.seqmotif_width(),height=input.seqmotif_height())
+        def seqmotif_plot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            seq_df=searchoutput[searchoutput["Cond_Rep"]==input.seqmotif_run_pick()][["PEP.StrippedSequence"]].drop_duplicates()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
 
+            lengths=[]
+            for pep in seq_df["PEP.StrippedSequence"].tolist():
+                lengths.append(len(pep))
+            seq_df["Peptide Length"]=lengths
+            seq=seq_df[seq_df["Peptide Length"]==input.seqmotif_peplengths()].drop(columns=["Peptide Length"])["PEP.StrippedSequence"].tolist()
+
+            matrix=lm.alignment_to_matrix(seq)
+            if input.seqmotif_plottype()=="counts":
+                ylabel="Counts"
+            if input.seqmotif_plottype()=="information":
+                matrix=lm.transform_matrix(matrix,from_type="counts",to_type="information")
+                ylabel="Information (bits)"
+            logo=lm.Logo(matrix,vsep=0.01,vpad=0.01,color_scheme="weblogo_protein")
+            logo.ax.set_xlabel("Position",fontsize=axisfont)
+            logo.ax.set_ylabel(ylabel,fontsize=axisfont)
+            logo.ax.set_title(input.seqmotif_run_pick()+": "+str(input.seqmotif_peplengths())+"mers",fontsize=titlefont)
+            logo.ax.set_ylim(bottom=0)
+
+    # ====================================== Charge States (Bar)
     @reactive.calc
     def ipep_charge_peplength():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -4747,8 +5093,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             dict_peplengthcountdf_condition[run]=peplengthcountdf
 
         return dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition
-    
-    # ====================================== Charge States (Bar)
     @render.ui
     def chargestate_charges_ui():
         dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
@@ -5091,10 +5435,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_title("Total Intensity per Organism per Run",fontsize=titlefont)
 
     # ====================================== Quant Ratios
-    #note regarding the lines being shown in the quant ratios plot
-    @render.text
-    def expectedratios_note():
-        return "Note: experimental ratios will be shown as a dashed line and theoretical ratios will be shown as a solid line"
     #render ui call for dropdown calling sample condition names
     @render.ui
     def referencecondition():
@@ -5141,7 +5481,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             organism_merged=dict()
             ratio_average=pd.DataFrame()
             ratio_average["Organism"]=organismlist
-            ratio_average["Theoretical_Ratio"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
+
+            if input.y_log_scale()=="log2":
+                ratio_average["Theoretical_Ratio"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
+            if input.y_log_scale()=="log10":
+                ratio_average["Theoretical_Ratio"]=[np.log10(i/j) for i,j in zip(testratios,referenceratios)]
             averagelist=[]
 
             for organism in organismlist:
@@ -5163,10 +5507,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                 df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
                 df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
                 
-                merged=df_reference.merge(df_test,how="inner").dropna()
-                merged["log10_reference"]=np.log10(merged[referencecondition])
-                merged["log2_ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
-                averagelist.append(np.average(merged["log2_ratio"]))
+                merged=df_reference.merge(df_test,how="inner")#.dropna()
+
+                if input.x_log_scale()=="log2":
+                    merged["reference"]=np.log2(merged[referencecondition])
+                if input.x_log_scale()=="log10":
+                    merged["reference"]=np.log10(merged[referencecondition])
+                if input.y_log_scale()=="log2":
+                    merged["ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
+                if input.y_log_scale()=="log10":
+                    merged["ratio"]=np.log10(merged[testcondition]/merged[referencecondition])
+
+                averagelist.append(np.average(merged["ratio"].dropna()))
 
                 organism_merged[organism]=merged
 
@@ -5181,8 +5533,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             for x,organism in enumerate(organismlist):
                 ax[0].bar(x,len(organism_merged[organism]),color=colors[x])
                 ax[0].bar_label(ax[0].containers[x],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax[1].scatter(organism_merged[organism]["log10_reference"],organism_merged[organism]["log2_ratio"],alpha=0.25,color=colors[x])
-                ax[2].hist(organism_merged[organism]["log2_ratio"],bins=100,orientation=u"horizontal",alpha=0.5,density=True,color=colors[x])
+                ax[1].scatter(organism_merged[organism]["reference"],organism_merged[organism]["ratio"],alpha=0.25,color=colors[x])
+                ax[2].hist(organism_merged[organism]["ratio"],bins=100,orientation=u"horizontal",alpha=0.5,density=True,color=colors[x])
 
             for x in range(len(organismlist)):
                 ax[x].set_axisbelow(True)
@@ -5206,12 +5558,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             leg=ax[1].legend(organismlist,loc="upper right",prop={'size':legendfont})
             for tag in leg.legend_handles:
                 tag.set_alpha(1)
-            ax[1].set_xlabel("log10 Intensity, Reference",fontsize=axisfont)
-            ax[1].set_ylabel("log2 Ratio, Test/Reference",fontsize=axisfont)
+            ax[1].set_xlabel(input.x_log_scale()+" Intensity, Reference",fontsize=axisfont)
+            ax[1].set_ylabel(input.y_log_scale()+" Ratio, Test/Reference",fontsize=axisfont)
             ax[1].set_title("Reference: "+referencecondition+", Test: "+testcondition,pad=10,fontsize=titlefont)
 
             ax[2].set_xlabel("Density",fontsize=axisfont)
-            ax[2].set_ylabel("log2 Ratio, Test/Reference",fontsize=axisfont)
+            ax[2].set_ylabel(input.y_log_scale()+" Ratio, Test/Reference",fontsize=axisfont)
     #show table of quant ratios
     @render.table
     def quantratios_table():
@@ -5231,7 +5583,12 @@ def server(input: Inputs, output: Outputs, session: Session):
         organism_merged=dict()
         ratio_average=pd.DataFrame()
         ratio_average["Organism"]=organismlist
-        ratio_average["Theoretical_Ratio (log2)"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
+        
+        if input.y_log_scale()=="log2":
+            ratio_average["Theoretical_Ratio (log2)"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
+        if input.y_log_scale()=="log10":
+            ratio_average["Theoretical_Ratio (log10)"]=[np.log10(i/j) for i,j in zip(testratios,referenceratios)]
+
         averagelist=[]
 
         for organism in organismlist:
@@ -5251,10 +5608,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
             df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
             
-            merged=df_reference.merge(df_test,how="inner").dropna()
-            merged["log10_reference"]=np.log10(merged[referencecondition])
-            merged["log2_ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
-            averagelist.append(np.average(merged["log2_ratio"]))
+            merged=df_reference.merge(df_test,how="inner")#.dropna()
+            if input.y_log_scale()=="log2":
+                merged["ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
+            if input.y_log_scale()=="log10":
+                merged["ratio"]=np.log10(merged[testcondition]/merged[referencecondition])
+            averagelist.append(np.average(merged["ratio"].dropna()))
 
             organism_merged[organism]=merged
 
@@ -5262,7 +5621,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 cv_cutoff=input.cvcutofflevel()
                 organism_merged[organism]=organism_merged[organism][(organism_merged[organism][referencecondition+"_CV"]<cv_cutoff)&(organism_merged[organism][testcondition+"_CV"]<cv_cutoff)]
             
-        ratio_average["Experimental_Ratio (log2)"]=averagelist
+        ratio_average["Experimental_Ratio ("+input.y_log_scale()+")"]=averagelist
         return ratio_average
 
 #endregion
@@ -5591,7 +5950,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput.insert(0,"Cond_Rep",searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str))
         elif "Cond_Rep" in searchoutput.columns:
             searchoutput["Cond_Rep"]=searchoutput["R.Condition"]+"_"+searchoutput["R.Replicate"].apply(str)
-        resultdf_glyco=pd.DataFrame()
+        
+        resultdf_glyco=pd.DataFrame(searchoutput[["Cond_Rep","R.Condition","R.Replicate"]].drop_duplicates()).reset_index(drop=True)
         num_glycoproteins=[]
         num_glycopeptides=[]
         num_glycoPSMs=[]
@@ -5600,22 +5960,39 @@ def server(input: Inputs, output: Outputs, session: Session):
         dict_glycoPSMs=dict()
         for run in searchoutput["Cond_Rep"].drop_duplicates():
             df=searchoutput[searchoutput["Cond_Rep"]==run]
-            #all PSMs with a glycan q value (not used here)
-            all_glycoPSM=df[df["Glycan q-value"].isnull()==False]
+
             #filtered PSMs with a q value cutoff (used for the dfs generated here)
-            glycoPSM_QvalFilter=df[(df["Glycan q-value"].isnull()==False)&(df["Glycan q-value"]<=0.01)]
+            if input.software()=="fragpipe_glyco":
+                df=df[(df["Glycan q-value"].isnull()==False)&(df["Glycan q-value"]<=0.01)]
+            if input.software()=="glycoscape":
+                df=df[df["Total Glycan Composition"].isnull()==False]
+
+            #Assign truth value to whether number after Hex mod is 5<x<10
+            highmannose=[]
+            for i in range(len(df["Total Glycan Composition"].tolist())):
+                glycanstring=str(df["Total Glycan Composition"].tolist()[i])
+                if "Hex(" in glycanstring:
+                    hexvalue=df["Total Glycan Composition"].tolist()[i][df["Total Glycan Composition"].tolist()[i].find("Hex(")+len("Hex(")]
+                    if int(hexvalue)<=10 and int(hexvalue)>=5:
+                        highmannose.append("True")
+                    elif int(hexvalue)<5:
+                        highmannose.append("False")
+                else:
+                    highmannose.append("False")
+            df["High Mannose"]=highmannose
+            
             #all unique glycopeptides (charge agnostic)
-            glycopeptide=glycoPSM_QvalFilter[["EG.ModifiedPeptide","Total Glycan Composition","PG.ProteinGroups"]].drop_duplicates()
+            glycopeptide=df[["PEP.StrippedSequence","EG.ModifiedPeptide","Total Glycan Composition","PG.ProteinGroups"]].drop_duplicates()
             #all unique glycoproteins
-            glycoprotein=glycoPSM_QvalFilter["PG.ProteinGroups"].drop_duplicates()
+            glycoprotein=df["PG.ProteinGroups"].drop_duplicates()
             
             num_glycoproteins.append(len(glycoprotein))
             num_glycopeptides.append(len(glycopeptide))
-            num_glycoPSMs.append(len(glycoPSM_QvalFilter))
+            num_glycoPSMs.append(len(df))
             
             dict_glycoproteins[run]=glycoprotein.reset_index(drop=True)
             dict_glycopeptides[run]=glycopeptide.reset_index(drop=True)
-            dict_glycoPSMs[run]=glycoPSM_QvalFilter.reset_index(drop=True)
+            dict_glycoPSMs[run]=df.reset_index(drop=True)
 
         resultdf_glyco["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
         resultdf_glyco["glycoproteins"]=num_glycoproteins
@@ -5673,7 +6050,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax3.set_ylim(top=max(resultdf_glyco["glycoPSM"].tolist())+(y_padding+0.1)*max(resultdf_glyco["glycoPSM"].tolist()))
             ax3.set_xlabel("Condition",fontsize=axisfont)
-            ax3.set_title("Glyco-PSMs\n(Qvalue<0.1)",fontsize=titlefont)
+            ax3.set_title("Glyco-PSMs",fontsize=titlefont)
 
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
@@ -5681,6 +6058,177 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax2.grid(linestyle="--")
             ax3.set_axisbelow(True)
             ax3.grid(linestyle="--")
+
+    # ====================================== Venn Diagram
+    @render.ui
+    def glyco_venn_run1_ui():
+        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+        if input.glyco_venn_conditionorrun()=="condition":
+            opts=resultdf_glyco["R.Condition"].drop_duplicates().tolist()
+            return ui.input_selectize("glyco_venn_run1_list","Pick first condition to compare",choices=opts)
+        if input.glyco_venn_conditionorrun()=="individual":
+            opts=resultdf_glyco["Cond_Rep"].tolist()
+            return ui.input_selectize("glyco_venn_run1_list","Pick first run to compare",choices=opts)   
+    @render.ui
+    def glyco_venn_run2_ui():
+        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+        if input.glyco_venn_conditionorrun()=="condition":
+            opts=resultdf_glyco["R.Condition"].drop_duplicates().tolist()
+            return ui.input_selectize("glyco_venn_run2_list","Pick first condition to compare",choices=opts)
+        if input.glyco_venn_conditionorrun()=="individual":
+            opts=resultdf_glyco["Cond_Rep"].tolist()
+            return ui.input_selectize("glyco_venn_run2_list","Pick first run to compare",choices=opts)
+    @render.ui
+    def glyco_venn_run3_ui():
+        if input.glyco_venn_numcircles()=="3":
+            resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+            if input.glyco_venn_conditionorrun()=="condition":
+                opts=resultdf_glyco["R.Condition"].drop_duplicates().tolist()
+                return ui.input_selectize("glyco_venn_run3_list","Pick first condition to compare",choices=opts)
+            if input.glyco_venn_conditionorrun()=="individual":
+                opts=resultdf_glyco["Cond_Rep"].tolist()
+                return ui.input_selectize("glyco_venn_run3_list","Pick first run to compare",choices=opts)   
+    #plot Venn Diagram
+    @reactive.effect
+    def _():
+        @render.plot(width=input.glyco_venn_width(),height=input.glyco_venn_height())
+        def glyco_venn_plot():
+            resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+            if input.glyco_venn_conditionorrun()=="condition":
+                A=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                B=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                if input.glyco_venn_numcircles()=="3":
+                    C=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+            if input.glyco_venn_conditionorrun()=="individual":
+                A=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                B=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                if input.glyco_venn_numcircles()=="3":
+                    C=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+            
+            A["modpep_glycan"]=A["EG.ModifiedPeptide"]+"_"+A["Total Glycan Composition"]
+            B["modpep_glycan"]=B["EG.ModifiedPeptide"]+"_"+B["Total Glycan Composition"]
+
+            A["modpep_glycan_charge"]=A["EG.ModifiedPeptide"]+"_"+A["Total Glycan Composition"]+"_"+A["FG.Charge"].astype(str)
+            B["modpep_glycan_charge"]=B["EG.ModifiedPeptide"]+"_"+B["Total Glycan Composition"]+"_"+B["FG.Charge"].astype(str)
+
+            if input.glyco_venn_numcircles()=="3":
+                C["modpep_glycan"]=C["EG.ModifiedPeptide"]+"_"+C["Total Glycan Composition"]
+                C["modpep_glycan_charge"]=C["EG.ModifiedPeptide"]+"_"+C["Total Glycan Composition"]+"_"+C["FG.Charge"].astype(str)
+
+            if input.glyco_venn_plotproperty()=="glycoproteins":
+                a=set(A["PG.ProteinGroups"])
+                b=set(B["PG.ProteinGroups"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["PG.ProteinGroups"])
+                titlemod="Glycoproteins"
+            if input.glyco_venn_plotproperty()=="glycopeptides":
+                a=set(A["modpep_glycan"])
+                b=set(B["modpep_glycan"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["modpep_glycan"])
+                titlemod="Glycopeptides"
+            if input.glyco_venn_plotproperty()=="glycoPSMs":
+                a=set(A["modpep_glycan_charge"])
+                b=set(B["modpep_glycan_charge"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["modpep_glycan_charge"])
+                titlemod="GlycoPSMs"
+
+            fig,ax=plt.subplots()
+            if input.glyco_venn_numcircles()=="2":
+                Ab=len(a-b)
+                aB=len(b-a)
+                AB=len(a&b)
+                venn2(subsets=(Ab,aB,AB),set_labels=(input.glyco_venn_run1_list(),input.glyco_venn_run2_list()),set_colors=("tab:blue","tab:orange"),ax=ax)
+                venn2_circles(subsets=(Ab,aB,AB),linestyle="dashed",linewidth=0.5)
+                plt.title("Venn Diagram for "+titlemod)
+            if input.glyco_venn_numcircles()=="3":
+                Abc=len(a-b-c)
+                aBc=len(b-a-c)
+                ABc=len((a&b)-c)
+                abC=len(c-a-b)
+                AbC=len((a&c)-b)
+                aBC=len((b&c)-a)
+                ABC=len(a&b&c)
+                venn3(subsets=(Abc,aBc,ABc,abC,AbC,aBC,ABC),set_labels=(input.glyco_venn_run1_list(),input.glyco_venn_run2_list(),input.glyco_venn_run3_list()),set_colors=("tab:blue","tab:orange","tab:green"),ax=ax)
+                venn3_circles(subsets=(Abc,aBc,ABc,abC,AbC,aBC,ABC),linestyle="dashed",linewidth=0.5)
+                plt.title("Venn Diagram for "+titlemod)
+    #download table of Venn Diagram intersections
+    @reactive.effect
+    def _():
+        if input.glyco_venn_numcircles()=="2":
+            filename=lambda: f"VennList_{input.glyco_venn_run1_list()}_vs_{input.glyco_venn_run2_list()}_{input.glyco_venn_plotproperty()}.csv"
+        if input.glyco_venn_numcircles()=="3":
+            filename=lambda: f"VennList_A-{input.glyco_venn_run1_list()}_vs_B-{input.glyco_venn_run2_list()}_vs_C-{input.glyco_venn_run3_list()}_{input.glyco_venn_plotproperty()}.csv"
+        @render.download(filename=filename)
+        def glyco_venn_download():
+            resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+            if input.glyco_venn_conditionorrun()=="condition":
+                A=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                B=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                if input.glyco_venn_numcircles()=="3":
+                    C=glycoPSMs_df[glycoPSMs_df["R.Condition"]==input.glyco_venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+            if input.glyco_venn_conditionorrun()=="individual":
+                A=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                B=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+                if input.glyco_venn_numcircles()=="3":
+                    C=glycoPSMs_df[glycoPSMs_df["Cond_Rep"]==input.glyco_venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence","Total Glycan Composition"]].drop_duplicates().reset_index(drop=True)
+            
+            A["modpep_glycan"]=A["EG.ModifiedPeptide"]+"_"+A["Total Glycan Composition"]
+            B["modpep_glycan"]=B["EG.ModifiedPeptide"]+"_"+B["Total Glycan Composition"]
+
+            A["modpep_glycan_charge"]=A["EG.ModifiedPeptide"]+"_"+A["Total Glycan Composition"]+"_"+A["FG.Charge"].astype(str)
+            B["modpep_glycan_charge"]=B["EG.ModifiedPeptide"]+"_"+B["Total Glycan Composition"]+"_"+B["FG.Charge"].astype(str)
+
+            if input.glyco_venn_numcircles()=="3":
+                C["modpep_glycan"]=C["EG.ModifiedPeptide"]+"_"+C["Total Glycan Composition"]
+                C["modpep_glycan_charge"]=C["EG.ModifiedPeptide"]+"_"+C["Total Glycan Composition"]+"_"+C["FG.Charge"].astype(str)
+
+            if input.glyco_venn_plotproperty()=="glycoproteins":
+                a=set(A["PG.ProteinGroups"])
+                b=set(B["PG.ProteinGroups"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["PG.ProteinGroups"])
+                titlemod="Glycoproteins"
+            if input.glyco_venn_plotproperty()=="glycopeptides":
+                a=set(A["modpep_glycan"])
+                b=set(B["modpep_glycan"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["modpep_glycan"])
+                titlemod="Glycopeptides"
+            if input.glyco_venn_plotproperty()=="glycoPSMs":
+                a=set(A["modpep_glycan_charge"])
+                b=set(B["modpep_glycan_charge"])
+                if input.glyco_venn_numcircles()=="3":
+                    c=set(C["modpep_glycan_charge"])
+                titlemod="GlycoPSMs"
+
+            df=pd.DataFrame()
+            if input.glyco_venn_numcircles()=="2":
+                Ab=list(a-b)
+                aB=list(b-a)
+                AB=list(a&b)
+                df=pd.concat([df,pd.Series(Ab,name=input.glyco_venn_run1_list())],axis=1)
+                df=pd.concat([df,pd.Series(aB,name=input.glyco_venn_run2_list())],axis=1)
+                df=pd.concat([df,pd.Series(AB,name="Both")],axis=1)
+            if input.glyco_venn_numcircles()=="3":
+                Abc=list(a-b-c)
+                aBc=list(b-a-c)
+                ABc=list((a&b)-c)
+                abC=list(c-a-b)
+                AbC=list((a&c)-b)
+                aBC=list((b&c)-a)
+                ABC=list(a&b&c)
+                df=pd.concat([df,pd.Series(Abc,name="A only")],axis=1)
+                df=pd.concat([df,pd.Series(aBc,name="B only")],axis=1)
+                df=pd.concat([df,pd.Series(ABc,name="A and B, not C")],axis=1)
+                df=pd.concat([df,pd.Series(abC,name="C only")],axis=1)
+                df=pd.concat([df,pd.Series(AbC,name="A and C, not B")],axis=1)
+                df=pd.concat([df,pd.Series(aBC,name="B and C, not A")],axis=1)
+                df=pd.concat([df,pd.Series(ABC,name="ABC")],axis=1)
+            with io.BytesIO() as buf:
+                df.to_csv(buf,index=False)
+                yield buf.getvalue()            
 
     # ====================================== Glyco ID Tables
     #show data grid for glycoproteins
@@ -5722,32 +6270,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             glycoPSMs_table.to_csv(buf,index=False)
             yield buf.getvalue()
 
-    # ====================================== Peptide Tracker
-    #generate selectize list of stripped peptide sequences
-    @render.ui
-    def glyco_peplist():
-        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
-        peplist=glycoPSMs_df["PEP.StrippedSequence"].drop_duplicates().sort_values().reset_index(drop=True).tolist()
-        pep_dict=dict()
-        for pep in peplist:
-            pep_dict[pep]=pep
-        return ui.input_selectize("glyco_peplist_pick","Pick stripped peptide sequence:",choices=pep_dict)
-    #show glycoPSMs for selected stripped peptide sequence 
-    @render.data_frame
-    def selected_glyco_peplist():
-        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
-        selectedpep=input.glyco_peplist_pick()
-        selectedpep_df=glycoPSMs_df[glycoPSMs_df["PEP.StrippedSequence"]==selectedpep]
-        return render.DataGrid(selectedpep_df,editable=False,height="600px")
-    #download shown table of glycoPSMs for selected stripped peptide sequence
-    @render.download(filename=lambda: f"glycoPSMs_{input.glyco_peplist_pick()}.csv")
-    def selected_glyco_download():
-        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
-        glycopep_table=selected_glyco_peplist.data_view()
-        with io.BytesIO() as buf:
-            glycopep_table.to_csv(buf,index=False)
-            yield buf.getvalue()
-
     # ====================================== Glycan Tracker
     #generate selectize list of detected glyco mods
     @render.ui
@@ -5776,6 +6298,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             mods_dict[item]=item
 
         return ui.input_selectize("found_glycomods","Pick glycan mod to plot data for",choices=mods_dict)
+    @render.ui
+    def high_mannose_ui():
+        if input.found_glycomods()=="Hex":
+            return ui.input_switch("high_mannose","Show only high mannose?")
     #plot ID bar graph for selected glyco mod, option to show % instead of counts
     @reactive.effect
     def _():
@@ -5797,9 +6323,19 @@ def server(input: Inputs, output: Outputs, session: Session):
             num_glycoPSMs_mod=[]
 
             for run in glycoPSMs_df["Cond_Rep"].drop_duplicates():
-                num_glycoproteins_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["PG.ProteinGroups"].drop_duplicates()))
-                num_glycopeptides_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["EG.ModifiedPeptide"].drop_duplicates()))
-                num_glycoPSMs_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]))
+                if picked_mod!="Hex":
+                    num_glycoproteins_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["PG.ProteinGroups"].drop_duplicates()))
+                    num_glycopeptides_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["EG.ModifiedPeptide"].drop_duplicates()))
+                    num_glycoPSMs_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]))
+                else:
+                    if input.high_mannose()==True:
+                        num_glycoproteins_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))&(glycoPSMs_df["High Mannose"]=="True")]["PG.ProteinGroups"].drop_duplicates()))
+                        num_glycopeptides_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))&(glycoPSMs_df["High Mannose"]=="True")]["EG.ModifiedPeptide"].drop_duplicates()))
+                        num_glycoPSMs_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))&(glycoPSMs_df["High Mannose"]=="True")]))
+                    else:
+                        num_glycoproteins_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["PG.ProteinGroups"].drop_duplicates()))
+                        num_glycopeptides_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]["EG.ModifiedPeptide"].drop_duplicates()))
+                        num_glycoPSMs_mod.append(len(glycoPSMs_df[(glycoPSMs_df["Cond_Rep"]==run)&(glycoPSMs_df["Total Glycan Composition"].str.contains(picked_mod))]))
 
             resultdf_glycomod["Cond_Rep"]=glycoPSMs_df["Cond_Rep"].drop_duplicates().reset_index(drop=True)
             resultdf_glycomod["glycoproteins"]=num_glycoproteins_mod
@@ -5838,7 +6374,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax3.set_ylim(top=max(plottingdf["glycoPSM"].tolist())+(y_padding+0.1)*max(plottingdf["glycoPSM"].tolist()))
             ax3.set_xlabel("Condition",fontsize=axisfont)
-            ax3.set_title("Glyco-PSMs\n(Qvalue<0.1)",fontsize=titlefont)
+            ax3.set_title("Glyco-PSMs",fontsize=titlefont)
 
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
@@ -5847,7 +6383,38 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax3.set_axisbelow(True)
             ax3.grid(linestyle="--")
 
+    # ====================================== Peptide Tracker
+    #generate selectize list of stripped peptide sequences
+    @render.ui
+    def glyco_peplist():
+        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+        peplist=glycoPSMs_df["PEP.StrippedSequence"].drop_duplicates().sort_values().reset_index(drop=True).tolist()
+        pep_dict=dict()
+        for pep in peplist:
+            pep_dict[pep]=pep
+        return ui.input_selectize("glyco_peplist_pick","Pick stripped peptide sequence:",choices=pep_dict)
+    #show glycoPSMs for selected stripped peptide sequence 
+    @render.data_frame
+    def selected_glyco_peplist():
+        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+        selectedpep=input.glyco_peplist_pick()
+        selectedpep_df=glycoPSMs_df[glycoPSMs_df["PEP.StrippedSequence"]==selectedpep]
+        return render.DataGrid(selectedpep_df,editable=False,height="600px")
+    #download shown table of glycoPSMs for selected stripped peptide sequence
+    @render.download(filename=lambda: f"glycoPSMs_{input.glyco_peplist_pick()}.csv")
+    def selected_glyco_download():
+        resultdf_glyco,glycoproteins_df,glycopeptides_df,glycoPSMs_df=glyco_variables()
+        glycopep_table=selected_glyco_peplist.data_view()
+        with io.BytesIO() as buf:
+            glycopep_table.to_csv(buf,index=False)
+            yield buf.getvalue()
+
     # ====================================== Precursor Scatterplot
+    @render.ui
+    def glycoscatter_ui():
+        searchoutput=metadata_update()
+        opts=searchoutput["Cond_Rep"].drop_duplicates().tolist()
+        return ui.input_selectize("glycoscatter_pick","Pick run:",choices=opts)
     #scatterplot like the charge/PTM scatter for glycosylated precursors
     @reactive.effect
     def _():
@@ -5855,8 +6422,12 @@ def server(input: Inputs, output: Outputs, session: Session):
         def glycoscatter():
             searchoutput=metadata_update()
 
-            searchoutput_nonglyco=searchoutput[searchoutput["Glycan q-value"].isnull()==True]
-            searchoutput_glyco=searchoutput[searchoutput["Glycan q-value"].isnull()==False]
+            if input.software()=="fragpipe_glyco":
+                searchoutput_nonglyco=searchoutput[(searchoutput["Glycan q-value"].isnull()==True)&(searchoutput["Cond_Rep"]==input.glycoscatter_pick())]
+                searchoutput_glyco=searchoutput[(searchoutput["Glycan q-value"].isnull()==False)&(searchoutput["Cond_Rep"]==input.glycoscatter_pick())]
+            if input.software()=="glycoscape":
+                searchoutput_nonglyco=searchoutput[(searchoutput["Total Glycan Composition"].isnull()==True)&(searchoutput["Cond_Rep"]==input.glycoscatter_pick())]
+                searchoutput_glyco=searchoutput[(searchoutput["Total Glycan Composition"].isnull()==False)&(searchoutput["Cond_Rep"]==input.glycoscatter_pick())]
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
@@ -5873,7 +6444,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
 #endregion
 
-# ============================================================================= De Novo Results
+# ============================================================================= De Novo
 #region
     # ====================================== Secondary File Import
     #region
@@ -6204,11 +6775,189 @@ def server(input: Inputs, output: Outputs, session: Session):
                 
                 #change the cwd back to the code file since we changed it to the uploaded file 
                 os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.software_secondary()=="bps_denovo":
+                denovo_score=65.0
+
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.searchreport()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                protein_dict=dict()
+                for run in runlist:
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
+
+                    peptide_dict[run]=pd.read_parquet("novor-fasta-mapping-results.peptide.parquet")
+                    protein_dict[run]=pd.read_parquet("novor-fasta-mapping-results.protein.parquet")
+
+                for key in peptide_dict.keys():
+                    peptideparquet=peptide_dict[key]
+                    proteinparquet=protein_dict[key]
+
+                    #filter parquet file
+                    peptideparquet=peptideparquet[(peptideparquet["denovo_score"]>=denovo_score)&(peptideparquet["rank"]==1)].reset_index(drop=True)
+
+                    #rename columns
+                    peptideparquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "charge":"FG.Charge",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "precursor_intensity":"FG.MS2Quantity"
+                                                },inplace=True)
+
+                    #drop columns
+                    peptideparquet.drop(columns=["index","processing_run_id","ms2_id","rank","leading_aa","trailing_aa","precursor_mh",
+                                                "calc_mh","denovo_tag_length","found_in_dbsearch","denovo_matches_db",
+                                                "protein_group_parent_loc","protein_group_parent_list_loc","protein_group_parent_list_id"
+                                                ],inplace=True,errors='ignore')
+                    #fill NaN in the protein group column with -1
+                    peptideparquet["protein_group_parent_id"]=peptideparquet["protein_group_parent_id"].fillna(-1)
+
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_accession=[]
+                    gene_id=[]
+                    uncategorized_placeholder="uncat"
+
+                    for i in range(len(peptideparquet["protein_group_parent_id"])):
+                        if peptideparquet["protein_group_parent_id"][i]==-1:
+                            protein_name.append(uncategorized_placeholder)
+                            protein_accession.append(uncategorized_placeholder)
+                            gene_id.append(uncategorized_placeholder)
+                        else:
+                            protein_name.append(proteinparquet["protein_name"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            protein_accession.append(proteinparquet["protein_accession"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            gene_id.append(proteinparquet["gene_id"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+
+                    peptideparquet["PG.ProteinGroups"]=protein_name
+                    peptideparquet["PG.ProteinAccessions"]=protein_accession
+                    peptideparquet["PG.Genes"]=gene_id
+                    peptideparquet=peptideparquet.drop(columns=["protein_group_parent_id"])
+
+                    searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
+
+                #rename PTMs
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
+                                                                    "15.9949":"Oxidation (M)",
+                                                                    "15.994915":"Oxidation (M)",
+                                                                    "79.966331":"Phospho (STY)",
+                                                                    "0.984":"Deamidation (NQ)",
+                                                                    },regex=True)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        
+        #for DIA-NN 2.0 input
+        if ".parquet" in input.searchreport_secondary()[0]["name"]:
+            if len(input.searchreport_secondary())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.searchreport_secondary())):
+                    run=pd.read_parquet(input.searchreport_secondary()[i]["datapath"])
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_parquet(input.searchreport_secondary()[0]["datapath"])
+            if input.software()=="diann2.0":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Precursor.Mz":"FG.PrecMz",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "RT":"EG.ApexRT",
+                                            "IM":"EG.IonMobility",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            },inplace=True)
+
+                searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
+                                        "Proteotypic","Protein.Ids","iRT","Predicted.RT","Predicted.iRT",
+                                        "iIM","Predicted.IM","Predicted.iIM","Precursor.Normalised",
+                                        "Ms1.Area","Ms1.Normalised","Ms1.Apex.Area","Ms1.Apex.Mz.Delta",
+                                        "Normalisation.Factor","Quantity.Quality","Empirical.Quality",
+                                        "Normalisation.Noise","Ms1.Profile.Corr","Evidence","Mass.Evidence",
+                                        "Channel.Evidence","Ms1.Total.Signal.Before","Ms1.Total.Signal.After",
+                                        "RT.Start","RT.Stop","FWHM","PG.TopN","PG.MaxLFQ","Genes.TopN",
+                                        "Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ.Quality",
+                                        "Genes.MaxLFQ.Quality","Genes.MaxLFQ.Unique.Quality","Q.Value",
+                                        "PEP","Global.Q.Value","Lib.Q.Value","Peptidoform.Q.Value",
+                                        "Global.Peptidoform.Q.Value","Lib.Peptidoform.Q.Value",
+                                        "PTM.Site.Confidence","Site.Occupancy.Probabilities","Protein.Sites",
+                                        "Lib.PTM.Site.Confidence","Translated.Q.Value","Channel.Q.Value",
+                                        "PG.Q.Value","PG.PEP","GG.Q.Value","Lib.PG.Q.Value"
+                                        ],inplace=True,errors="ignore")
+                    
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
 
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         searchoutput_secondary=searchoutput.sort_values('R.FileName')
 
         return searchoutput_secondary
+    
+    #upload filled out metadata table
+    @reactive.calc
+    def inputmetadata_secondary():
+        if input.metadata_upload_secondary() is None:
+            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
+            return metadata
+        else:
+            metadata=pd.read_csv(input.metadata_upload_secondary()[0]["datapath"],sep=",")
+        return metadata
     
     #render the metadata table in the window
     @render.data_frame
@@ -6260,6 +7009,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             return "Use the Shiny report format when exporting search results. R.Condition and R.Replicate are automatically updated in the metadata based on this file. Click on 'Apply Changes' even if the metadata table was not updated."
         if input.software_secondary()=="diann":
             return "Use the report.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+        if input.software_secondary()=="diann2.0":
+            return "Use the report.parquet file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
         if input.software_secondary()=="ddalibrary":
             return "DDA libraries have limited functionality, can only plot ID metrics."
         if input.software_secondary()=="fragpipe":
@@ -6294,16 +7045,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         with io.BytesIO() as buf:
             metadata_fordownload.to_csv(buf,index=False)
             yield buf.getvalue()
-
-    #upload filled out metadata table
-    @reactive.calc
-    def inputmetadata_secondary():
-        if input.metadata_upload_secondary() is None:
-            metadata=pd.DataFrame(columns=["R.FileName","R.Condition","R.Replicate","remove"])
-            return metadata
-        else:
-            metadata=pd.read_csv(input.metadata_upload_secondary()[0]["datapath"],sep=",")
-        return metadata
 
     #update the searchoutput df to match how we edited the metadata sheet
     @reactive.calc
@@ -6460,32 +7201,30 @@ def server(input: Inputs, output: Outputs, session: Session):
     # ====================================== Compare - Stripped Peptide IDs
     #render ui call for dropdown calling Cond_Rep column
     @render.ui
-    def compare_venn_samplelist():
+    def denovocompare_venn_samplelist():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         opts=resultdf["Cond_Rep"].tolist()
-        return ui.input_selectize("compare_venn_samplelist_pick","Pick run:",choices=opts)
+        return ui.input_selectize("denovocompare_venn_samplelist_pick","Pick run:",choices=opts)
     @render.ui
-    def compare_specific_length_ui():
-        if input.compare_specific_length()==True:
-            bps_df,secondary_df=software_comparison()
-            list1=set(secondary_df["Peptide Length"])
-            list2=set(bps_df["Peptide Length"])
-            opts=list(list1.union(list2))
-            return ui.input_selectize("compare_specific_length_pick","Pick specific peptide length to compare:",choices=opts)
+    def denovocompare_specific_length_ui():
+        if input.denovocompare_specific_length()==True:
+            return ui.input_slider("denovocompare_specific_length_pick","Pick specific peptide length to compare:",min=3,max=30,value=9,step=1,ticks=True)
     #plot venn diagram of stripped peptide IDs between the two software
     @reactive.effect
     def _():
-        @render.plot(width=input.compare_venn_width(),height=input.compare_venn_height())
-        def compare_venn_plot():
+        @render.plot(width=input.denovocompare_venn_width(),height=input.denovocompare_venn_height())
+        def denovocompare_venn_plot():
             bps_df,secondary_df=software_comparison()
 
-            run=input.compare_venn_samplelist_pick()
+            run=input.denovocompare_venn_samplelist_pick()
             titlefont=input.titlefont()
 
             if input.software_secondary()=="spectronaut":
                 name_mod="Spectronaut"
             if input.software_secondary()=="diann":
                 name_mod="DIA-NN"
+            if input.software_secondary()=="diann2.0":
+                name_mod="DIA-NN 2.0"
             if input.software_secondary()=="fragpipe":
                 name_mod="FragPipe"
             if input.software_secondary()=="bps_timsrescore":
@@ -6493,18 +7232,29 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.software_secondary()=="bps_timsdiann":
                 name_mod="tims-DIANN"
 
-            if input.compare_specific_length()==True:
-                bps_df=bps_df[(bps_df["Cond_Rep"]==run)&(bps_df["Peptide Length"]==int(input.compare_specific_length_pick()))]
-                secondary_df=secondary_df[(secondary_df["Cond_Rep"]==run)&(secondary_df["Peptide Length"]==int(input.compare_specific_length_pick()))]
-                titlemod=" "+input.compare_specific_length_pick()+"mers"
+            if input.denovocompare_specific_length()==True:
+                bps_df=bps_df[(bps_df["Cond_Rep"]==run)&(bps_df["Peptide Length"]==int(input.denovocompare_specific_length_pick()))]
+                secondary_df=secondary_df[(secondary_df["Cond_Rep"]==run)&(secondary_df["Peptide Length"]==int(input.denovocompare_specific_length_pick()))]
+                titlemod=" "+input.denovocompare_specific_length_pick()+"mers"
             else:
                 bps_df=bps_df[bps_df["Cond_Rep"]==run]
                 secondary_df=secondary_df[secondary_df["Cond_Rep"]==run]
                 titlemod=""
 
-            #intersections of the two software
-            A=set(secondary_df["PEP.StrippedSequence"])
-            B=set(bps_df["PEP.StrippedSequence"])
+            if input.denovocompare_peptidecore()==True:
+                bps_df_coreAA=[]
+                secondary_df_coreAA=[]
+                for pep in bps_df["PEP.StrippedSequence"].tolist():
+                    bps_df_coreAA.append(pep[2:-2])
+                for pep in secondary_df["PEP.StrippedSequence"].tolist():
+                    secondary_df_coreAA.append(pep[2:-2])
+                A=set(secondary_df_coreAA)
+                B=set(bps_df_coreAA)
+
+            else:
+                #intersections of the two software
+                A=set(secondary_df["PEP.StrippedSequence"])
+                B=set(bps_df["PEP.StrippedSequence"])
 
             AvsB=list(A-B)
             BvsA=list(B-A)
@@ -6519,17 +7269,19 @@ def server(input: Inputs, output: Outputs, session: Session):
             venn2_circles(subsets=vennlist,linestyle="dashed",linewidth=0.5)
             plt.title(run+" Stripped Peptide IDs"+titlemod,fontsize=titlefont)
     #download list of common and unique IDs
-    @render.download(filename=lambda: f'{input.compare_venn_samplelist_pick()}_BPSNovor_Venn.csv')
-    def compare_venn_download():
+    @render.download(filename=lambda: f'{input.denovocompare_venn_samplelist_pick()}_BPSNovor_Venn.csv')
+    def denovocompare_venn_download():
         bps_df,secondary_df=software_comparison()
 
-        run=input.compare_venn_samplelist_pick()
+        run=input.denovocompare_venn_samplelist_pick()
         titlefont=input.titlefont()
 
         if input.software_secondary()=="spectronaut":
             name_mod="Spectronaut"
         if input.software_secondary()=="diann":
             name_mod="DIA-NN"
+        if input.software_secondary()=="diann2.0":
+            name_mod="DIA-NN 2.0"
         if input.software_secondary()=="fragpipe":
             name_mod="FragPipe"
         if input.software_secondary()=="bps_timsrescore":
@@ -6537,16 +7289,27 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.software_secondary()=="bps_timsdiann":
             name_mod="tims-DIANN"   
 
-        if input.compare_specific_length()==True:
-            bps_df=bps_df[(bps_df["Cond_Rep"]==run)&(bps_df["Peptide Length"]==int(input.compare_specific_length_pick()))]
-            secondary_df=secondary_df[(secondary_df["Cond_Rep"]==run)&(secondary_df["Peptide Length"]==int(input.compare_specific_length_pick()))]
+        if input.denovocompare_specific_length()==True:
+            bps_df=bps_df[(bps_df["Cond_Rep"]==run)&(bps_df["Peptide Length"]==int(input.denovocompare_specific_length_pick()))]
+            secondary_df=secondary_df[(secondary_df["Cond_Rep"]==run)&(secondary_df["Peptide Length"]==int(input.denovocompare_specific_length_pick()))]
         else:
             bps_df=bps_df[bps_df["Cond_Rep"]==run]
             secondary_df=secondary_df[secondary_df["Cond_Rep"]==run]
 
-        #intersections of the two software
-        A=set(secondary_df["PEP.StrippedSequence"])
-        B=set(bps_df["PEP.StrippedSequence"])
+        if input.denovocompare_peptidecore()==True:
+            bps_df_coreAA=[]
+            secondary_df_coreAA=[]
+            for pep in bps_df["PEP.StrippedSequence"].tolist():
+                bps_df_coreAA.append(pep[2:-2])
+            for pep in secondary_df["PEP.StrippedSequence"].tolist():
+                secondary_df_coreAA.append(pep[2:-2])
+            A=set(secondary_df_coreAA)
+            B=set(bps_df_coreAA)
+
+        else:
+            #intersections of the two software
+            A=set(secondary_df["PEP.StrippedSequence"])
+            B=set(bps_df["PEP.StrippedSequence"])
 
         AvsB=list(A-B)
         BvsA=list(B-A)
@@ -6562,6 +7325,206 @@ def server(input: Inputs, output: Outputs, session: Session):
         with io.BytesIO() as buf:
             unique_ids_df.to_csv(buf,index=False)
             yield buf.getvalue()
+
+    # ====================================== Compare - Sequence Motifs
+    @render.ui
+    def seqmotif_compare_run_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("seqmotif_compare_run_pick","Pick run:",choices=opts)
+    #BPS sequence motif plot
+    @render.plot(width=800,height=400)
+    def seqmotif_compare_plot1():
+        bps_df,secondary_df=software_comparison()
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
+
+        if input.seqmotif_compare_onlyunique()==False:
+            seq=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(bps_df["Peptide Length"]==input.seqmotif_compare_peplengths())]["PEP.StrippedSequence"].drop_duplicates().tolist()
+            titlemod=""
+        if input.seqmotif_compare_onlyunique()==True:
+            titlemod=" Only Unique IDs"
+            bps_df=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(bps_df["Peptide Length"]==int(input.seqmotif_compare_peplengths()))]
+            secondary_df=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(secondary_df["Peptide Length"]==int(input.seqmotif_compare_peplengths()))]
+            A=set(secondary_df["PEP.StrippedSequence"])
+            B=set(bps_df["PEP.StrippedSequence"])
+            seq=list(A-B)
+
+        matrix=lm.alignment_to_matrix(seq)
+        if input.seqmotif_compare_plottype()=="counts":
+            ylabel="Counts"
+        if input.seqmotif_compare_plottype()=="information":
+            matrix=lm.transform_matrix(matrix,from_type="counts",to_type="information")
+            ylabel="Information (bits)"
+        logo=lm.Logo(matrix,vsep=0.01,vpad=0.01,color_scheme="weblogo_protein")
+        logo.ax.set_xlabel("Position",fontsize=axisfont)
+        logo.ax.set_ylabel(ylabel,fontsize=axisfont)
+        logo.ax.set_title("BPS "+input.seqmotif_compare_run_pick()+": "+str(input.seqmotif_peplengths())+"mers"+titlemod,fontsize=titlefont)
+        logo.ax.set_ylim(bottom=0)
+    #secondary sequence motif plot
+    @render.plot(width=800,height=400)
+    def seqmotif_compare_plot2():
+        bps_df,secondary_df=software_comparison()
+
+        seq2=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(secondary_df["Peptide Length"]==input.seqmotif_compare_peplengths())]["PEP.StrippedSequence"].drop_duplicates().tolist()
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
+
+        if input.software_secondary()=="spectronaut":
+            name_mod="Spectronaut"
+        if input.software_secondary()=="diann":
+            name_mod="DIA-NN"
+        if input.software_secondary()=="diann2.0":
+            name_mod="DIA-NN 2.0"
+        if input.software_secondary()=="fragpipe":
+            name_mod="FragPipe"
+        if input.software_secondary()=="bps_timsrescore":
+            name_mod="tims-Rescore"
+        if input.software_secondary()=="bps_timsdiann":
+            name_mod="tims-DIANN"   
+
+        matrix2=lm.alignment_to_matrix(seq2)
+        if input.seqmotif_compare_plottype()=="counts":
+            ylabel="Counts"
+        if input.seqmotif_compare_plottype()=="information":
+            matrix2=lm.transform_matrix(matrix2,from_type="counts",to_type="information")
+            ylabel="Information (bits)"
+        logo2=lm.Logo(matrix2,vsep=0.01,vpad=0.01,color_scheme="weblogo_protein")
+        logo2.ax.set_xlabel("Position",fontsize=axisfont)
+        logo2.ax.set_ylabel(ylabel,fontsize=axisfont)
+        logo2.ax.set_title(name_mod+" "+input.seqmotif_compare_run_pick()+": "+str(input.seqmotif_peplengths())+"mers",fontsize=titlefont)
+        logo2.ax.set_ylim(bottom=0)
+
+    # ====================================== Compare - Sequence Motifs (stats)
+    @render.ui
+    def seqmotif_compare_run_ui2():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("seqmotif_compare_run_pick2","Pick run:",choices=opts)
+    #PCA plot
+    @render.plot(height=600)
+    def seqmotif_pca():
+        bps_df,secondary_df=software_comparison()
+
+        seq_BPS=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(bps_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
+        seq_secondary=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(secondary_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
+
+        if input.software_secondary()=="spectronaut":
+            name_mod="Spectronaut"
+        if input.software_secondary()=="diann":
+            name_mod="DIA-NN"
+        if input.software_secondary()=="diann2.0":
+            name_mod="DIA-NN 2.0"
+        if input.software_secondary()=="fragpipe":
+            name_mod="FragPipe"
+        if input.software_secondary()=="bps_timsrescore":
+            name_mod="tims-Rescore"
+        if input.software_secondary()=="bps_timsdiann":
+            name_mod="tims-DIANN"
+
+        if input.seqmotif_compare_onlyunique2()==True:
+            a=set(seq_secondary)
+            b=set(seq_BPS)
+            seq_BPS=list(a-b)
+            B=lm.alignment_to_matrix(seq_BPS,to_type="information")
+            titlemod=" Only Unique BPS IDs"
+        if input.seqmotif_compare_onlyunique2()==False:
+            B=lm.alignment_to_matrix(seq_BPS,to_type="information")
+            titlemod=""
+
+        A=lm.alignment_to_matrix(seq_secondary,to_type="information")
+        for col in A.columns.tolist():
+            A=A.rename(columns={col:str(col)+"_secondary"})
+        for col in B.columns.tolist():
+            B=B.rename(columns={col:str(col)+"_BPS"})
+        concatenated=pd.concat([A,B],axis=1)
+
+        X=np.array(concatenated).T
+        pip=Pipeline([("scaler",StandardScaler()),("pca",PCA())]).fit(X)
+        X_trans=pip.transform(X)
+
+        fig,ax=plt.subplots()
+
+        colors=["firebrick","red","lightcoral","orange","gold","goldenrod","green","lime","darkturquoise","cyan",
+                "dodgerblue","lightsteelblue","blue","blueviolet","purple","fuchsia","violet","pink","slategrey"]
+        for i in range(len(concatenated.columns.tolist())):
+            if i>18:
+                z=i-19
+                label="B"
+            else:
+                z=i
+                label="S"
+            ax.scatter(X_trans[i,0],X_trans[i,1],color=colors[z],s=45,label=concatenated.columns.tolist()[i].split("_")[0])
+            ax.annotate(label,(X_trans[i,0]+0.05,X_trans[i,1]+0.05),fontsize=8)
+        ax.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)")
+        ax.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)")
+        handles,labels=ax.get_legend_handles_labels()
+        handle_list,label_list =[],[]
+        for handle,label in zip(handles,labels):
+            if label not in label_list:
+                handle_list.append(handle)
+                label_list.append(label)
+        ax.legend(handle_list,label_list,loc="center",bbox_to_anchor=(1.1,0.5),markerscale=1)
+        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod)
+        fig.set_tight_layout(True)
+    #3D plot
+    @render.plot(height=600)
+    def seqmotif_3d():
+        bps_df,secondary_df=software_comparison()
+
+        axisfont=input.axisfont()
+
+        if input.software_secondary()=="spectronaut":
+            name_mod="Spectronaut"
+        if input.software_secondary()=="diann":
+            name_mod="DIA-NN"
+        if input.software_secondary()=="diann2.0":
+            name_mod="DIA-NN 2.0"
+        if input.software_secondary()=="fragpipe":
+            name_mod="FragPipe"
+        if input.software_secondary()=="bps_timsrescore":
+            name_mod="tims-Rescore"
+        if input.software_secondary()=="bps_timsdiann":
+            name_mod="tims-DIANN"
+
+        seq_BPS=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(bps_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
+        seq_secondary=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(secondary_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
+
+        if input.seqmotif_compare_onlyunique2()==True:
+            a=set(seq_secondary)
+            b=set(seq_BPS)
+            seq_BPS=list(a-b)
+            B=lm.alignment_to_matrix(seq_BPS,to_type="information")
+            titlemod=" Only Unique BPS IDs"
+        if input.seqmotif_compare_onlyunique2()==False:
+            B=lm.alignment_to_matrix(seq_BPS,to_type="information")
+            titlemod=""
+
+        A=lm.alignment_to_matrix(seq_secondary,to_type="information")
+        
+        xdata=np.arange(1,20).tolist()
+        ydata=np.arange(1,1+int(input.seqmotif_compare_peplengths2())).tolist()
+        columns=A.columns.tolist()
+        colors=["firebrick","red","lightcoral","orange","gold","goldenrod","green","lime","darkturquoise","cyan",
+                "dodgerblue","lightsteelblue","blue","blueviolet","purple","fuchsia","violet","pink","slategrey"]
+        fig=plt.figure()
+        ax=fig.add_subplot(111,projection='3d')
+        for i in range(len(columns)):
+            zdata_BPS=B[columns[i]]
+            zdata_fragger=A[columns[i]]
+            if i>18:
+                z=i-19
+            else:
+                z=i
+            ax.scatter(xdata[i],ydata,zdata_BPS,color=colors[z],label=columns[i])
+            ax.scatter(xdata[i],ydata,zdata_fragger,color=colors[z])
+        ax.view_init(azim=input.seqmotif_3d_azimuth(),elev=input.seqmotif_3d_elevation())
+        ax.set_xticks(xdata,columns)
+        ax.set_xlabel("Residue")
+        ax.set_ylabel("Position")
+        ax.legend(loc="center",bbox_to_anchor=(1.1,0.5))
+        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod)
+        fig.set_tight_layout(True)
 
     # ====================================== IDs Found in Fasta
     @reactive.effect
@@ -7053,6 +8016,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         rttolerance=input.rttolerance()
         #MZ tolerance in m/z
         mztolerance=input.mztolerance()
+        #IM tolerance in 1/K0
+        imtolerance=input.imtolerance()
 
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
@@ -7066,7 +8031,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 break
             rtpercentdiff=(abs(df["EG.ApexRT"][i]-df["EG.ApexRT"][i+1])/df["EG.ApexRT"][i])*100
             mzdiff=abs(df["FG.PrecMz"][i]-df["FG.PrecMz"][i+1])
-            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
+            imdiff=abs(df["EG.IonMobility"][i]-df["EG.IonMobility"][i+1])
+            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance and imdiff >= imtolerance:
                 coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i].tolist()
                 coelutingpeptides.loc[len(coelutingpeptides)]=df.iloc[i+1].tolist()
 
@@ -7076,7 +8042,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 break
             rtpercentdiff=(abs(coelutingpeptides["EG.ApexRT"][i]-coelutingpeptides["EG.ApexRT"][i+1])/coelutingpeptides["EG.ApexRT"][i])*100
             mzdiff=abs(coelutingpeptides["FG.PrecMz"][i]-coelutingpeptides["FG.PrecMz"][i+1])
-            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance:
+            imdiff=abs(coelutingpeptides["EG.IonMobility"][i]-coelutingpeptides["EG.IonMobility"][i+1])
+            if rtpercentdiff <= rttolerance and mzdiff <= mztolerance and imdiff >= imtolerance:
                 coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
 
         with io.BytesIO() as buf:
@@ -7101,6 +8068,1546 @@ def server(input: Inputs, output: Outputs, session: Session):
         with io.BytesIO() as buf:
             ptmdf.to_csv(buf,index=False)
             yield buf.getvalue()
+
+#endregion
+
+# ============================================================================= Two-Software Comparison
+#region
+    # ====================================== File Import
+    #import first search report file
+    @reactive.calc
+    def compare_inputfile1():
+        if input.compare_searchreport1() is None:
+            return pd.DataFrame()
+        if ".tsv" in input.compare_searchreport1()[0]["name"]:
+            if len(input.compare_searchreport1())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.compare_searchreport1())):
+                    run=pd.read_csv(input.compare_searchreport1()[i]["datapath"],sep="\t")
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_csv(input.compare_searchreport1()[0]["datapath"],sep="\t")
+            if input.compare_software1()=="diann":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
+                                            "PEP","Global.Q.Value","GG.Q.Value",#"Protein.Q.Value","Global.PG.Q.Value",
+                                            "Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated",
+                                            "Quantity.Quality","RT.Stop","RT.Start","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Lib.PG.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Area","Evidence","Spectrum.Similarity","Averagine","Mass.Evidence",
+                                            "Decoy.Evidence","Decoy.CScore","Fragment.Quant.Raw","Fragment.Quant.Corrected",
+                                            "Fragment.Correlations","MS2.Scan","iIM","Predicted.IM",
+                                            "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
+                                            "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={#"Run":"R.FileName",
+                            "Protein.Group":"PG.ProteinGroups",
+                            "Protein.Ids":"PG.ProteinAccessions",
+                            "Protein.Names":"PG.ProteinNames",
+                            "PG.Quantity":"PG.MS2Quantity",
+                            "Genes":"PG.Genes",
+                            "Stripped.Sequence":"PEP.StrippedSequence",
+                            "Modified.Sequence":"EG.ModifiedPeptide",
+                            "Precursor.Charge":"FG.Charge",
+                            "Q.Value":"EG.Qvalue",
+                            "PG.Q.Value":"PG.Qvalue",
+                            "Precursor.Quantity":"FG.MS2Quantity",
+                            "Precursor.Normalised":"FG.MS2RawQuantity",
+                            "RT":"EG.ApexRT",
+                            "Predicted.RT":"EG.RTPredicted",
+                            "CScore":"EG.Cscore",
+                            "IM":"EG.IonMobility",
+                            "Proteotypic":"PEP.IsProteotypic"},inplace=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
+            if input.compare_software1()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
+            if input.compare_software1()=="fragpipe":
+                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                searchoutput["FG.CalibratedMassAccuracy (PPM)"]=(searchoutput["Delta Mass"]/searchoutput["Calculated M/Z"])*10E6
+
+                searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length",
+                                        "Observed Mass","Calibrated Observed Mass","Calibrated Observed M/Z",
+                                        "Calculated Peptide Mass","Calculated M/Z","Delta Mass",
+                                        "Expectation","Hyperscore","Nextscore",
+                                        "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start",
+                                        "Protein End","Assigned Modifications","Observed Modifications",
+                                        "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                            "Modified Peptide":"EG.ModifiedPeptide",
+                                            "Charge":"FG.Charge",
+                                            "Retention":"EG.ApexRT",
+                                            "Observed M/Z":"FG.PrecMz",
+                                            "Ion Mobility":"EG.IonMobility",
+                                            "Protein ID":"PG.ProteinGroups",
+                                            "Entry Name":"PG.ProteinNames",
+                                            "Gene":"PG.Genes",
+                                            "Intensity":"FG.MS2Quantity"
+                                            },inplace=True)
+
+                searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                    "n":"",
+                    "147":"Oxidation (M)",
+                    "222":"Carbamidomethyl (C)",
+                    "43":"Acetyl (Protein N-term)",
+                    "111":""},regex=True)
+
+                peps=searchoutput["PEP.StrippedSequence"].tolist()
+                modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
+                for i in range(len(peps)):
+                    if type(modpeps[i])!=str:
+                        modpeps[i]=peps[i]
+                    else:
+                        modpeps[i]=modpeps[i]
+                searchoutput["EG.ModifiedPeptide"]=modpeps
+            if input.compare_software1()=="fragpipe_glyco":
+                #if the Spectrum File column is just a single value, get the file names from the Spectrum column
+                if searchoutput["Spectrum"][0].split(".")[0] not in searchoutput["Spectrum File"][0]:
+                    fragger_filelist=searchoutput["Spectrum"].str.split(".",expand=True).drop(columns=[1,2,3]).drop_duplicates().reset_index(drop=True)
+                    fragger_filelist.rename(columns={0:"R.FileName"},inplace=True)
+
+                    filenamelist=[]
+                    for run in fragger_filelist["R.FileName"]:
+                        fileindex=fragger_filelist[fragger_filelist["R.FileName"]==run].index.values[0]
+                        filenamelist.append([fragger_filelist["R.FileName"][fileindex]]*len(searchoutput[searchoutput["Spectrum"].str.contains(run)]))
+
+                    searchoutput.insert(0,"R.FileName",list(itertools.chain(*filenamelist)))
+                    searchoutput.drop(columns=["Spectrum File"],inplace=True)
+
+                else:
+                    searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length","Observed Mass",  
+                        "Calibrated Observed Mass","Calibrated Observed M/Z","Calculated Peptide Mass",
+                        "Calculated M/Z","Delta Mass","Expectation","Hyperscore","Nextscore","Probability",
+                        "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start","Protein End",
+                        "MSFragger Localization","Number Best Positions","Shifted Only Position Scores",
+                        "Shifted Only Position Ions","Score Best Position","Ions Best Position",
+                        "Score Second Best Position","Ions Second Best Position","Score All Unshifted",
+                        "Ions All Unshifted","Score Shifted Best Position","Ions Shifted Best Position",
+                        "Score Shifted All Positions","Ions Shifted All Positions","Purity","Protein",
+                        "Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                            "Modified Peptide":"EG.ModifiedPeptide",
+                                            "Charge":"FG.Charge",
+                                            "Retention":"EG.ApexRT",
+                                            "Observed M/Z":"FG.PrecMz",
+                                            "Ion Mobility":"EG.IonMobility",
+                                            "Protein ID":"PG.ProteinGroups",
+                                            "Entry Name":"PG.ProteinNames",
+                                            "Gene":"PG.Genes"
+                                            },inplace=True)
+                
+                if len(searchoutput["Intensity"].drop_duplicates())==1:
+                    searchoutput.drop(columns=["Intensity"],inplace=True)
+                else:
+                    searchoutput.rename(columns={"Intensity":"FG.MS2Quantity"},inplace=True)
+
+                searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+                searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
+        
+        #for BPS input
+        if ".zip" in input.compare_searchreport1()[0]["name"]:
+            if input.compare_software1()=="bps_timsrescore":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                samplename_list=[]
+                for run in runlist:
+                    os.chdir(cwd)
+                    os.chdir(cwd+"\\"+run)
+                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")                   
+                    peptide_dict[run]=pgfdr_peptide
+
+                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                for key in peptide_dict.keys():
+                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
+                    df=df.rename(columns={"sample_name":"R.FileName",
+                                    "stripped_peptide":"PEP.StrippedSequence",
+                                    "precursor_mz":"FG.PrecMz",
+                                    "rt":"EG.ApexRT",
+                                    "charge":"FG.Charge",
+                                    "ook0":"EG.IonMobility",
+                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=df["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+                    df["PG.ProteinGroups"]=proteingroups
+                    df["PG.ProteinNames"]=proteinnames
+                    
+                    #adding a q-value filter before dropping the column
+                    df=df[df["global_peptide_qvalue"]<=0.01]
+
+                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    
+                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({
+                        "42.010565":"Acetyl (Protein N-term)",
+                        "57.021464":"Carbamidomethyl (C)",
+                        "79.966331":"Phospho (STY)",
+                        "15.994915":"Oxidation (M)"},regex=True)
+
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.compare_software1()=="bps_timsdiann":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                for run in runlist:
+                    os.chdir(cwd)
+                    os.chdir(os.getcwd()+"\\"+run)
+                    bps_resultzip=ZipFile("tims-diann.result.zip")
+                    bps_resultzip.extractall()
+                    results=pd.read_csv("results.tsv",sep="\t")
+                    searchoutput=pd.concat([searchoutput,results])
+
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"File.Name":"R.FileName",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Ids":"PG.ProteinAccessions",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "PG.Quantity":"PG.MS2Quantity",
+                                            "Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Q.Value":"EG.Qvalue",
+                                            "PG.Q.Value":"PG.Qvalue",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            "Precursor.Normalized":"FG.MS2RawQuantity",
+                                            "RT":"EG.ApexRT",
+                                            "Predicted.RT":"EG.RTPredicted",
+                                            "CScore":"EG.CScore",
+                                            "Proteotypic":"PEP.IsProteotypic",
+                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                    "UniMod:1":"Acetyl (Protein N-term)",
+                    "UniMod:4":"Carbamidomethyl (C)",
+                    "UniMod:21":"Phospho (STY)",
+                    "UniMod:35":"Oxidation (M)"},regex=True)
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.compare_software1()=="bps_denovo":
+                denovo_score=65.0
+
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                protein_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
+
+                    peptide_dict[run]=pd.read_parquet("novor-fasta-mapping-results.peptide.parquet")
+                    protein_dict[run]=pd.read_parquet("novor-fasta-mapping-results.protein.parquet")
+
+                for key in peptide_dict.keys():
+                    peptideparquet=peptide_dict[key]
+                    proteinparquet=protein_dict[key]
+
+                    #filter parquet file
+                    peptideparquet=peptideparquet[(peptideparquet["denovo_score"]>=denovo_score)&(peptideparquet["rank"]==1)].reset_index(drop=True)
+
+                    #rename columns
+                    peptideparquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "charge":"FG.Charge",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "precursor_intensity":"FG.MS2Quantity"
+                                                },inplace=True)
+
+                    #drop columns
+                    peptideparquet.drop(columns=["index","processing_run_id","ms2_id","rank","leading_aa","trailing_aa","precursor_mh",
+                                                "calc_mh","denovo_tag_length","found_in_dbsearch","denovo_matches_db",
+                                                "protein_group_parent_loc","protein_group_parent_list_loc","protein_group_parent_list_id"
+                                                ],inplace=True,errors='ignore')
+                    #fill NaN in the protein group column with -1
+                    peptideparquet["protein_group_parent_id"]=peptideparquet["protein_group_parent_id"].fillna(-1)
+
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_accession=[]
+                    gene_id=[]
+                    uncategorized_placeholder="uncat"
+
+                    for i in range(len(peptideparquet["protein_group_parent_id"])):
+                        if peptideparquet["protein_group_parent_id"][i]==-1:
+                            protein_name.append(uncategorized_placeholder)
+                            protein_accession.append(uncategorized_placeholder)
+                            gene_id.append(uncategorized_placeholder)
+                        else:
+                            protein_name.append(proteinparquet["protein_name"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            protein_accession.append(proteinparquet["protein_accession"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            gene_id.append(proteinparquet["gene_id"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+
+                    peptideparquet["PG.ProteinGroups"]=protein_name
+                    peptideparquet["PG.ProteinAccessions"]=protein_accession
+                    peptideparquet["PG.Genes"]=gene_id
+                    peptideparquet=peptideparquet.drop(columns=["protein_group_parent_id"])
+
+                    searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
+
+                #rename PTMs
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
+                                                                    "15.994915":"Oxidation (M)",
+                                                                    "15.9949":"Oxidation (M)",
+                                                                    "79.966331":"Phospho (STY)",
+                                                                    "0.984":"Deamidation (NQ)",
+                                                                    },regex=True)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+        #for DIA-NN 2.0 input
+        if ".parquet" in input.compare_searchreport1()[0]["name"]:
+            if len(input.compare_searchreport1())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.compare_searchreport1())):
+                    run=pd.read_parquet(input.compare_searchreport1()[i]["datapath"])
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_parquet(input.compare_searchreport1()[0]["datapath"])
+            if input.compare_software1()=="diann2.0":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Precursor.Mz":"FG.PrecMz",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "RT":"EG.ApexRT",
+                                            "IM":"EG.IonMobility",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            },inplace=True)
+
+                searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
+                                        "Proteotypic","Protein.Ids","iRT","Predicted.RT","Predicted.iRT",
+                                        "iIM","Predicted.IM","Predicted.iIM","Precursor.Normalised",
+                                        "Ms1.Area","Ms1.Normalised","Ms1.Apex.Area","Ms1.Apex.Mz.Delta",
+                                        "Normalisation.Factor","Quantity.Quality","Empirical.Quality",
+                                        "Normalisation.Noise","Ms1.Profile.Corr","Evidence","Mass.Evidence",
+                                        "Channel.Evidence","Ms1.Total.Signal.Before","Ms1.Total.Signal.After",
+                                        "RT.Start","RT.Stop","FWHM","PG.TopN","PG.MaxLFQ","Genes.TopN",
+                                        "Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ.Quality",
+                                        "Genes.MaxLFQ.Quality","Genes.MaxLFQ.Unique.Quality","Q.Value",
+                                        "PEP","Global.Q.Value","Lib.Q.Value","Peptidoform.Q.Value",
+                                        "Global.Peptidoform.Q.Value","Lib.Peptidoform.Q.Value",
+                                        "PTM.Site.Confidence","Site.Occupancy.Probabilities","Protein.Sites",
+                                        "Lib.PTM.Site.Confidence","Translated.Q.Value","Channel.Q.Value",
+                                        "PG.Q.Value","PG.PEP","GG.Q.Value","Lib.PG.Q.Value"
+                                        ],inplace=True,errors="ignore")
+                    
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
+
+        #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
+        file1=searchoutput.sort_values('R.FileName')
+
+        return file1
+
+    #import second search report file
+    @reactive.calc
+    def compare_inputfile2():
+        if input.compare_searchreport2() is None:
+            return pd.DataFrame()
+        if ".tsv" in input.compare_searchreport2()[0]["name"]:
+            if len(input.compare_searchreport2())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.compare_searchreport2())):
+                    run=pd.read_csv(input.compare_searchreport2()[i]["datapath"],sep="\t")
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_csv(input.compare_searchreport2()[0]["datapath"],sep="\t")
+            if input.compare_software2()=="diann":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
+                                            "PEP","Global.Q.Value","GG.Q.Value",#"Protein.Q.Value","Global.PG.Q.Value",
+                                            "Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated",
+                                            "Quantity.Quality","RT.Stop","RT.Start","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Lib.PG.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Area","Evidence","Spectrum.Similarity","Averagine","Mass.Evidence",
+                                            "Decoy.Evidence","Decoy.CScore","Fragment.Quant.Raw","Fragment.Quant.Corrected",
+                                            "Fragment.Correlations","MS2.Scan","iIM","Predicted.IM",
+                                            "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
+                                            "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={#"Run":"R.FileName",
+                            "Protein.Group":"PG.ProteinGroups",
+                            "Protein.Ids":"PG.ProteinAccessions",
+                            "Protein.Names":"PG.ProteinNames",
+                            "PG.Quantity":"PG.MS2Quantity",
+                            "Genes":"PG.Genes",
+                            "Stripped.Sequence":"PEP.StrippedSequence",
+                            "Modified.Sequence":"EG.ModifiedPeptide",
+                            "Precursor.Charge":"FG.Charge",
+                            "Q.Value":"EG.Qvalue",
+                            "PG.Q.Value":"PG.Qvalue",
+                            "Precursor.Quantity":"FG.MS2Quantity",
+                            "Precursor.Normalised":"FG.MS2RawQuantity",
+                            "RT":"EG.ApexRT",
+                            "Predicted.RT":"EG.RTPredicted",
+                            "CScore":"EG.Cscore",
+                            "IM":"EG.IonMobility",
+                            "Proteotypic":"PEP.IsProteotypic"},inplace=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
+            if input.compare_software2()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
+            if input.compare_software2()=="fragpipe":
+                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                searchoutput["FG.CalibratedMassAccuracy (PPM)"]=(searchoutput["Delta Mass"]/searchoutput["Calculated M/Z"])*10E6
+
+                searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length",
+                                        "Observed Mass","Calibrated Observed Mass","Calibrated Observed M/Z",
+                                        "Calculated Peptide Mass","Calculated M/Z","Delta Mass",
+                                        "Expectation","Hyperscore","Nextscore",
+                                        "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start",
+                                        "Protein End","Assigned Modifications","Observed Modifications",
+                                        "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                            "Modified Peptide":"EG.ModifiedPeptide",
+                                            "Charge":"FG.Charge",
+                                            "Retention":"EG.ApexRT",
+                                            "Observed M/Z":"FG.PrecMz",
+                                            "Ion Mobility":"EG.IonMobility",
+                                            "Protein ID":"PG.ProteinGroups",
+                                            "Entry Name":"PG.ProteinNames",
+                                            "Gene":"PG.Genes",
+                                            "Intensity":"FG.MS2Quantity"
+                                            },inplace=True)
+
+                searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                    "n":"",
+                    "147":"Oxidation (M)",
+                    "222":"Carbamidomethyl (C)",
+                    "43":"Acetyl (Protein N-term)",
+                    "111":""},regex=True)
+
+                peps=searchoutput["PEP.StrippedSequence"].tolist()
+                modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
+                for i in range(len(peps)):
+                    if type(modpeps[i])!=str:
+                        modpeps[i]=peps[i]
+                    else:
+                        modpeps[i]=modpeps[i]
+                searchoutput["EG.ModifiedPeptide"]=modpeps
+            if input.compare_software2()=="fragpipe_glyco":
+                #if the Spectrum File column is just a single value, get the file names from the Spectrum column
+                if searchoutput["Spectrum"][0].split(".")[0] not in searchoutput["Spectrum File"][0]:
+                    fragger_filelist=searchoutput["Spectrum"].str.split(".",expand=True).drop(columns=[1,2,3]).drop_duplicates().reset_index(drop=True)
+                    fragger_filelist.rename(columns={0:"R.FileName"},inplace=True)
+
+                    filenamelist=[]
+                    for run in fragger_filelist["R.FileName"]:
+                        fileindex=fragger_filelist[fragger_filelist["R.FileName"]==run].index.values[0]
+                        filenamelist.append([fragger_filelist["R.FileName"][fileindex]]*len(searchoutput[searchoutput["Spectrum"].str.contains(run)]))
+
+                    searchoutput.insert(0,"R.FileName",list(itertools.chain(*filenamelist)))
+                    searchoutput.drop(columns=["Spectrum File"],inplace=True)
+
+                else:
+                    searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                searchoutput.drop(columns=["Spectrum","Extended Peptide","Prev AA","Next AA","Peptide Length","Observed Mass",  
+                        "Calibrated Observed Mass","Calibrated Observed M/Z","Calculated Peptide Mass",
+                        "Calculated M/Z","Delta Mass","Expectation","Hyperscore","Nextscore","Probability",
+                        "Number of Enzymatic Termini","Number of Missed Cleavages","Protein Start","Protein End",
+                        "MSFragger Localization","Number Best Positions","Shifted Only Position Scores",
+                        "Shifted Only Position Ions","Score Best Position","Ions Best Position",
+                        "Score Second Best Position","Ions Second Best Position","Score All Unshifted",
+                        "Ions All Unshifted","Score Shifted Best Position","Ions Shifted Best Position",
+                        "Score Shifted All Positions","Ions Shifted All Positions","Purity","Protein",
+                        "Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                                            "Modified Peptide":"EG.ModifiedPeptide",
+                                            "Charge":"FG.Charge",
+                                            "Retention":"EG.ApexRT",
+                                            "Observed M/Z":"FG.PrecMz",
+                                            "Ion Mobility":"EG.IonMobility",
+                                            "Protein ID":"PG.ProteinGroups",
+                                            "Entry Name":"PG.ProteinNames",
+                                            "Gene":"PG.Genes"
+                                            },inplace=True)
+                
+                if len(searchoutput["Intensity"].drop_duplicates())==1:
+                    searchoutput.drop(columns=["Intensity"],inplace=True)
+                else:
+                    searchoutput.rename(columns={"Intensity":"FG.MS2Quantity"},inplace=True)
+
+                searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
+                searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
+        
+        #for BPS input
+        if ".zip" in input.compare_searchreport2()[0]["name"]:
+            if input.compare_software2()=="bps_timsrescore":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                samplename_list=[]
+                for run in runlist:
+                    os.chdir(cwd)
+                    os.chdir(cwd+"\\"+run)
+
+                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")                    
+                    peptide_dict[run]=pgfdr_peptide
+
+                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                for key in peptide_dict.keys():
+                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
+                    df=df.rename(columns={"sample_name":"R.FileName",
+                                    "stripped_peptide":"PEP.StrippedSequence",
+                                    "precursor_mz":"FG.PrecMz",
+                                    "rt":"EG.ApexRT",
+                                    "charge":"FG.Charge",
+                                    "ook0":"EG.IonMobility",
+                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=df["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+                    df["PG.ProteinGroups"]=proteingroups
+                    df["PG.ProteinNames"]=proteinnames
+                    
+                    #adding a q-value filter before dropping the column
+                    df=df[df["global_peptide_qvalue"]<=0.01]
+
+                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    
+                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({
+                        "42.010565":"Acetyl (Protein N-term)",
+                        "57.021464":"Carbamidomethyl (C)",
+                        "79.966331":"Phospho (STY)",
+                        "15.994915":"Oxidation (M)"},regex=True)
+
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.compare_software2()=="bps_timsdiann":
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                for run in runlist:
+                    os.chdir(cwd)
+                    os.chdir(os.getcwd()+"\\"+run)
+                    bps_resultzip=ZipFile("tims-diann.result.zip")
+                    bps_resultzip.extractall()
+                    results=pd.read_csv("results.tsv",sep="\t")
+                    searchoutput=pd.concat([searchoutput,results])
+
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+
+                searchoutput.rename(columns={"File.Name":"R.FileName",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Ids":"PG.ProteinAccessions",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "PG.Quantity":"PG.MS2Quantity",
+                                            "Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Q.Value":"EG.Qvalue",
+                                            "PG.Q.Value":"PG.Qvalue",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            "Precursor.Normalized":"FG.MS2RawQuantity",
+                                            "RT":"EG.ApexRT",
+                                            "Predicted.RT":"EG.RTPredicted",
+                                            "CScore":"EG.CScore",
+                                            "Proteotypic":"PEP.IsProteotypic",
+                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                    "UniMod:1":"Acetyl (Protein N-term)",
+                    "UniMod:4":"Carbamidomethyl (C)",
+                    "UniMod:21":"Phospho (STY)",
+                    "UniMod:35":"Oxidation (M)"},regex=True)
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            if input.compare_software2()=="bps_denovo":
+                denovo_score=65.0
+
+                searchoutput=pd.DataFrame()
+
+                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
+                bpszip.extractall()
+                metadata_bps=pd.read_csv("metadata.csv")
+                runlist=metadata_bps["processing_run_uuid"].tolist()
+                cwd=os.getcwd()+"\\processing-run"
+                os.chdir(cwd)
+
+                peptide_dict=dict()
+                protein_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
+
+                    peptide_dict[run]=pd.read_parquet("novor-fasta-mapping-results.peptide.parquet")
+                    protein_dict[run]=pd.read_parquet("novor-fasta-mapping-results.protein.parquet")
+
+                for key in peptide_dict.keys():
+                    peptideparquet=peptide_dict[key]
+                    proteinparquet=protein_dict[key]
+
+                    #filter parquet file
+                    peptideparquet=peptideparquet[(peptideparquet["denovo_score"]>=denovo_score)&(peptideparquet["rank"]==1)].reset_index(drop=True)
+
+                    #rename columns
+                    peptideparquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "charge":"FG.Charge",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "precursor_intensity":"FG.MS2Quantity"
+                                                },inplace=True)
+
+                    #drop columns
+                    peptideparquet.drop(columns=["index","processing_run_id","ms2_id","rank","leading_aa","trailing_aa","precursor_mh",
+                                                "calc_mh","denovo_tag_length","found_in_dbsearch","denovo_matches_db",
+                                                "protein_group_parent_loc","protein_group_parent_list_loc","protein_group_parent_list_id"
+                                                ],inplace=True,errors='ignore')
+                    #fill NaN in the protein group column with -1
+                    peptideparquet["protein_group_parent_id"]=peptideparquet["protein_group_parent_id"].fillna(-1)
+
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_accession=[]
+                    gene_id=[]
+                    uncategorized_placeholder="uncat"
+
+                    for i in range(len(peptideparquet["protein_group_parent_id"])):
+                        if peptideparquet["protein_group_parent_id"][i]==-1:
+                            protein_name.append(uncategorized_placeholder)
+                            protein_accession.append(uncategorized_placeholder)
+                            gene_id.append(uncategorized_placeholder)
+                        else:
+                            protein_name.append(proteinparquet["protein_name"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            protein_accession.append(proteinparquet["protein_accession"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+                            gene_id.append(proteinparquet["gene_id"].iloc[int(peptideparquet["protein_group_parent_id"][i])])
+
+                    peptideparquet["PG.ProteinGroups"]=protein_name
+                    peptideparquet["PG.ProteinAccessions"]=protein_accession
+                    peptideparquet["PG.Genes"]=gene_id
+                    peptideparquet=peptideparquet.drop(columns=["protein_group_parent_id"])
+
+                    searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
+
+                #rename PTMs
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
+                                                                    "15.994915":"Oxidation (M)",
+                                                                    "15.9949":"Oxidation (M)",
+                                                                    "79.966331":"Phospho (STY)",
+                                                                    "0.984":"Deamidation (NQ)",
+                                                                    },regex=True)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+
+                #build and add the EG.ModifiedPeptide column
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                #change the cwd back to the code file since we changed it to the uploaded file 
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+        #for DIA-NN 2.0 input
+        if ".parquet" in input.compare_searchreport2()[0]["name"]:
+            if len(input.compare_searchreport2())>1:
+                searchoutput=pd.DataFrame()
+                for i in range(len(input.compare_searchreport2())):
+                    run=pd.read_parquet(input.compare_searchreport2()[i]["datapath"])
+                    searchoutput=pd.concat([searchoutput,run])
+            else:
+                searchoutput=pd.read_parquet(input.compare_searchreport2()[0]["datapath"])
+            if input.compare_software2()=="diann2.0":
+                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
+                                            "Stripped.Sequence":"PEP.StrippedSequence",
+                                            "Precursor.Charge":"FG.Charge",
+                                            "Precursor.Mz":"FG.PrecMz",
+                                            "Protein.Group":"PG.ProteinGroups",
+                                            "Protein.Names":"PG.ProteinNames",
+                                            "Genes":"PG.Genes",
+                                            "RT":"EG.ApexRT",
+                                            "IM":"EG.IonMobility",
+                                            "Precursor.Quantity":"FG.MS2Quantity",
+                                            },inplace=True)
+
+                searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
+                                        "Proteotypic","Protein.Ids","iRT","Predicted.RT","Predicted.iRT",
+                                        "iIM","Predicted.IM","Predicted.iIM","Precursor.Normalised",
+                                        "Ms1.Area","Ms1.Normalised","Ms1.Apex.Area","Ms1.Apex.Mz.Delta",
+                                        "Normalisation.Factor","Quantity.Quality","Empirical.Quality",
+                                        "Normalisation.Noise","Ms1.Profile.Corr","Evidence","Mass.Evidence",
+                                        "Channel.Evidence","Ms1.Total.Signal.Before","Ms1.Total.Signal.After",
+                                        "RT.Start","RT.Stop","FWHM","PG.TopN","PG.MaxLFQ","Genes.TopN",
+                                        "Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ.Quality",
+                                        "Genes.MaxLFQ.Quality","Genes.MaxLFQ.Unique.Quality","Q.Value",
+                                        "PEP","Global.Q.Value","Lib.Q.Value","Peptidoform.Q.Value",
+                                        "Global.Peptidoform.Q.Value","Lib.Peptidoform.Q.Value",
+                                        "PTM.Site.Confidence","Site.Occupancy.Probabilities","Protein.Sites",
+                                        "Lib.PTM.Site.Confidence","Translated.Q.Value","Channel.Q.Value",
+                                        "PG.Q.Value","PG.PEP","GG.Q.Value","Lib.PG.Q.Value"
+                                        ],inplace=True,errors="ignore")
+                    
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
+                        "UniMod:1":"Acetyl (Protein N-term)",
+                        "UniMod:4":"Carbamidomethyl (C)",
+                        "UniMod:21":"Phospho (STY)",
+                        "UniMod:35":"Oxidation (M)"},regex=True)
+
+        #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
+        file2=searchoutput.sort_values('R.FileName')
+
+        return file2
+
+    #upload filled metadata table
+    @reactive.calc
+    def compare_inputmetadata():
+        if input.compare_metadata_upload() is None:
+            metadata=pd.DataFrame(columns=["R.FileName1","R.FileName2","R.Condition","R.Replicate","remove"])
+            return metadata
+        else:
+            metadata=pd.read_csv(input.compare_metadata_upload()[0]["datapath"],sep=",")
+            return metadata
+
+    #render metadata table
+    @render.data_frame
+    def compare_metadata_table():
+        if input.compare_use_uploaded_metadata()==True:
+            metadata=compare_inputmetadata()
+            if input.compare_metadata_upload() is None:
+                metadata=pd.DataFrame(columns=["R.FileName1","R.FileName2","R.Condition","R.Replicate","remove"])
+            metadata=metadata.drop(columns=["order","Concentration"])
+            return render.DataGrid(metadata,editable=True)
+        else:
+            if input.compare_searchreport1() is not None and input.compare_searchreport2() is not None:
+                file1=compare_inputfile1()
+                file2=compare_inputfile2()
+                metadata=pd.DataFrame(columns=["R.FileName1","R.FileName2","R.Condition","R.Replicate","remove"])
+                metadata["R.FileName1"]=file1["R.FileName"].drop_duplicates().reset_index(drop=True)
+                metadata["R.FileName2"]=file2["R.FileName"].drop_duplicates().reset_index(drop=True)
+                return render.DataGrid(metadata,editable=True)
+            else:
+                metadata=pd.DataFrame(columns=["R.FileName1","R.FileName2","R.Condition","R.Replicate","remove"])
+                return render.DataGrid(metadata,editable=True)
+    
+    #render metadata condition table
+    @render.data_frame
+    def compare_metadata_condition_table():
+        if input.compare_use_uploaded_metadata()==True:
+            metadata=compare_inputmetadata()
+            if metadata is None:
+                metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
+            if input.compare_remove()==True:
+                metadata=metadata[metadata.remove !="x"]
+            metadata_condition=pd.DataFrame()
+            metadata_condition["R.Condition"]=metadata["R.Condition"].drop_duplicates()
+            metadata_condition["order"]=metadata["order"].drop_duplicates()
+            metadata_condition["Concentration"]=metadata["Concentration"].drop_duplicates()
+            return render.DataGrid(metadata_condition,editable=True)
+        else:
+            metadata=compare_metadata_table.data_view()
+            if input.compare_searchreport1() is not None and input.compare_searchreport2() is not None:
+                if input.compare_remove()==True:
+                    metadata=metadata[metadata.remove !="x"]
+                metadata_condition=pd.DataFrame(metadata[["R.Condition"]]).drop_duplicates().reset_index(drop=True)
+                metadata_condition["order"]=metadata_condition.apply(lambda _: '', axis=1)
+                metadata_condition["Concentration"]=metadata_condition.apply(lambda _: '', axis=1)
+                return render.DataGrid(metadata_condition,editable=True)
+            else:
+                metadata_condition=pd.DataFrame(columns=["R.Condition","order","Concentration"])
+                return render.DataGrid(metadata_condition,editable=True)
+    
+    #download metadata table shown
+    @render.download(filename="metadata_"+str(date.today())+".csv")
+    def compare_metadata_download():
+        metadata=compare_metadata_table.data_view()
+        metadata_condition=compare_metadata_condition_table.data_view()
+
+        orderlist=[]
+        concentrationlist=[]
+        metadata_fordownload=pd.DataFrame()
+        for run in metadata_condition["R.Condition"]:
+            fileindex=metadata_condition[metadata_condition["R.Condition"]==run].index.values[0]
+            orderlist.append([metadata_condition["order"][fileindex]]*len(metadata[metadata["R.Condition"]==run]))
+            concentrationlist.append([metadata_condition["Concentration"][fileindex]]*len(metadata[metadata["R.Condition"]==run]))
+        metadata_fordownload["R.FileName1"]=metadata["R.FileName1"]
+        metadata_fordownload["R.FileName2"]=metadata["R.FileName2"]
+        metadata_fordownload["R.Condition"]=metadata["R.Condition"]
+        metadata_fordownload["R.Replicate"]=metadata["R.Replicate"]
+        metadata_fordownload["remove"]=metadata["remove"]
+        metadata_fordownload["order"]=list(itertools.chain(*orderlist))
+        metadata_fordownload["Concentration"]=list(itertools.chain(*concentrationlist))
+        with io.BytesIO() as buf:
+            metadata_fordownload.to_csv(buf,index=False)
+            yield buf.getvalue()
+
+    #update search files based on metadata
+    @reactive.calc
+    @reactive.event(input.compare_rerun_metadata,ignore_none=False)
+    def compare_metadata_update():
+        file1=compare_inputfile1()
+        file2=compare_inputfile2()
+        metadata=compare_metadata_table.data_view()
+        metadata_condition=compare_metadata_condition_table.data_view()
+
+        RConditionlist1=[]
+        RReplicatelist1=[]
+        for run in file1["R.FileName"].drop_duplicates().tolist():
+            fileindex=metadata[metadata["R.FileName1"]==run].index.values[0]
+            RConditionlist1.append([metadata["R.Condition"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+            RReplicatelist1.append([metadata["R.Replicate"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+        file1["R.Condition"]=list(itertools.chain(*RConditionlist1))
+        file1["R.Replicate"]=list(itertools.chain(*RReplicatelist1))
+        file1["R.Replicate"]=file1["R.Replicate"].astype(int)
+
+        RConditionlist2=[]
+        RReplicatelist2=[]
+        for run in file2["R.FileName"].drop_duplicates().tolist():
+            fileindex=metadata[metadata["R.FileName2"]==run].index.values[0]
+            RConditionlist2.append([metadata["R.Condition"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+            RReplicatelist2.append([metadata["R.Replicate"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+        file2["R.Condition"]=list(itertools.chain(*RConditionlist2))
+        file2["R.Replicate"]=list(itertools.chain(*RReplicatelist2))
+        file2["R.Replicate"]=file2["R.Replicate"].astype(int)
+
+        if input.compare_remove()==True:
+            editedmetadata=metadata[metadata.remove !="x"]
+            file1=file1.set_index("R.FileName").loc[editedmetadata["R.FileName1"].tolist()].reset_index()
+            file2=file2.set_index("R.FileName").loc[editedmetadata["R.FileName2"].tolist()].reset_index()
+        
+        if input.compare_reorder()==True:
+            metadata_condition["order"]=metadata_condition["order"].astype(int)
+            sortedmetadata_bycondition=metadata_condition.sort_values(by="order").reset_index(drop=True)
+            file1=file1.set_index("R.Condition").loc[sortedmetadata_bycondition["R.Condition"].tolist()].reset_index()
+            file2=file2.set_index("R.Condition").loc[sortedmetadata_bycondition["R.Condition"].tolist()].reset_index()
+        
+        if input.compare_concentration()==True:
+            concentrationlist=[]
+
+        return file1,file2
+
+    #generate necessary dfs for plotting IDs
+    @reactive.calc
+    def compare_variables_dfs():
+        file1,file2=compare_metadata_update()
+
+        file1["R.Condition"]=file1["R.Condition"].apply(str)
+        if "Cond_Rep" not in file1.columns:
+            file1.insert(0,"Cond_Rep",file1["R.Condition"]+"_"+file1["R.Replicate"].apply(str))
+        elif "Cond_Rep" in file1.columns:
+            file1["Cond_Rep"]=file1["R.Condition"]+"_"+file1["R.Replicate"].apply(str)
+        resultdf1=pd.DataFrame(file1[["Cond_Rep","R.FileName","R.Condition","R.Replicate"]].drop_duplicates()).reset_index(drop=True)
+        sampleconditions=file1["R.Condition"].drop_duplicates().tolist()
+        maxreplicatelist=[]
+        for i in sampleconditions:
+            samplegroup=pd.DataFrame(file1[file1["R.Condition"]==i])
+            maxreplicates=max(file1["R.Replicate"].tolist())
+            maxreplicatelist.append(maxreplicates)
+        averagedf1=pd.DataFrame({"R.Condition":sampleconditions,"N.Replicates":maxreplicatelist})
+
+        file2["R.Condition"]=file2["R.Condition"].apply(str)
+        if "Cond_Rep" not in file2.columns:
+            file2.insert(0,"Cond_Rep",file2["R.Condition"]+"_"+file2["R.Replicate"].apply(str))
+        elif "Cond_Rep" in file2.columns:
+            file2["Cond_Rep"]=file2["R.Condition"]+"_"+file2["R.Replicate"].apply(str)
+        resultdf2=pd.DataFrame(file2[["Cond_Rep","R.FileName","R.Condition","R.Replicate"]].drop_duplicates()).reset_index(drop=True)
+        sampleconditions=file2["R.Condition"].drop_duplicates().tolist()
+        maxreplicatelist=[]
+        for i in sampleconditions:
+            samplegroup=pd.DataFrame(file2[file2["R.Condition"]==i])
+            maxreplicates=max(file2["R.Replicate"].tolist())
+            maxreplicatelist.append(maxreplicates)
+        averagedf2=pd.DataFrame({"R.Condition":sampleconditions,"N.Replicates":maxreplicatelist})
+
+        sampleconditions=resultdf1["R.Condition"].drop_duplicates().reset_index(drop=True)
+
+        numproteins1=[]
+        numproteins2pepts1=[]
+        numpeptides1=[]
+        numprecursors1=[]
+
+        for i in file1["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            replicatedata=file1[file1["Cond_Rep"]==i]
+
+            if replicatedata.empty:
+                continue
+            #identified proteins
+            numproteins1.append(replicatedata["PG.ProteinGroups"].nunique())
+            #identified proteins with 2 peptides
+            numproteins2pepts1.append(len(replicatedata[["PG.ProteinGroups","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinGroups").size().reset_index(name="peptides").query("peptides>1")))
+            #identified peptides
+            numpeptides1.append(replicatedata["EG.ModifiedPeptide"].nunique())
+            #identified precursors
+            numprecursors1.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
+        resultdf1["proteins"]=numproteins1
+        resultdf1["proteins2pepts"]=numproteins2pepts1
+        resultdf1["peptides"]=numpeptides1
+        resultdf1["precursors"]=numprecursors1
+
+        #avg and stdev values for IDs appended to averagedf dataframe, which holds lists of all the calculated values here
+        columnlist=["proteins","proteins2pepts","peptides","precursors"]
+        for i in columnlist:
+            avglist=[]
+            stdevlist=[]
+            for j in sampleconditions:
+                samplecondition=resultdf1[resultdf1["R.Condition"]==j]
+                avglist.append(round(np.average(samplecondition[i].to_numpy())))
+                stdevlist.append(np.std(samplecondition[i].to_numpy()))
+            averagedf1[i+"_avg"]=avglist
+            averagedf1[i+"_stdev"]=stdevlist
+
+        numproteins2=[]
+        numproteins2pepts2=[]
+        numpeptides2=[]
+        numprecursors2=[]
+
+        for i in file2["Cond_Rep"].drop_duplicates().reset_index(drop=True):
+            replicatedata=file2[file2["Cond_Rep"]==i]
+
+            if replicatedata.empty:
+                continue
+            #identified proteins
+            numproteins2.append(replicatedata["PG.ProteinGroups"].nunique())
+            #identified proteins with 2 peptides
+            numproteins2pepts2.append(len(replicatedata[["PG.ProteinGroups","EG.ModifiedPeptide"]].drop_duplicates().groupby("PG.ProteinGroups").size().reset_index(name="peptides").query("peptides>1")))
+            #identified peptides
+            numpeptides2.append(replicatedata["EG.ModifiedPeptide"].nunique())
+            #identified precursors
+            numprecursors2.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
+        resultdf2["proteins"]=numproteins2
+        resultdf2["proteins2pepts"]=numproteins2pepts2
+        resultdf2["peptides"]=numpeptides2
+        resultdf2["precursors"]=numprecursors2
+
+        #avg and stdev values for IDs appended to averagedf dataframe, which holds lists of all the calculated values here
+        columnlist=["proteins","proteins2pepts","peptides","precursors"]
+        for i in columnlist:
+            avglist=[]
+            stdevlist=[]
+            for j in sampleconditions:
+                samplecondition=resultdf1[resultdf1["R.Condition"]==j]
+                avglist.append(round(np.average(samplecondition[i].to_numpy())))
+                stdevlist.append(np.std(samplecondition[i].to_numpy()))
+            averagedf2[i+"_avg"]=avglist
+            averagedf2[i+"_stdev"]=stdevlist
+        return file1,file2,resultdf1,averagedf1,resultdf2,averagedf2
+    
+    # ====================================== ID Counts
+    #ID Counts plot
+    @reactive.effect
+    def _():
+        @render.plot(width=input.compare_id_counts_width(),height=input.compare_id_counts_height())
+        def compare_id_counts():
+            file1,file2,resultdf1,averagedf1,resultdf2,averagedf2=compare_variables_dfs()
+            runlist=resultdf1["Cond_Rep"]
+
+            x=np.arange(len(runlist))
+            width=0.4
+            y_padding=input.ypadding()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+
+            if input.compare_software1()=="spectronaut":
+                label1="Spectronaut"
+            if input.compare_software1()=="diann":
+                label1="DIA-NN"
+            if input.compare_software1()=="fragpipe":
+                label1="FragPipe"
+            if input.compare_software1()=="bps_timsrescore":
+                label1="tims-Rescore"
+            if input.compare_software1()=="bps_timsdiann":
+                label1="tims-DIANN"
+            if input.compare_software1()=="bps_denovo":
+                label1="BPS Novor"
+
+            if input.compare_software2()=="spectronaut":
+                label2="Spectronaut"
+            if input.compare_software2()=="diann":
+                label2="DIA-NN"
+            if input.compare_software2()=="fragpipe":
+                label2="FragPipe"
+            if input.compare_software2()=="bps_timsrescore":
+                label2="tims-Rescore"
+            if input.compare_software2()=="bps_timsdiann":
+                label2="tims-DIANN"
+            if input.compare_software2()=="bps_denovo":
+                label2="BPS Novor"
+
+            fig,ax=plt.subplots(nrows=2,ncols=2,sharex=True)
+            ax1=ax[0,0]
+            ax2=ax[0,1]
+            ax3=ax[1,0]
+            ax4=ax[1,1]
+
+            ax1.bar(x,resultdf1["proteins"],width=width,label=label1)
+            ax1.bar(x+width,resultdf2["proteins"],width=width,label=label2)
+            ax1.bar_label(ax1.containers[0],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            ax1.bar_label(ax1.containers[1],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            maxvalue1=max([max(resultdf1["proteins"]),max(resultdf2["proteins"])])
+            ax1.set_ylim(top=maxvalue1+(y_padding*maxvalue1))
+            ax1.set_title("Protein Groups",fontsize=titlefont)
+
+            ax2.bar(x,resultdf1["proteins2pepts"],width=width)
+            ax2.bar(x+width,resultdf2["proteins2pepts"],width=width)
+            ax2.bar_label(ax2.containers[0],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            ax2.bar_label(ax2.containers[1],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            maxvalue2=max([max(resultdf1["proteins2pepts"]),max(resultdf2["proteins2pepts"])])
+            ax2.set_ylim(top=maxvalue2+(y_padding*maxvalue2))
+            ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
+
+            ax3.bar(x,resultdf1["peptides"],width=width)
+            ax3.bar(x+width,resultdf2["peptides"],width=width)
+            ax3.bar_label(ax3.containers[0],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            ax3.bar_label(ax3.containers[1],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            maxvalue3=max([max(resultdf1["peptides"]),max(resultdf2["peptides"])])
+            ax3.set_ylim(top=maxvalue3+(y_padding*maxvalue3))
+            ax3.set_xlabel("Condition",fontsize=axisfont)
+            ax3.set_xticks(x+width/2,runlist)
+            ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+            ax3.set_title("Peptides",fontsize=titlefont)
+
+            ax4.bar(x,resultdf1["precursors"],width=width)
+            ax4.bar(x+width,resultdf2["precursors"],width=width)
+            ax4.bar_label(ax4.containers[0],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            ax4.bar_label(ax4.containers[1],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
+            maxvalue4=max([max(resultdf1["precursors"]),max(resultdf2["precursors"])])
+            ax4.set_ylim(top=maxvalue4+(y_padding*maxvalue4))
+            ax4.set_xlabel("Condition",fontsize=axisfont)
+            ax4.set_xticks(x+width/2,runlist)
+            ax4.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+            ax4.set_title("Precursors",fontsize=titlefont)
+
+            fig.legend(loc="upper left",bbox_to_anchor=(0,1))
+            fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
+
+            ax1.set_axisbelow(True)
+            ax1.grid(linestyle="--")
+            ax2.set_axisbelow(True)
+            ax2.grid(linestyle="--")
+            ax3.set_axisbelow(True)
+            ax3.grid(linestyle="--")
+            ax4.set_axisbelow(True)
+            ax4.grid(linestyle="--")
+
+            fig.set_tight_layout(True)
+
+    # ====================================== Venn Diagram
+    @render.ui
+    def compare_venn_run_ui():
+        file1,file2,resultdf1,averagedf1,resultdf2,averagedf2=compare_variables_dfs()
+        if input.compare_venn_conditionorrun()=="condition":
+            opts=resultdf1["R.Condition"].drop_duplicates().tolist()
+            return ui.input_selectize("compare_venn_run_list","Pick condition to compare",choices=opts)
+        if input.compare_venn_conditionorrun()=="individual":
+            opts=resultdf1["Cond_Rep"].tolist()
+            return ui.input_selectize("compare_venn_run_list","Pick run to compare",choices=opts)
+    @render.ui
+    def compare_venn_peplength_ui():
+        minlength=7
+        maxlength=30
+        opts=[item for item in range(minlength,maxlength+1)]
+        return ui.input_selectize("compare_venn_peplength_list","Peptide/Precursor length to compare (if selected)",choices=opts)
+    #plot Venn Diagram
+    @reactive.effect
+    def _():
+        @render.plot(width=input.compare_venn_width(),height=input.compare_venn_height())
+        def compare_venn_plot():
+            file1,file2,resultdf1,averagedf1,resultdf2,averagedf2=compare_variables_dfs()
+
+            if input.compare_software1()=="spectronaut":
+                label1="Spectronaut"
+            if input.compare_software1()=="diann":
+                label1="DIA-NN"
+            if input.compare_software1()=="diann2.0":
+                label1="DIA-NN 2.0"
+            if input.compare_software1()=="fragpipe":
+                label1="FragPipe"
+            if input.compare_software1()=="bps_timsrescore":
+                label1="tims-Rescore"
+            if input.compare_software1()=="bps_timsdiann":
+                label1="tims-DIANN"
+            if input.compare_software1()=="bps_denovo":
+                label1="BPS Novor"
+
+            if input.compare_software2()=="spectronaut":
+                label2="Spectronaut"
+            if input.compare_software2()=="diann":
+                label2="DIA-NN"
+            if input.compare_software2()=="diann2.0":
+                label2="DIA-NN 2.0"
+            if input.compare_software2()=="fragpipe":
+                label2="FragPipe"
+            if input.compare_software2()=="bps_timsrescore":
+                label2="tims-Rescore"
+            if input.compare_software2()=="bps_timsdiann":
+                label2="tims-DIANN"
+            if input.compare_software2()=="bps_denovo":
+                label2="BPS Novor"
+
+            if input.compare_venn_conditionorrun()=="condition":
+                A=file1[file1["R.Condition"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                B=file2[file2["R.Condition"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+            if input.compare_venn_conditionorrun()=="individual":
+                A=file1[file1["Cond_Rep"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                B=file2[file2["Cond_Rep"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+
+            #some software return EG.ModifiedPeptide with _seq_, need to strip the underscores in order for them to be able to be compared
+            A_strippedmodpeplist=[]
+            B_strippedmodpeplist=[]
+            for ele1 in A["EG.ModifiedPeptide"]:
+                if ele1.find("_")==-1:
+                    A_strippedmodpeplist.append(ele1)
+                else:
+                    A_strippedmodpeplist.append(ele1.split("_")[1]) 
+            for ele2 in B["EG.ModifiedPeptide"]:
+                if ele2.find("_")==-1:
+                    B_strippedmodpeplist.append(ele2)
+                else:
+                    B_strippedmodpeplist.append(ele2.split("_")[1])
+            A["EG.ModifiedPeptide"]=A_strippedmodpeplist
+            B["EG.ModifiedPeptide"]=B_strippedmodpeplist
+
+            A["pep_charge"]=A["EG.ModifiedPeptide"]+A["FG.Charge"].astype(str)
+            B["pep_charge"]=B["EG.ModifiedPeptide"]+B["FG.Charge"].astype(str)
+
+            A_peplength=[]
+            for pep in A["PEP.StrippedSequence"]:
+                A_peplength.append(len(pep))
+            A["Peptide Length"]=A_peplength
+
+            B_peplength=[]
+            for pep in B["PEP.StrippedSequence"]:
+                B_peplength.append(len(pep))
+            B["Peptide Length"]=B_peplength
+
+            if input.compare_venn_plotproperty()=="proteingroups":
+                a=set(A["PG.ProteinGroups"])
+                b=set(B["PG.ProteinGroups"])
+                titlemod="Protein Groups"
+            if input.compare_venn_plotproperty()=="peptides":
+                a=set(A["EG.ModifiedPeptide"])
+                b=set(B["EG.ModifiedPeptide"])
+                titlemod="Peptides"
+            if input.compare_venn_plotproperty()=="precursors":
+                a=set(A["pep_charge"])
+                b=set(B["pep_charge"])
+                titlemod="Precursors"
+
+            peplength_input=int(input.compare_venn_peplength_list())
+            if input.compare_venn_plotproperty()=="peptides_len":
+                a=set(A[A["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
+                b=set(B[B["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
+                titlemod="Peptides_"+input.compare_venn_peplength_list()+"mers"
+            if input.compare_venn_plotproperty()=="precursors_len":
+                a=set(A[A["Peptide Length"]==peplength_input]["pep_charge"])
+                b=set(B[B["Peptide Length"]==peplength_input]["pep_charge"])
+                titlemod="Precursors_"+input.compare_venn_peplength_list()+"mers"
+
+            fig,ax=plt.subplots()
+            Ab=len(a-b)
+            aB=len(b-a)
+            AB=len(a&b)
+            venn2(subsets=(Ab,aB,AB),set_labels=(label1,label2),set_colors=("tab:blue","tab:orange"),ax=ax)
+            venn2_circles(subsets=(Ab,aB,AB),linestyle="dashed",linewidth=0.5)
+            plt.title("Venn Diagram for "+input.compare_venn_run_list()+" "+titlemod)
+    @render.download(filename=lambda: f"VennList_A-{input.compare_software1()}_vs_B-{input.compare_software2()}_{input.compare_venn_plotproperty()}.csv")
+    def compare_venn_download():
+        file1,file2,resultdf1,averagedf1,resultdf2,averagedf2=compare_variables_dfs()
+        if input.compare_venn_conditionorrun()=="condition":
+            A=file1[file1["R.Condition"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+            B=file2[file2["R.Condition"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+        if input.compare_venn_conditionorrun()=="individual":
+            A=file1[file1["Cond_Rep"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+            B=file2[file2["Cond_Rep"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+
+        #some software return EG.ModifiedPeptide with _seq_, need to strip the underscores in order for them to be able to be compared
+        A_strippedmodpeplist=[]
+        B_strippedmodpeplist=[]
+        for ele1 in A["EG.ModifiedPeptide"]:
+            if ele1.find("_")==-1:
+                A_strippedmodpeplist.append(ele1)
+            else:
+                A_strippedmodpeplist.append(ele1.split("_")[1]) 
+        for ele2 in B["EG.ModifiedPeptide"]:
+            if ele2.find("_")==-1:
+                B_strippedmodpeplist.append(ele2)
+            else:
+                B_strippedmodpeplist.append(ele2.split("_")[1])
+        A["EG.ModifiedPeptide"]=A_strippedmodpeplist
+        B["EG.ModifiedPeptide"]=B_strippedmodpeplist
+
+        A["pep_charge"]=A["EG.ModifiedPeptide"]+A["FG.Charge"].astype(str)
+        B["pep_charge"]=B["EG.ModifiedPeptide"]+B["FG.Charge"].astype(str)
+
+        A_peplength=[]
+        for pep in A["PEP.StrippedSequence"]:
+            A_peplength.append(len(pep))
+        A["Peptide Length"]=A_peplength
+
+        B_peplength=[]
+        for pep in B["PEP.StrippedSequence"]:
+            B_peplength.append(len(pep))
+        B["Peptide Length"]=B_peplength
+
+        if input.compare_venn_plotproperty()=="proteingroups":
+            a=set(A["PG.ProteinGroups"])
+            b=set(B["PG.ProteinGroups"])
+        if input.compare_venn_plotproperty()=="peptides":
+            a=set(A["EG.ModifiedPeptide"])
+            b=set(B["EG.ModifiedPeptide"])
+        if input.compare_venn_plotproperty()=="precursors":
+            a=set(A["pep_charge"])
+            b=set(B["pep_charge"])
+
+        peplength_input=int(input.compare_venn_peplength_list())
+        if input.compare_venn_plotproperty()=="peptides_len":
+            a=set(A[A["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
+            b=set(B[B["Peptide Length"]==peplength_input]["EG.ModifiedPeptide"])
+        if input.compare_venn_plotproperty()=="precursors_len":
+            a=set(A[A["Peptide Length"]==peplength_input]["pep_charge"])
+            b=set(B[B["Peptide Length"]==peplength_input]["pep_charge"])
+        
+        df=pd.DataFrame()
+        Ab=list(a-b)
+        aB=list(b-a)
+        AB=list(a&b)
+        df=pd.concat([df,pd.Series(Ab,name=input.compare_software1())],axis=1)
+        df=pd.concat([df,pd.Series(aB,name=input.compare_software2())],axis=1)
+        df=pd.concat([df,pd.Series(AB,name="Both")],axis=1)
+        with io.BytesIO() as buf:
+            df.to_csv(buf,index=False)
+            yield buf.getvalue() 
 
 #endregion
 
