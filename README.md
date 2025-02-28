@@ -38,9 +38,9 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 ## Input File Format
 Note: multiple files from the same software can be uploaded at a time. In the Upload Search Report section, just select the multiple files in the file explorer window that pops up.
 - Spectronaut: Use the report template listed as "Shiny Report Format.rs" to export the search results.
-- DIA-NN: The input is the main report .tsv file.
+- DIA-NN: The input is the main report .tsv file. (for DIA-NN 2.0, the input is the report.parquet file)
 - FragPipe (and FragPipe Glyco): The input is the psm.tsv result file.
-- BPS Novor, tims-rescore, and tims-DIANN: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
+- BPS Novor, tims-rescore, tims-DIANN, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
 
 # Disclaimer
 This application is not supported by or affiliated with Bruker. It has been developed and tested to the best of the author's abilities, but please use caution when using the application as it may not have had the same level of testing and scrutiny as officially supported software. 
