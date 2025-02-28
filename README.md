@@ -21,6 +21,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
   - colorcet
   - faicons
   - hvplot
+  - logomaker
   - matplotlib-venn
   - pyarrow
   - scikit-learn
