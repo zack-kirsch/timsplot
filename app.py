@@ -20,7 +20,7 @@ from faicons import icon_svg
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.02.28)"),
+    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.03.05)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
                      ui.card(
@@ -129,20 +129,21 @@ app_ui=ui.page_fluid(
                                       ui.row(
                                           ui.column(4,
                                                     ui.card(
-                                                        ui.card_header("Font Sizes"),
+                                                        ui.card_header("Plot Parameters"),
                                                         ui.input_slider("titlefont","Plot title size",min=10,max=25,value=20,step=1,ticks=True),
                                                         ui.input_slider("axisfont","Axis label size",min=10,max=25,value=15,step=1,ticks=True),
                                                         ui.input_slider("labelfont","Data label size",min=10,max=25,value=15,step=1,ticks=True),
-                                                        ui.input_slider("legendfont","Legend size",min=10,max=25,value=15,step=1,ticks=True),
-                                                        ui.input_slider("ypadding","y-axis padding for data labels",min=0,max=1,value=0.3,step=0.05,ticks=True)
+                                                        ui.input_slider("legendfont","Legend size",min=10,max=25,value=10,step=1,ticks=True),
+                                                        ui.input_slider("ypadding","y-axis padding for data labels",min=0,max=1,value=0.3,step=0.05,ticks=True),
+                                                        ui.input_slider("xaxis_label_rotation","x-axis label rotation",min=0,max=90,value=90,step=5,ticks=True)
                                                         )
                                                     ),
                                           ui.column(4,
                                                     ui.card(
                                                         ui.card_header("Misc."),
+                                                        ui.input_radio_buttons("peptide_grouping","Grouping key for peptide CVs",choices={"stripped":"Stripped sequence","modified":"Modified sequence"}),
                                                         ui.input_switch("dpi_switch","Change DPI to 300 for publication quality",value=False,width="400px"),
                                                         ui.p("Note: values in the width/height sliders for plots will need to be increased to accommodate the DPI change, default plotting parameters will be too small since Shiny plots based on pixels."),
-                                                        ui.input_slider("xaxis_label_rotation","x-axis label rotation",min=0,max=90,value=90,step=5,ticks=True)
                                                     )
                                                     )
                                             )
@@ -193,12 +194,15 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("cvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("cvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                              ui.input_slider("cvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                              ui.column(6,
+                                                        ui.p("Note for Peptide CVs: Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence). CVs calculated from top 3 precursors for a given sequence")
+                                                        )
                                               )
                                             ),
                                       ui.row(
                                           ui.column(3,
-                                              ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors"}),
+                                              ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors","Peptide":"Peptides"}),
                                               ui.input_switch("removetop5percent","Remove top 5%"),
                                               ui.output_table("cv_table")
                                                     ),
@@ -212,10 +216,13 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("countscvcutoff_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
-                                              ui.input_slider("countscvcutoff_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
+                                              ui.input_slider("countscvcutoff_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                              ui.column(6,
+                                                        ui.p("Note for Peptide CVs: Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence). CVs calculated from top 3 precursors for a given sequence")
+                                                        )
                                             )
                                           ),
-                                      ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors"}),
+                                      ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors","peptides":"Peptides"}),
                                       ui.output_plot("countscvcutoff")
                                     ),
                          ui.nav_panel("UpSet Plot",
@@ -354,7 +361,17 @@ app_ui=ui.page_fluid(
                                           ui.column(7,
                                                     ui.output_plot("peakwidthplot")
                                                     )
-                                            ),                
+                                            ),              
+                                      ),
+                         ui.nav_panel("Missed Cleavages",
+                                      ui.card(
+                                          ui.row(
+                                              ui.input_slider("missedcleavages_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                              ui.input_slider("missedcleavages_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                          )
+                                        ),
+                                      ui.input_radio_buttons("enzyme_rules","Enzyme cleavage rules",choices={"trypsin":"Trypsin (K/R)"}),
+                                      ui.output_plot("missedcleavages_plot")
                                       )
                         ),icon=icon_svg("chart-line")
                      ),
@@ -387,7 +404,7 @@ app_ui=ui.page_fluid(
                                             )
                                         ),
                                       ui.row(
-                                          ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor"}),
+                                          ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor","Peptide":"Peptide"}),
                                           ui.input_switch("ptm_removetop5percent","Remove top 5%"),
                                           ui.output_table("ptm_cvtable")
                                           ),
@@ -556,6 +573,26 @@ app_ui=ui.page_fluid(
                                                         ),
                                           ),
                                           ui.output_plot("volcanoplot")
+                                      ),
+                         ui.nav_panel("Volcano Plot - Feature Plot",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("volcano_feature_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                            ui.input_slider("volcano_feature_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                            ui.column(6,
+                                                      ui.p("Select multiple rows in the data table by holding Control and clicking on rows"),
+                                                      ui.p("Control and Test conditions specified in the Volcano Plot tab")
+                                                      )
+                                          )
+                                          ),
+                                      ui.row(
+                                          ui.column(6,
+                                                    ui.output_data_frame("feature_table")
+                                                    ),
+                                          ui.column(6,
+                                                    ui.output_plot("feature_plot")                                              
+                                                    )
+                                            )
                                       ),
                          ui.nav_panel("Volcano Plot - Up/Down Regulation",
                                       ui.card(
@@ -1256,6 +1293,7 @@ import math
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
+import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator,MultipleLocator
@@ -1301,7 +1339,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         maxreplicatelist=[]
         for i in sampleconditions:
             samplegroup=pd.DataFrame(searchoutput[searchoutput["R.Condition"]==i])
-            maxreplicates=max(samplegroup["R.Replicate"].tolist())
+            maxreplicates=len(samplegroup["R.Replicate"].drop_duplicates().tolist())
             maxreplicatelist.append(maxreplicates)
         averagedf=pd.DataFrame({"R.Condition":sampleconditions,"N.Replicates":maxreplicatelist})
         numconditions=len(averagedf["R.Condition"].tolist())
@@ -1381,6 +1419,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 std=df.groupby("PG.ProteinGroups").std().rename(columns={"PG.MS2Quantity":"Protein Std"})
                 cvproteintable=pd.concat([mean,std],axis=1)
                 cvproteintable.dropna(inplace=True)
+                cvproteintable=cvproteintable.loc[(cvproteintable!=0).any(axis=1)]
                 cvlist=(cvproteintable["Protein Std"]/cvproteintable["Protein Mean"]*100).tolist()
                 proteincvdict[condition]=pd.DataFrame(cvlist,columns=["CV"])
                 proteincvlist.append(cvlist)
@@ -1409,6 +1448,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 std=df.groupby(["EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Precursor Std"})
                 cvprecursortable=pd.concat([mean,std],axis=1)
                 cvprecursortable.dropna(inplace=True)
+                cvprecursortable=cvprecursortable.loc[(cvprecursortable!=0).any(axis=1)]
                 cvlist=(cvprecursortable["Precursor Std"]/cvprecursortable["Precursor Mean"]*100).tolist()
                 precursorcvdict[condition]=pd.DataFrame(cvlist,columns=["CV"])
                 precursorcvlist.append(cvlist)
@@ -1420,6 +1460,43 @@ def server(input: Inputs, output: Outputs, session: Session):
                 precursorcvlist95.append(cvlist95)
         cvcalc_df["Precursor CVs"]=precursorcvlist
         cvcalc_df["Precursor 95% CVs"]=precursorcvlist95
+
+        #peptide-level CVs
+        if input.peptide_grouping()=="stripped":
+            grouping_key="PEP.StrippedSequence"
+        if input.peptide_grouping()=="modified":
+            grouping_key="EG.ModifiedPeptide"
+
+        peptidecvlist=[]
+        peptidecvlist95=[]
+        peptidecvdict={}
+        for x,condition in enumerate(searchoutput["R.Condition"].drop_duplicates().tolist()):
+            df=searchoutput[searchoutput["R.Condition"]==condition]
+            placeholderdf=pd.DataFrame()
+            if maxreplicatelist[x]==1:
+                emptylist=[]
+                peptidecvlist.append(emptylist)
+                peptidecvlist95.append(emptylist)
+            else:
+                for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                    df1=df[df["Cond_Rep"]==run][[grouping_key,"FG.MS2Quantity"]].groupby(grouping_key).head(3).groupby(grouping_key).mean()
+                    placeholderdf=pd.concat([placeholderdf,df1],axis=0)
+                mean=placeholderdf.sort_values(grouping_key).groupby(grouping_key).mean()
+                std=placeholderdf.sort_values(grouping_key).groupby(grouping_key).std()
+                cv=(std/mean)*100
+                cv=cv["FG.MS2Quantity"].dropna().tolist()
+                peptidecvlist.append(cv)
+                peptidecvdict[condition]=pd.DataFrame(cv,columns=["CV"])
+
+                top95=np.percentile(cv,95)
+                cvlist95=[]
+                for i in cv:
+                    if i <=top95:
+                        cvlist95.append(i)
+                peptidecvlist95.append(cvlist95)
+    
+        cvcalc_df["Peptide CVs"]=peptidecvlist
+        cvcalc_df["Peptide 95% CVs"]=peptidecvlist95
 
         #counts above CV cutoffs
         #protein CVs
@@ -1450,6 +1527,21 @@ def server(input: Inputs, output: Outputs, session: Session):
                 precursorscv10.append(precursorcvdict[condition][precursorcvdict[condition]["CV"]<10].shape[0])
         cvcalc_df["precursorsCV<20"]=precursorscv20
         cvcalc_df["precursorsCV<10"]=precursorscv10
+
+        #peptide CVs
+        peptidescv20=[]
+        peptidescv10=[]
+        for x,condition in enumerate(sampleconditions):
+            if maxreplicatelist[x]==1:
+                emptylist=[]
+                peptidescv20.append(emptylist)
+                peptidescv10.append(emptylist)
+            else:
+                peptidescv20.append(peptidecvdict[condition][peptidecvdict[condition]["CV"]<20].shape[0])
+                peptidescv10.append(peptidecvdict[condition][peptidecvdict[condition]["CV"]<10].shape[0])
+
+        cvcalc_df["peptidesCV<20"]=peptidescv20
+        cvcalc_df["peptidesCV<10"]=peptidescv10
 
         return cvcalc_df
 
@@ -2209,6 +2301,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "RT":"EG.ApexRT",
                                             "IM":"EG.IonMobility",
                                             "Precursor.Quantity":"FG.MS2Quantity",
+                                            "PG.MaxLFQ":"PG.MS2Quantity"
                                             },inplace=True)
 
                 searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
@@ -2881,11 +2974,12 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         cvtable_protein=pd.DataFrame()
         cvtable_precursor=pd.DataFrame()
+        cvtable_peptide=pd.DataFrame()
+
         protein_meanlist=[]
         protein_medianlist=[]
         protein_meanlist95=[]
         protein_medianlist95=[]
-
         for run in cvcalc_df["R.Condition"]:
             protein_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein CVs"].tolist()))
             protein_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Protein 95% CVs"].tolist()))
@@ -2901,7 +2995,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         precursor_medianlist=[]
         precursor_meanlist95=[]
         precursor_medianlist95=[]
-
         for run in cvcalc_df["R.Condition"]:
             precursor_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor CVs"].tolist()))
             precursor_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Precursor 95% CVs"].tolist()))
@@ -2913,6 +3006,21 @@ def server(input: Inputs, output: Outputs, session: Session):
         cvtable_precursor["Precursor Median CVs"]=precursor_medianlist
         cvtable_precursor["Precursor Median CVs 95%"]=precursor_medianlist95         
 
+        peptide_meanlist=[]
+        peptide_medianlist=[]
+        peptide_meanlist95=[]
+        peptide_medianlist95=[]
+        for run in cvcalc_df["R.Condition"]:
+            peptide_meanlist.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Peptide CVs"].tolist()))
+            peptide_meanlist95.append(np.mean(cvcalc_df[cvcalc_df["R.Condition"]==run]["Peptide 95% CVs"].tolist()))
+            peptide_medianlist.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Peptide CVs"].tolist()))
+            peptide_medianlist95.append(np.median(cvcalc_df[cvcalc_df["R.Condition"]==run]["Peptide 95% CVs"].tolist()))
+        cvtable_peptide["R.Condition"]=cvcalc_df["R.Condition"]
+        cvtable_peptide["Peptide Mean CVs"]=peptide_meanlist
+        cvtable_peptide["Peptide Mean CVs 95%"]=peptide_meanlist95
+        cvtable_peptide["Peptide Median CVs"]=peptide_medianlist
+        cvtable_peptide["Peptide Median CVs 95%"]=peptide_medianlist95  
+
         if cvplotinput=="Protein":
             if cutoff95==True:
                 return cvtable_protein[["R.Condition","Protein Mean CVs 95%","Protein Median CVs 95%"]]
@@ -2923,6 +3031,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                 return cvtable_precursor[["R.Condition","Precursor Mean CVs 95%","Precursor Median CVs 95%"]]
             if cutoff95==False:
                 return cvtable_precursor[["R.Condition","Precursor Mean CVs","Precursor Median CVs"]]
+        if cvplotinput=="Peptide":
+            if cutoff95==True:
+                return cvtable_peptide[["R.Condition","Peptide Mean CVs 95%","Peptide Median CVs 95%"]]
+            if cutoff95==False:
+                return cvtable_peptide[["R.Condition","Peptide Mean CVs","Peptide Median CVs"]]
 
     # ====================================== IDs with CV Cutoff
     #plot counts with CV cutoffs
@@ -2967,6 +3080,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_title("Protein Counts with CV Cutoffs",fontsize=titlefont)
             if cvinput=="precursors":
                 ax.set_title("Precursor Counts with CV Cutoffs",fontsize=titlefont)
+            if cvinput=="peptides":
+                ax.set_title("Peptide Counts with CV Cutoffs",fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
     
@@ -3562,6 +3677,55 @@ def server(input: Inputs, output: Outputs, session: Session):
             elif input.peakwidth_removetop5percent()==False:
                 return peakwidthtable[["Run","Mean Peak Width (s)","Median Peak Width (s)"]]
 
+    # ====================================== Missed Cleavages
+    @reactive.effect
+    def _():
+        @render.plot(width=input.missedcleavages_width(),height=input.missedcleavages_height())
+        def missedcleavages_plot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
+            enzyme_rules=input.enzyme_rules()
+            missedcleavages=[]
+            for pep in searchoutput["PEP.StrippedSequence"]:
+                if enzyme_rules=="trypsin":
+                    if pep.count("K")+pep.count("R")>1:
+                        missedcleavages.append(pep.count("K")+pep.count("R")-1)
+                    else:
+                        missedcleavages.append(0)
+            searchoutput["Missed Cleavages"]=missedcleavages
+
+            missedcleavages_df=pd.DataFrame()
+            for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                df=pd.DataFrame(searchoutput[searchoutput["Cond_Rep"]==run]["Missed Cleavages"].value_counts().reset_index(drop=True)).transpose()
+                missedcleavages_df=pd.concat([missedcleavages_df,df],axis=0)
+            missedcleavages_df=missedcleavages_df.reset_index(drop=True)
+            missedcleavages_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().tolist()
+
+            maxvalue=missedcleavages_df.select_dtypes(include=[np.number]).max()[0]
+            x=np.arange(len(missedcleavages_df["Cond_Rep"].tolist()))
+
+            width=0.25
+            y_padding=input.ypadding()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+
+            fig,ax=plt.subplots()
+            legend_patches=[]
+            for i in range(len(missedcleavages_df.columns.tolist())-1):
+                ax.bar(x+(i*width),missedcleavages_df[i],width=width)
+                ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                legend_patches.append(mpatches.Patch(color=list(mcolors.TABLEAU_COLORS.keys())[i],label=i))
+            ax.set_ylim(top=maxvalue+(y_padding*maxvalue),bottom=-(0.025*maxvalue))
+            ax.set_xticks(x+width,missedcleavages_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+            ax.legend(handles=legend_patches,loc="upper right",prop={"size":legendfont})
+            ax.set_title("Missed Cleavages",fontsize=titlefont)
+            ax.set_ylabel("Counts",fontsize=axisfont)
+            ax.set_xlabel("Condition",fontsize=axisfont)
+            ax.grid(linestyle="--")
+            ax.set_axisbelow(True)
+
 #endregion
 
 # ============================================================================= PTMs 
@@ -3644,6 +3808,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 cvptmproteintable["PTM CV"]=(cvptmproteintable["PTM Protein Stdev"]/cvptmproteintable["PTM Protein Mean"]*100).tolist()
                 cvptmproteintable.drop(columns=["PTM Protein Mean","PTM Protein Stdev"],inplace=True)
                 cvptmproteintable.dropna(inplace=True)
+                cvptmproteintable=cvptmproteintable.loc[(cvptmproteintable!=0).any(axis=1)]
                 proteincv.append(cvptmproteintable["PTM CV"].tolist())
                 top95=np.percentile(cvptmproteintable,95)
                 ptmcvlist95=[]
@@ -3659,6 +3824,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 cvptmprecursortable["PTM CV"]=(cvptmprecursortable["PTM Precursor Stdev"]/cvptmprecursortable["PTM Precursor Mean"]*100).tolist()
                 cvptmprecursortable.drop(columns=["PTM Precursor Mean","PTM Precursor Stdev"],inplace=True)
                 cvptmprecursortable.dropna(inplace=True)
+                cvptmprecursortable=cvptmprecursortable.loc[(cvptmprecursortable!=0).any(axis=1)]
                 precursorcv.append(cvptmprecursortable["PTM CV"].tolist())
                 top95=np.percentile(cvptmprecursortable,95)
                 ptmcvlist95=[]
@@ -3670,6 +3836,35 @@ def server(input: Inputs, output: Outputs, session: Session):
         ptmcvs["Protein 95% CVs"]=proteinptmcv95
         ptmcvs["Precursor CVs"]=precursorcv
         ptmcvs["Precursor 95% CVs"]=precursorptmcv95
+
+        peptidecvlist=[]
+        peptidecvlist95=[]
+        for x,condition in enumerate(searchoutput["R.Condition"].drop_duplicates().tolist()):
+            df=searchoutput[(searchoutput["R.Condition"]==condition)&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))]
+            placeholderdf=pd.DataFrame()
+            if maxreplicatelist[x]==1:
+                emptylist=[]
+                peptidecvlist.append(emptylist)
+                peptidecvlist95.append(emptylist)
+            else:
+                for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
+                    df1=df[df["Cond_Rep"]==run][["EG.ModifiedPeptide","FG.MS2Quantity"]].groupby("EG.ModifiedPeptide").head(3).groupby("EG.ModifiedPeptide").mean()
+                    placeholderdf=pd.concat([placeholderdf,df1],axis=0)
+                mean=placeholderdf.sort_values("EG.ModifiedPeptide").groupby("EG.ModifiedPeptide").mean()
+                std=placeholderdf.sort_values("EG.ModifiedPeptide").groupby("EG.ModifiedPeptide").std()
+                cv=(std/mean)*100
+                cv=cv["FG.MS2Quantity"].dropna().tolist()
+                peptidecvlist.append(cv)
+
+                top95=np.percentile(cv,95)
+                cvlist95=[]
+                for i in cv:
+                    if i <=top95:
+                        cvlist95.append(i)
+                peptidecvlist95.append(cvlist95)
+            
+        ptmcvs["Peptide CVs"]=peptidecvlist
+        ptmcvs["Peptide 95% CVs"]=peptidecvlist95
 
         return ptmcvs
     #generate list to pull from to pick PTMs
@@ -3848,23 +4043,33 @@ def server(input: Inputs, output: Outputs, session: Session):
         proteinptmcv95_mean=[]
         precursorptmcv_mean=[]
         precursorptmcv95_mean=[]
+        peptideptmcv_mean=[]
+        peptideptmcv95_mean=[]
 
         proteinptmcv_median=[]
         proteinptmcv95_median=[]
         precursorptmcv_median=[]
         precursorptmcv95_median=[]
+        peptideptmcv_median=[]
+        peptideptmcv95_median=[]
         for i,run in enumerate(ptmcvs["R.Condition"].tolist()):
             proteinptmcv_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Protein CVs"][i]))
             proteinptmcv95_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Protein 95% CVs"][i]))
             
             precursorptmcv_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor CVs"][i]))
             precursorptmcv95_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor 95% CVs"][i]))
+
+            peptideptmcv_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Peptide CVs"][i]))
+            peptideptmcv95_mean.append(np.mean(ptmcvs[ptmcvs["R.Condition"]==run]["Peptide 95% CVs"][i]))
             
             proteinptmcv_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Protein CVs"][i]))
             proteinptmcv95_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Protein 95% CVs"][i]))
             
             precursorptmcv_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor CVs"][i]))
             precursorptmcv95_median.append((np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Precursor 95% CVs"][i])))
+            
+            peptideptmcv_median.append(np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Peptide CVs"][i]))
+            peptideptmcv95_median.append((np.median(ptmcvs[ptmcvs["R.Condition"]==run]["Peptide 95% CVs"][i])))
         
         ptmcvs_summary["R.Condition"]=ptmcvs["R.Condition"]
         ptmcvs_summary["Protein Mean CVs"]=proteinptmcv_mean
@@ -3876,6 +4081,11 @@ def server(input: Inputs, output: Outputs, session: Session):
         ptmcvs_summary["Precursor Median CVs"]=precursorptmcv_median
         ptmcvs_summary["Precursor Mean CVs 95%"]=precursorptmcv95_mean
         ptmcvs_summary["Precursor Median CVs 95%"]=precursorptmcv95_median
+
+        ptmcvs_summary["Peptide Mean CVs"]=peptideptmcv_mean
+        ptmcvs_summary["Peptide Median CVs"]=peptideptmcv_median
+        ptmcvs_summary["Peptide Mean CVs 95%"]=peptideptmcv95_mean
+        ptmcvs_summary["Peptide Median CVs 95%"]=peptideptmcv95_median
 
         cvplotinput=input.ptm_proteins_precursors()
         cutoff95=input.ptm_removetop5percent()
@@ -3889,6 +4099,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                 return ptmcvs_summary[["R.Condition","Precursor Mean CVs 95%","Precursor Median CVs 95%"]]
             if cutoff95==False:
                 return ptmcvs_summary[["R.Condition","Precursor Mean CVs","Precursor Median CVs"]]
+        if cvplotinput=="Peptide":
+            if cutoff95==True:
+                return ptmcvs_summary[["R.Condition","Peptide Mean CVs 95%","Peptide Median CVs 95%"]]
+            if cutoff95==False:
+                return ptmcvs_summary[["R.Condition","Peptide Mean CVs","Peptide Median CVs"]]
 
     # ====================================== PTMs per Precursor
     #plot PTMs per precursor
@@ -4758,6 +4973,73 @@ def server(input: Inputs, output: Outputs, session: Session):
                     else:
                         pass
 
+    # ====================================== Volcano Plot - Feature Plot
+    #selectable table for corresponding plot
+    @render.data_frame
+    def feature_table():
+        merged=volcano_calc()
+        merged=merged.reset_index().drop(columns=["Control","Test","color","label"])
+        return render.DataGrid(merged,width="100%",selection_mode="rows",editable=False)
+    #box plot for abundances of selected proteins
+    @reactive.effect
+    def _():
+        @render.plot(width=input.volcano_feature_width(),height=input.volcano_feature_height())
+        def feature_plot():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            if len(feature_table.data_view(selected=True)["PG.ProteinGroups"].tolist())==0:
+                fig,ax=plt.subplots()
+            else:
+                pickedproteins=feature_table.data_view(selected=True)["PG.ProteinGroups"].tolist()
+
+                list_pairs=[searchoutput[searchoutput['PG.ProteinGroups']==val][["R.Condition","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True) for val in pickedproteins]
+                conditions=list_pairs[0]["R.Condition"].drop_duplicates().tolist()
+
+                colorlist=[]
+                legend_patches=[]
+                for i in range(len(conditions)):
+                    colorlist.append(list(mcolors.TABLEAU_COLORS.keys())[i])
+                    legend_patches.append(mpatches.Patch(color=list(mcolors.TABLEAU_COLORS.keys())[i],label=conditions[i]))
+
+                lineprops=dict(linestyle="--",color="black")
+                fig,ax=plt.subplots()
+                positions=list(np.arange(len(conditions)))
+                for i in range(len(list_pairs)):
+                    plottinglist=[]
+                    #make a list of lists of the signals for the given protein in the given condition
+                    for condition in conditions:
+                        plottinglist.append(list_pairs[i].groupby("R.Condition").get_group(condition)["PG.MS2Quantity"].tolist())
+                    bplot=ax.boxplot(plottinglist,positions=positions,widths=0.75,patch_artist=True,medianprops=lineprops)
+                    #change box color corresponding to condition
+                    for x in range(len(bplot["boxes"])):
+                        color=colorlist[x]
+                        for item in ["boxes"]:
+                            plt.setp(bplot[item][x],color=color)
+                    #adjust positions for the next places to plot
+                    for y in range(len(positions)):
+                        positions[y]+=len(positions)
+
+                xticks=[]
+                x=1/(len(conditions))
+                for i in range(len(list_pairs)):
+                    xticks.append(x)
+                    ax.axvline(x=x+1,color="lightgrey",linestyle="--")
+                    x+=len(conditions)
+                pickedproteins_shortened=[]
+                for protein in pickedproteins:
+                    if protein.count(";")>=1:
+                        pickedproteins_shortened.append(protein.split(";")[0])
+                    else:
+                        pickedproteins_shortened.append(protein)
+                ax.set_xticks(xticks)
+                ax.set_xticklabels(pickedproteins_shortened)
+                ax.legend(handles=legend_patches)
+
+            axisfont=input.axisfont()
+
+            ax.set_ylabel("Protein Group Intensity",fontsize=axisfont)
+            ax.set_xlabel("Protein Group",fontsize=axisfont)
+            #ax.grid(axis="y",linestyle="--")
+
     # ====================================== Volcano Plot - Up/Down Regulation
     #volcano plot up/down regulation protein list
     @reactive.effect
@@ -5507,7 +5789,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
                 df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
                 
-                merged=df_reference.merge(df_test,how="inner")#.dropna()
+                if 1 in maxreplicatelist:
+                    merged=df_reference.merge(df_test,how="inner")
+                else:
+                    merged=df_reference.merge(df_test,how="inner").dropna()
 
                 if input.x_log_scale()=="log2":
                     merged["reference"]=np.log2(merged[referencecondition])
@@ -5608,7 +5893,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
             df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
             
-            merged=df_reference.merge(df_test,how="inner")#.dropna()
+            if 1 in maxreplicatelist:
+                merged=df_reference.merge(df_test,how="inner")
+            else:
+                merged=df_reference.merge(df_test,how="inner").dropna()
+
             if input.y_log_scale()=="log2":
                 merged["ratio"]=np.log2(merged[testcondition]/merged[referencecondition])
             if input.y_log_scale()=="log10":
