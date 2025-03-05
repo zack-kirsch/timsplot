@@ -1,5 +1,23 @@
 # Changelog
 
+## 2025.03.05
+- General
+  - added some handling for when zeros are present in the MS2Quantity columns for CV calculations (regular and PTM CV calculations)
+- File Import
+  - adjusted DIA-NN 2.0 import to account for PG.MS2Quantity
+- Settings
+  - File Stats
+    - changed how maxreplicatelist is calculated so it captures the number of replicates per condition more reasonably (length of replicate list instead of taking max value)
+- ID Counts
+  - added peptide-level CVs to CV violin plot and CVs below cutoff plot with a switch to change the grouping key in the settings tab (this was also added to the PTM tab)
+- Metrics
+  - added Missed Cleavages bar plot
+- Statistics
+  - added Feature Plot section to track protein abundance for selected proteins
+- Mixed Proteome
+  - Quant Ratios
+    - adjusted how quant ratios are calculated to accommodate conditions with only a single replicate
+
 ## 2025.02.28
 - added some instructions in the file import tab
 - File Import
