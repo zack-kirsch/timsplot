@@ -1,5 +1,54 @@
 # Changelog
 
+## 2025.04.01
+- ID Counts
+  - added Tracker section, where intensities of selected protein or peptides for a selected protein can be plotted
+  - UpSet Plot
+    - added an option to show plot for just a selected condition instead of every condition/replicate in the search report
+    - added options to show just counts that are found in a single run or all but one run
+    - added Precursor as an option to plot
+  - UpSet Plot (stats)
+    - added section to compare IM/mz of uniquely identified peptides/precursors
+- Metrics
+  - Charge State
+    - added an option for plotting as stacked bar chart
+  - Missed Cleavages
+    - added a slider to adjust bar width
+  - Data Completeness
+    - added option for stripped/modified peptides instead of just specifying peptides (it was originally stripped sequences), to be more in line with what the UpSet plot shows
+- PTMs
+  - PTMs per Precursor
+    - adjusted how bar graph is shown, the indices were being shown out of order and would lead to misinterpretations of the numbers of ptms for the x axis
+- Heatmaps
+  - RT, m/z, IM Heatmaps
+    - fixed a bug where zeroes in the first value of the intensity column caused the BPC to be removed when intensities were nonzero
+    - added different heatmap color options
+  - Charge/PTM Precursor Heatmap
+    - added an option to download a template for the DIA windows
+    - added different heatmap color options
+  - Venn Diagram
+    - added option to specify PTM to compare across runs
+  - Histogram
+    - added section for plotting histogram of precursor/protein intensities or ion mobility values from IDs
+- Immunopeptidomics
+  - Charge States (Stacked)
+    - fixed how coloring works for the bar graphs so that they all start from the same place
+    - legend will be based on the last-plotted bar so if dfs have different lengths the colors for the last few charge states (least populated) might not be accurate
+- PRM
+  - added an option to download a template for the PRM table
+- MOMA
+  - added section to extract possible MOMA events and generate EIMs
+- De Novo
+  - Compare - Stripped Peptide IDs
+    - fixed a bug with picking specific peptide length to compare
+- Two-Software Comparison
+  - Venn Diagram
+    - adjusted setup similarly to changes for Venn under Heatmaps section
+- Export Tables
+  - changed MOMA RT tolerance to seconds instead of %
+- Raw Data
+  - changed how EIC and EIM import raw data files, no more need to reload raw file each EIC/EIM 
+
 ## 2025.03.05
 - General
   - added some handling for when zeros are present in the MS2Quantity columns for CV calculations (regular and PTM CV calculations)
