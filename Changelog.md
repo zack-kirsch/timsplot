@@ -1,5 +1,55 @@
 # Changelog
 
+## 2025.04.22
+- General
+ - added a button to most of the plotting pages that gives descriptions/notes for the given plot as a popover
+- File Import
+ - changed layout of main page, added instruction popovers instead of walls of text on the page
+ - added support for most quantitative and qualitative BPS output
+ - adjusted filtering options for DIANN imports, changed to radio buttons so no filtering can be an option
+ - added a filter on the last lines of the file import to get rid of contaminant and decoy sequences
+ - added error handling so that the app doesn't need to be restarted when the metadata table hasn't been filled out and the Apply Changes button is pressed (condition switch on or off)
+ - changed how PTMs are interpreted, calling dictionaries with keys and values to replace in the search file instead of specifically making a dict for each software
+ - added extra handling for BPS files where protein groups that start with a semicolon and have a missing protein name are filled in (noted for pulsar, rescore, and spectronaut)
+ - added an option to filter protein list using the cRAP database
+- Settings
+ - adjusted how color rectangles are shown in the conditions table, removed need for extra variable box that didn't need to be edited anyway
+ - added PTM settings tab
+- Metrics
+ - Peptide Length
+   - adjusted so y axes are on the same scale for subplots
+ - Dynamic Range
+   - added an extra filter for when there are zeros in the PG.MS2Quantity that cause the dynamic range to be shown as inf
+- PTMs
+ - added a text popup to show all PTMs that were detected
+ - CV Plots
+   - added handling for when there's only one condition
+- Heatmaps
+ - Histogram
+   - fixed handling of zeroes with FG and PG MS2Quantity columns that would result in an error with histogram bounds
+- Statistics
+ - Dendrogram/Protein Signal
+   - added section to show linkage of runs and heatmap of protein signal
+- Immunopeptidomics
+ - Charge State per Peptide Length
+   - adjusted so y axes are on the same scale for subplots
+- Mixed Proteome
+ - adjusted how organism names are detected (using just first entry in protein groups that contain semicolons)
+ - added Remove column to the info setup to allow for removing unwanted rows from further use in the plotting functions
+ - adjusted how organism names can be removed from downstream plotting functions
+ - Counts per Organism
+   - added a bar width slider 
+ - Quant Ratios
+   - changed how values are interpreted from the input table (initially interpreted as int, changed to float)
+- De Novo
+ - adjusted file import to mirror main file import
+- Two Software Comparison
+ - adjusted file import to mirror main file import
+- MOMA
+ - added custom error message for when there are no MOMA events detected
+- Export Tables
+ - added error messages / error handling for downloadable tables
+
 ## 2025.04.01
 - ID Counts
   - added Tracker section, where intensities of selected protein or peptides for a selected protein can be plotted
