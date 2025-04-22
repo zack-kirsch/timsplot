@@ -1,5 +1,3 @@
-#Changelog
-
 # =============================================================================
 # Library Imports (only necessary for launch)
 # =============================================================================
@@ -23,65 +21,73 @@ app_ui=ui.page_fluid(
     ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.04.01)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
-                     ui.card(
-                         ui.card_header("Upload Search Report"),
-                         ui.row(
-                            ui.column(3,
-                                      ui.input_radio_buttons("software","Search software:",{"spectronaut":"Spectronaut",
-                                                                                            "diann":"DIA-NN (pre 2.0)",
-                                                                                            "diann2.0":"DIA-NN (2.0)",
-                                                                                            "fragpipe":"FragPipe",
-                                                                                            "fragpipe_glyco":"FragPipe (Glyco)",
-                                                                                            "glycoscape":"GlycoScape",
-                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
-                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
-                                                                                            "bps_denovo":"BPS Novor",
-                                                                                            "ddalibrary":"Spectronaut Library"}),
-                                      ),
-                            ui.column(4,
-                                      ui.input_file("searchreport","Upload search report(s):",accept=[".tsv",".zip",".parquet"],multiple=True),
-                                      ui.output_ui("diann_mbr_ui"),
-                                      ui.output_text("metadata_reminder")
-                                      ),
-                            ui.column(5,
-                                      ui.p("Instructions:"),
-                                      ui.p("-Note: if using the app in a browser window, zoom out to 90%,"),
-                                      ui.p("-Select software used for search and upload .tsv, .zip, or .parquet file (multiple .tsv or .parquet files can be uploaded)"),
-                                      ui.p("-Fill out R.Condition and R.Replicate in the metadata table as needed"),
-                                      ui.p("-Select necessary switches under 'Update from Metadata Table' and click the 'Apply Changes' button"),
-                                      ui.p("-Note: click on the 'Apply Changes' button after upload even if metadata table was not updated")
-                                      )
-                                ),
-                            ),
-                     ui.card(
-                         ui.card_header("Update from Metadata Table"),
-                         ui.row(
-                             ui.column(4,
-                                       ui.input_action_button("rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
-                                       ),
-                             ui.column(4,
-                                          ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
-                                          ui.input_switch("remove","Remove selected runs")            
-                                          ),
-                             ui.column(4,
-                                          ui.input_switch("reorder","Reorder runs"),
-                                          ui.input_switch("concentration","Update 'Concentration' column")
+                     ui.row(
+                        ui.column(7,
+                            ui.card(
+                                ui.card_header("Upload Search Report"),
+                                ui.row(
+                                    ui.column(6,
+                                            ui.popover(ui.input_action_button("info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
+                                                ui.p("-Note: if using the app in a browser window, zoom out to 90% or farther (some OS scaling settings may cause UI elements to overlap)"),
+                                                ui.p("-Select software used for search and upload .tsv, .zip, or .parquet file (multiple .tsv or .parquet files can be uploaded)"),
+                                                ui.p("-Fill out R.Condition and R.Replicate in the metadata table as needed"),
+                                                ui.p("-Select necessary switches under 'Update from Metadata Table' and click the 'Apply Changes' button"),
+                                                ui.p("-Note: click on the 'Apply Changes' button after upload even if metadata table was not updated"),
+                                                placement="right"
+                                            ),
+                                            ui.p(),
+                                            ui.input_radio_buttons("software_general","Software used for search:",{"spectronaut":"Spectronaut",
+                                                                                                                    "diann":"DIA-NN",
+                                                                                                                    "fragpipe":"FragPipe",
+                                                                                                                    "bps":"Bruker ProteoScape/GlycoScape"}),
+                                            ui.hr(),
+                                            ui.output_ui("software_ui"),
+                                            ui.hr(),
+                                            ui.output_ui("software_quant_ui")
+                                            ),
+                                    ui.column(6,
+                                            ui.input_file("searchreport","Upload search report(s):",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                            ui.output_ui("diann_mbr_ui"),
+                                            ui.output_text("metadata_reminder")
+                                            ),
+                                        )
+                                    )
+                                    ),
+                        ui.column(5,
+                            ui.card(
+                                ui.card_header("Update from Metadata Table"),
+                                ui.row(
+                                    ui.input_action_button("rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                    ui.p(),
+                                    ui.column(6,
+                                                ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                                                ui.input_switch("remove","Remove selected runs"),
+                                                ui.input_switch("cRAP_filter","Filter protein list with cRAP database"),
+                                                ),
+                                    ui.column(6,
+                                                ui.input_switch("reorder","Reorder runs"),
+                                                ui.input_switch("concentration","Update 'Concentration' column"),
+                                                #ui.tags.a("cRAP Database",href="https://www.thegpm.org/crap/",target="_blank")
+                                        )
+                                        )
+                                    )
                                 )
-                                ),
                             ),
                      ui.card(
                          ui.card_header("Metadata Tables"),
                          ui.row(
+                             ui.column(2,
+                                       ui.popover(ui.input_action_button("metadata_info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
+                                       ui.p("-To remove runs, add an 'x' to the 'remove' column"),
+                                       ui.p("-To reorder conditions, order them numerically in the 'order' column"),
+                                       placement="right")
+                                       ),
                              ui.column(4,
                                        ui.input_file("metadata_upload","(Optional) Upload filled metadata table:",accept=".csv",multiple=False),
                                        ui.input_switch("use_uploaded_metadata","Use uploaded metadata table"),
                                        ),
                              ui.column(4,
                                        ui.download_button("metadata_download","Download metadata table as shown",width="300px",icon=icon_svg("file-arrow-down"))
-                                       ),
-                             ui.column(4,
-                                       ui.p("-To remove runs, add an 'x' to the 'remove' column"),
-                                       ui.p("-To reorder conditions, order them numerically in the 'order' column")
                                        ),
                             ),
                          ui.row(
@@ -122,7 +128,6 @@ app_ui=ui.page_fluid(
                                                        #ui.output_plot("csscolors")
                                                        ),
                                              ),
-                                     ui.output_ui("colorplot_height")
                                      ),
                          ui.nav_panel("Control Panel",
                                       ui.row(
@@ -141,12 +146,33 @@ app_ui=ui.page_fluid(
                                                     ui.card(
                                                         ui.card_header("Misc."),
                                                         ui.input_radio_buttons("peptide_grouping","Grouping key for peptide CVs",choices={"stripped":"Stripped sequence","modified":"Modified sequence"}),
+                                                        ui.p(""),
                                                         ui.input_switch("dpi_switch","Change DPI to 300 for publication quality",value=False,width="400px"),
                                                         ui.p("Note: values in the width/height sliders for plots will need to be increased to accommodate the DPI change, default plotting parameters will be too small since Shiny plots based on pixels."),
                                                     )
                                                     )
                                             )
                                      ),
+                         ui.nav_panel("PTM Settings",
+                                      ui.popover(ui.input_action_button("ptminfo_btn","Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("-The table serves as a dictionary for substitutions that are made in the search file upon import to simplify PTM classification. Different search software will notate each PTM differently and this tool serves as a way of unifying that notation for data visualization."),
+                                                 ui.p("-The PTM Identifier is the value that is given in the search file to indicate a specific PTM. The Replacement value is what the PTM Identifier is replaced with in this app."),
+                                                 ui.p("-To add a PTM not shown in the table, input the exact way it is notated in the search file in the first text box. Then to the second text box add what you want the PTM to be referred to as. Then press 'Apply Changes', which will apply the updated PTM naming to an uploaded file."),
+                                                 ui.p("-To save user-defined PTMs to the local dictionary file for future launches of the app, hit 'Save Changes' and overwrite the ptmdict file located in the timsplot folder."),
+                                                 ),
+                                      ui.row(
+                                          ui.column(4,
+                                                    ui.p("Table of PTM naming substitutions performed on file import:"),
+                                                    ui.output_table("ptmdict_table")),
+                                          ui.column(3,
+                                                    ui.input_text("ptm_key_input","Input PTM identifier (from search file/software):"),
+                                                    ui.input_text("ptm_value_input","Input PTM replacement name:"),
+                                                    ui.input_action_button("ptm_apply","Apply changes",class_="btn-primary",icon=icon_svg("rotate"),width="300px"),
+                                                    ui.p("Note: Hitting 'Apply Changes' button will reset the metadata table if files have already been uploaded."),
+                                                    ui.download_button("ptm_save","Save Changes to ptmdict File",class_="btn-success",icon=icon_svg("file-arrow-down"),width="300px"),                                                    
+                                                    )
+                                            )
+                                      ),
                          ui.nav_panel("File Stats",
                                       ui.output_table("filestats")
                                       ),
@@ -169,14 +195,18 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("idmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
                                               ui.input_slider("idmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.column(6,
-                                                        ui.p("Proteins: number of unique values in the ProteinGroups column"),
-                                                        ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides"),
-                                                        ui.p("Peptides: number of unique values in the ModifiedPeptide column (charge agnostic)"),
-                                                        ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns")
-                                                        )
                                               )
                                               ),
+                                      ui.popover(ui.input_action_button("counts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graphs of the number of IDs per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
+                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
+                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
+                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
+                                                 placement="right"
+                                                 ),
                                       ui.input_selectize("idplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
                                       ui.output_plot("idmetricsplot")
                                     ),
@@ -185,14 +215,18 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("avgidmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
                                               ui.input_slider("avgidmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.column(6,
-                                                        ui.p("Proteins: number of unique values in the ProteinGroups column"),
-                                                        ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides"),
-                                                        ui.p("Peptides: number of unique values in the ModifiedPeptide column (charge agnostic)"),
-                                                        ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns")
-                                                        )
                                               )
                                               ),
+                                      ui.popover(ui.input_action_button("avgcounts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graphs of the average number of IDs per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
+                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
+                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
+                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
+                                                 placement="right"
+                                                 ),
                                       ui.input_selectize("avgidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
                                       ui.output_plot("avgidmetricsplot")
                                     ),
@@ -201,11 +235,16 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("cvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("cvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                              ui.column(6,
-                                                        ui.p("Note for Peptide CVs: Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence). CVs calculated from top 3 precursors for a given sequence")
-                                                        )
                                               )
                                             ),
+                                      ui.popover(ui.input_action_button("cvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Violin plots of the CVs per condition for the selected type of ID. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
+                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(3,
                                               ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors","Peptide":"Peptides"}),
@@ -223,11 +262,16 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("countscvcutoff_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
                                               ui.input_slider("countscvcutoff_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
-                                              ui.column(6,
-                                                        ui.p("Note for Peptide CVs: Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence). CVs calculated from top 3 precursors for a given sequence")
-                                                        )
                                             )
                                           ),
+                                      ui.popover(ui.input_action_button("cvcutoffplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graphs for the numbers of IDs per condition that fall within CV cutoffs."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
+                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                 placement="right"
+                                                 ),
                                       ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors","peptides":"Peptides"}),
                                       ui.output_plot("countscvcutoff")
                                     ),
@@ -238,12 +282,20 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("upsetplot_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
                                             )
                                           ),
+                                      ui.popover(ui.input_action_button("upsetplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Plot showing the intersections of IDs found in each run/condition."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("The UpSet plot can be generated by comparing every condition, a selected condition, or by comparing all of the runs that were uploaded."),
+                                                 ui.p("The table shows the results of the filtering options according to the plotting options."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(3,
                                                     ui.input_radio_buttons("upset_condition_or_run","Pick how to plot UpSet plot:",choices={"condition":"All conditions","specific_condition":"By specific condition","individual":"All runs"}),
                                                     ),
                                           ui.column(3,
-                                                    ui.input_selectize("protein_precursor_pick","Pick which IDs to plot",choices={"Protein":"Protein","Peptide":"Peptide","Precursor":"Precursor"}),
+                                                    ui.input_selectize("protein_precursor_pick","Pick which IDs to plot:",choices={"Protein":"Protein","Peptide":"Peptide","Precursor":"Precursor"}),
                                                     ),
                                           ui.column(3,
                                                     ui.output_ui("specific_condition_ui")
@@ -266,6 +318,14 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("upsetplotstats_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
                                             )
                                           ),
+                                      ui.popover(ui.input_action_button("upsetplotstats_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Ion mobility vs m/z scatterplot/heatmap based on the UpSet plot calculations to visualize IDs that were only found in single runs/conditions."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("'Specific condition in entire result file' shows the IDs that were only found in the specified condition compared to the IDs in the whole result file."),
+                                                 ui.p("'From specific condition' shows the IDs that were only found in single runs within the specified condition."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.input_radio_buttons("upsetplotstats_whattoplot","Choose what to show for single-hit IDs:",choices={"individual":"From entire result file",
                                                                                                                                                 "condition":"Specific condition in entire result file",
@@ -283,11 +343,16 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("tracker_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
                                               ui.input_slider("tracker_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
-                                              ui.column(6,
-                                                        ui.p("If no peptide is selected, protein signal across runs is shown")
-                                                        )
                                             )
                                           ),
+                                      ui.popover(ui.input_action_button("signaltracker_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Scatterplot of protein or peptide signal across runs."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Selection of a protein group will show the PG.MS2Quantity across all runs and will show a table of all peptide sequences associated with that protein."),
+                                                 ui.p("Selecting a peptide sequence will show the FG.MS2Quantity across all runs for all charge and modification states of the selected sequence."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(6,
                                                     ui.output_data_frame("protein_df"),
@@ -307,9 +372,6 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("chargestate_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("chargestate_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("Charge State: calculates the frequencies of charge states from the unique entries between ModifiedPeptide and Charge columns")
-                                                    )
                                             )
                                           ),
                                       ui.input_switch("chargestate_stacked","Show as stacked bar graphs"),
@@ -321,9 +383,6 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("peptidelength_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("peptidelength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("Peptide Length: calculates the lengths of all unique stripped peptide sequences")
-                                                    )
                                             )
                                           ),
                                       ui.row(
@@ -340,9 +399,6 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("pepsperprotein_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("pepsperprotein_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("Peptides per Protein: counts the number of unique ModifiedPeptides for each ProteinGroup")
-                                                    )
                                             )
                                           ),
                                       ui.row(
@@ -397,11 +453,13 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("datacompleteness_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("datacompleteness_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("Data Completeness: calculates how many runs each unique protein or stripped peptide is detected in")
-                                                    )
                                             )
                                         ),
+                                      ui.popover(ui.input_action_button("datacompleteness_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")), 
+                                                 ui.p("Description:"),
+                                                 ui.p("Similar to UpSet plot, this calculates how many runs each unique protein or stripped/modified peptide is detected in."),
+                                                 placement="right"
+                                                 ),
                                       ui.input_radio_buttons("protein_peptide","Pick what metric to plot:",choices={"proteins":"Proteins","peptides":"Modified Peptides","strippedpeptides":"Stripped Peptides"}),
                                       ui.input_switch("datacompleteness_sampleconditions_switch","Plot for specific condition?",value=False),
                                       ui.output_ui("datacompleteness_sampleconditions_ui"),
@@ -440,18 +498,29 @@ app_ui=ui.page_fluid(
         ui.nav_panel("PTMs",
                      ui.navset_pill(
                          ui.nav_panel("PTMs found",
-                             ui.output_ui("ptmlist_ui")
-                             ),
+                                      ui.p("PTMs Found in Search File:"),
+                                      ui.output_text_verbatim("ptmlist_text"),
+                                      ui.hr(),
+                                      ui.output_ui("ptmlist_ui")
+                                      ),
                          ui.nav_panel("Counts per Condition",
                                       ui.card(
                                           ui.row(
                                               ui.input_slider("ptmidmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
                                               ui.input_slider("ptmidmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("Count logic is the same here as Counts per Condition, but with a condition that the ModifiedPeptide contains the specified PTM")
-                                                    )
                                             )
                                           ),
+                                      ui.popover(ui.input_action_button("ptmcounts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graphs of the number of IDs containing the specified PTM per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("The radio button can be used to toggle whether the bar graphs shown counts or the % of all IDs that contain the selected PTM."),
+                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
+                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
+                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
+                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.input_selectize("ptmidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
                                           ui.input_radio_buttons("ptm_counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
@@ -465,6 +534,13 @@ app_ui=ui.page_fluid(
                                               ui.input_slider("ptmcvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                             )
                                         ),
+                                      ui.popover(ui.input_action_button("ptmcvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Violin plots of the CVs per condition for the selected type of ID containing the selected PTM. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor","Peptide":"Peptide"}),
                                           ui.input_switch("ptm_removetop5percent","Remove top 5%"),
@@ -494,12 +570,17 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                               ui.input_slider("ptmsperprecursor_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                               ui.input_slider("ptmsperprecursor_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                          ui.column(6,
-                                                    ui.p("PTMs per Precursor: counts the number of PTMs in each ModifiedPeptide value. Agnostic to PTM identity, a more detailed list of the PTM combinations can be exported in the Export Tables section")
-                                                    )
                                             )
                                           ),
-                                      ui.input_slider("barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
+                                      ui.popover(ui.input_action_button("ptmsperprecursor_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graphs for the number of PTMs in each ModifiedPeptide value. Agnostic to PTM identity, a more detailed list of the PTM combinations can be exported in the Export Tables section."),
+                                                 ui.p("For example, the '1' on the x-axis gives the number of all precursors that contain a single PTM, regardless of the PTM identity."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("For search results with many conditions, the bar width slider helps to avoid overlap of bar groups."),
+                                                 placement="right"
+                                                 ),
+                                      ui.input_slider("barwidth","Bar width:",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
                                       ui.output_plot("ptmsperprecursor")
                                       )
                             ),icon=icon_svg("magnifying-glass")
@@ -568,12 +649,15 @@ app_ui=ui.page_fluid(
                                          ui.row(
                                             ui.input_slider("idsvsrt_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
                                             ui.input_slider("idsvsrt_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            ui.column(6,
-                                                    ui.p("#IDs vs RT: generates a histogram based on the ApexRT values in each run. An estimate of the maximum retention time is used to determine the timespan of each histogram bin"),
-                                                    ui.p("Changing the bin size changes the RT range over which IDs are grouped in the histogram")
-                                                    )
                                             )
                                         ),
+                                     ui.popover(ui.input_action_button("idsvsrt_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                ui.p("Description:"),
+                                                ui.p("Histogram of the ApexRT values for each run. An estimate of the maximum retention time is used to determine the timespan of each histogram bin."),
+                                                ui.p("Notes:"),
+                                                ui.p("Changing the bin size changes the RT range over which IDs are grouped in the histogram."),
+                                                placement="right"
+                                                ),
                                      ui.row(
                                         ui.column(3,ui.output_ui("ids_vs_rt_checkbox")),
                                         ui.column(8,ui.output_ui("binslider_ui"),ui.output_plot("ids_vs_rt")))
@@ -647,7 +731,7 @@ app_ui=ui.page_fluid(
                                                         ui.output_ui("volcano_condition2"),
                                                         ui.download_button("volcano_download","Download protein table",width="300px",icon=icon_svg("file-arrow-down")),
                                                         ui.input_switch("show_labels","Show protein labels"),
-                                                        ui.input_numeric("label_fontsize","Label size",value=4),
+                                                        ui.input_numeric("label_fontsize","Label size:",value=4),
                                                         ),
                                               ui.column(4,
                                                         ui.input_slider("volcano_pvalue","log10 pvalue cutoff",min=0.5,max=5.0,value=1.0,step=0.1,ticks=True),
@@ -655,8 +739,8 @@ app_ui=ui.page_fluid(
                                                         ui.input_switch("volcano_h_v_lines","Show lines for pvalue and fold change cutoffs")
                                                         ),
                                               ui.column(4,
-                                                        ui.input_slider("volcano_xplotrange","Plot x Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,drag_range=True),
-                                                        ui.input_slider("volcano_yplotrange","Plot y Range",min=-10,max=10,value=[0,2],step=0.5,ticks=True,drag_range=True),
+                                                        ui.input_slider("volcano_xplotrange","Plot x Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,drag_range=True),
+                                                        ui.input_slider("volcano_yplotrange","Plot y Range:",min=-10,max=10,value=[0,2],step=0.5,ticks=True,drag_range=True),
                                                         ui.input_switch("volcano_plotrange_switch","Use sliders for axis ranges")
                                                         ),
                                           ),
@@ -667,12 +751,16 @@ app_ui=ui.page_fluid(
                                           ui.row(
                                             ui.input_slider("volcano_feature_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
                                             ui.input_slider("volcano_feature_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                            ui.column(6,
-                                                      ui.p("Select multiple rows in the data table by holding Control and clicking on rows"),
-                                                      ui.p("Control and Test conditions specified in the Volcano Plot tab")
-                                                      )
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("volcanofeature_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Box-and-whisker plot of Protein Group intensity for selected proteins from the table with results based on the setup in the Volcano Plot tab."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Control and Test conditions specified in the Volcano Plot tab."),
+                                                 ui.p("Select multiple rows in the data table by holding Control and clicking on rows."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(6,
                                                     ui.output_data_frame("feature_table")
@@ -689,9 +777,25 @@ app_ui=ui.page_fluid(
                                             ui.input_slider("volcano_regulation_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("volcanoregulation_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Bar graph of p-values for up- or down-regulated proteins based on setup in the Volcano Plot tab."),
+                                                 placement="right"
+                                                 ),
                                       ui.input_selectize("regulation_upordown","Show up- or down-regulated proteins?",choices={"up":"Upregulated","down":"Downregulated"}),
                                       ui.input_slider("regulation_topN","Pick top N proteins to show:",min=5,max=50,value=30,step=5,ticks=True),
                                       ui.output_plot("volcano_updownregulation_plot")
+                                      ),
+                         ui.nav_panel("Dendrogram/Protein Signal",
+                                      ui.card(
+                                          ui.row(
+                                            ui.input_slider("dendrogram_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                            ui.input_slider("dendrogram_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
+                                          )
+                                          ),
+                                      ui.input_selectize("dendrogram_cmap","Heatmap Color:",choices={"viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"},selected="magma"),
+                                      ui.input_numeric("dendrogram_scaling","Subplot height ratio (useful when changing plot height):",value=3),
+                                      ui.output_plot("dendrogram_heatmap")
                                       ),
                          ui.nav_panel("PCA",
                                     ui.card(
@@ -713,6 +817,13 @@ app_ui=ui.page_fluid(
                                             ui.input_slider("seqmotif_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("sequencemotifs_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Weblogo plot for specific peptide length from selected run."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("'Information' matrix is the standard Weblogo style. Counts will scale the figure to the number of counts of each residue at each position."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(3,
                                                     ui.input_radio_buttons("seqmotif_plottype","Pick kind of matrix to plot:",choices={"information":"Information","counts":"Counts"}),
@@ -731,6 +842,13 @@ app_ui=ui.page_fluid(
                                             ui.input_slider("charge_barchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("chargestatesbar_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Similar charge state plot as in Metrics section, but instead of separating precursors that were detected with multiple charges, charges are grouped together to show IDs that were detected with multiple charges."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(4,
                                                     ui.input_radio_buttons("chargestate_bar_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"})
@@ -748,6 +866,11 @@ app_ui=ui.page_fluid(
                                             ui.input_slider("charge_stackedbarchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("chargestatesstacked_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Stacked representation of the charge state plot in Charge States (bar) with a table showing frequencies of different charges or charge combinations."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.input_radio_buttons("chargestate_stacked_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
                                           ui.output_data_frame("charge_stacked_table")
@@ -761,6 +884,14 @@ app_ui=ui.page_fluid(
                                             ui.input_slider("chargestate_peplength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
                                           )
                                           ),
+                                      ui.popover(ui.input_action_button("chargestatespeplength_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                 ui.p("Description:"),
+                                                 ui.p("Stacked bar graph of charge states detected per peptide length. Precursors found in multiple runs per condition are only counted once."),
+                                                 ui.p("Notes:"),
+                                                 ui.p("Use the slider to adjust the peptide length range over which the bar graph will be plotted."),
+                                                 ui.p("Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
+                                                 placement="right"
+                                                 ),
                                       ui.row(
                                           ui.column(4,
                                                     ui.input_radio_buttons("chargestate_peplength_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
@@ -778,8 +909,16 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Mixed Proteome",
                       ui.navset_pill(
                              ui.nav_panel("Info",
+                                          ui.popover(ui.input_action_button("mixedproteomesetup_btn","Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                     ui.p("Description:"),
+                                                     ui.p("Setup for mixed proteome calculations."),
+                                                     ui.p("Notes:"),
+                                                     ui.p("Organisms are automatically detected from the PG.ProteinNames column in the search report."),
+                                                     ui.p("Edit the table with the desired plotting order for the organisms and their ratios in comparative sample conditions."),
+                                                     ui.p("Add an 'x' to the Remove column to remove a line completely from being used in later plotting functions.")
+                                                     ),
                                           ui.output_data_frame("organismtable"),
-                                          ui.input_radio_buttons("coloroptions_sumint","Use matplotlib tableau colors or blues/grays?",choices={"matplot":"matplotlib tableau","bluegray":"blues/grays"})
+                                          ui.input_radio_buttons("coloroptions_sumint","Use matplotlib tableau colors or blues/grays?",choices={"matplot":"matplotlib tableau","bluegray":"blues/grays"},width="400px")
                                           ),
                              ui.nav_panel("Counts per Organism",
                                           ui.card(
@@ -788,6 +927,7 @@ app_ui=ui.page_fluid(
                                                   ui.input_slider("countsperorganism_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
                                                 )
                                             ),
+                                          ui.input_slider("countsperorganism_barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
                                           ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"},multiple=False),
                                           ui.output_plot("countsperorganism")
                                           ),
@@ -805,11 +945,17 @@ app_ui=ui.page_fluid(
                                               ui.row(
                                                   ui.input_slider("quantratios_width","Plot width",min=100,max=7500,step=100,value=1200,ticks=True),
                                                   ui.input_slider("quantratios_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                                  ui.column(6,
-                                                      ui.p("Experimental ratios will be shown as a dashed line and theoretical ratios will be shown as a solid line")
-                                                      )
                                               )
                                             ),
+                                          ui.popover(ui.input_action_button("mixedproteome_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                     ui.p("Description:"),
+                                                     ui.p("Plots of number of proteins per organism used in the calculations (those that were found in test and reference conditions), quant ratios, and histogram of quant ratios."),
+                                                     ui.p("Notes:"),
+                                                     ui.p("Experimental ratios will be shown as a dashed line and theoretical ratios (calculated from the Info tab) will be shown as a solid line"),
+                                                     ui.p("The table shows the calculated theoretical and experimental quant ratios according to the y-axis log scale specified."),
+                                                     ui.p("Sliders can be used to adjust the y-axis plot range and CV cutoff % and are activated by their respective switches."),
+                                                     placement="right"
+                                                     ),
                                           ui.row(
                                               ui.column(3,
                                                         ui.output_ui("referencecondition"),
@@ -817,17 +963,17 @@ app_ui=ui.page_fluid(
                                                         ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
                                                         ui.row(
                                                             ui.column(6,
-                                                                      ui.input_radio_buttons("x_log_scale","x-axis Log Scale",choices=["log2","log10"]),
+                                                                      ui.input_radio_buttons("x_log_scale","x-axis Log Scale:",choices=["log2","log10"]),
                                                                      ),
                                                             ui.column(6,
-                                                                      ui.input_radio_buttons("y_log_scale","y-axis Log Scale",choices=["log2","log10"]),  
+                                                                      ui.input_radio_buttons("y_log_scale","y-axis Log Scale:",choices=["log2","log10"]),  
                                                                      )
                                                             )
                                                         ),
                                               ui.column(3,
-                                                        ui.input_slider("plotrange","Plot Range",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
-                                                        ui.input_switch("plotrange_switch","Use slider for y-axis range"),
-                                                        ui.input_slider("cvcutofflevel","CV Cutoff Level (%)",min=10,max=50,value=20,step=10,ticks=True,width="400px"),
+                                                        ui.input_slider("plotrange","Plot Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
+                                                        ui.input_switch("plotrange_switch","Use slider for y-axis range?"),
+                                                        ui.input_slider("cvcutofflevel","CV Cutoff Level (%):",min=10,max=50,value=20,step=10,ticks=True,width="400px"),
                                                         ui.input_switch("cvcutoff_switch","Include CV cutoff?")
                                                         ),
                                               ui.column(6,
@@ -978,6 +1124,15 @@ app_ui=ui.page_fluid(
                      ui.navset_pill(
                          ui.nav_panel("MOMA Extraction",
                                       ui.card(
+                                          ui.popover(ui.input_action_button("momainfo_btn","Instructions",class_="btn-success",icon=icon_svg("question"),width="300px"),
+                                                     ui.p("Description:"),
+                                                     ui.p("MOMA (mobility offset mass aligned) precursors from the search file are found based on m/z, retention time, and ion mobility tolerances set by the sliders."),
+                                                     ui.p("The possible MOMA events shown in the table can be used to generate extracted ion mobiligrams from user-uploaded raw data corresponding to the runs in the search file."),
+                                                     ui.p("Notes:"),
+                                                     ui.p("The m/z and retention time sliders are used as tolerances in both finding MOMA events and plotting EIMs."),
+                                                     ui.p("The 'Group' column is just a placeholder to mark MOMA groups."),
+                                          placement="right"
+                                          ),
                                           ui.row(
                                               ui.input_slider("moma_mztolerance","m/z tolerance (m/z):",min=0,max=0.1,value=0.005,step=0.001,ticks=True),
                                               ui.input_slider("moma_rttolerance","Retention time tolerance (s):",min=0.1,max=2,value=0.5,step=0.1,ticks=True),
@@ -1029,44 +1184,50 @@ app_ui=ui.page_fluid(
         ui.nav_panel("De Novo",
                      ui.navset_pill(
                          ui.nav_panel("Secondary File Import",
-                                      ui.card(
-                                          ui.card_header("Important Reminders"),
-                                          ui.p("-Use main File Import tab for the BPS Novor data, upload data for the software to compare it to in this tab"),
-                                          ui.p("-Make sure that the condition names and replicate numbers are the same between the two metadata sheets")
-                                             ),
-                                      ui.card(
-                                          ui.card_header("Upload Search Report"),
-                                          ui.row(
-                                              ui.column(3,
-                                                        ui.input_radio_buttons("software_secondary","Search software:",{"spectronaut":"Spectronaut",
-                                                                                                                        "diann":"DIA-NN (pre 2.0)",
-                                                                                                                        "diann2.0":"DIA-NN (2.0)",
-                                                                                                                        "fragpipe":"FragPipe",
-                                                                                                                        "bps_timsrescore":"tims-rescore (BPS)",
-                                                                                                                        "bps_timsdiann":"tims-DIANN (BPS)",
-                                                                                                                        "bps_denovo":"BPS Novor"}),
-                                                        ),
-                                              ui.column(6,
-                                                        ui.input_file("searchreport_secondary","Upload search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
-                                                        ui.output_text("metadata_reminder_secondary")
-                                                       )
-                                                ),
-                                             ),
-                                      ui.card(
-                                          ui.card_header("Update from Metadata Table"),
-                                          ui.row(
-                                              ui.column(4,
-                                                        ui.input_action_button("rerun_metadata_secondary","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
-                                                       ),
-                                              ui.column(4,
-                                                        ui.input_switch("condition_names_secondary","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
-                                                        ui.input_switch("remove_secondary","Remove selected runs")            
-                                                       ),
-                                              ui.column(4,
-                                                        ui.input_switch("reorder_secondary","Reorder runs"),
-                                                        ui.input_switch("concentration_secondary","Update 'Concentration' column")
-                                                       )
-                                                ),
+                                      ui.row(
+                                          ui.column(7,
+                                                    ui.card(
+                                                        ui.card_header("Upload Search Report"),
+                                                        ui.row(
+                                                            ui.column(6,
+                                                                        ui.input_radio_buttons("software_secondary_general","Software used for search:",{"spectronaut":"Spectronaut",
+                                                                                                                                                         "diann":"DIA-NN",
+                                                                                                                                                         "fragpipe":"FragPipe",
+                                                                                                                                                         "bps":"Bruker ProteoScape/GlycoScape"}),
+                                                                        ui.hr(),
+                                                                        ui.output_ui("software_secondary_ui"),
+                                                                        ui.hr(),
+                                                                        ui.output_ui("software_secondary_quant_ui")
+                                                                        ),
+                                                            ui.column(6,
+                                                                        ui.input_file("searchreport_secondary","Upload search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                                                        ui.output_text("metadata_reminder_secondary")
+                                                                    )
+                                                                )
+                                                            )
+                                                    ),
+                                          ui.column(5,
+                                                    ui.card(
+                                                        ui.card_header("Important Reminders"),
+                                                        ui.p("-Use main File Import tab for the BPS Novor data, upload data for the software to compare it to in this tab"),
+                                                        ui.p("-Make sure that the condition names and replicate numbers are the same between the two metadata sheets")
+                                                            ),
+                                                    ui.card(
+                                                        ui.card_header("Update from Metadata Table"),
+                                                        ui.row(
+                                                            ui.input_action_button("rerun_metadata_secondary","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                                            ui.p(),
+                                                            ui.column(6,
+                                                                        ui.input_switch("condition_names_secondary","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                                                                        ui.input_switch("remove_secondary","Remove selected runs")            
+                                                                    ),
+                                                            ui.column(6,
+                                                                        ui.input_switch("reorder_secondary","Reorder runs"),
+                                                                        ui.input_switch("concentration_secondary","Update 'Concentration' column")
+                                                                    )
+                                                                )
+                                                            )
+                                                    )
                                             ),
                                       ui.card(
                                           ui.card_header("Metadata Tables"),
@@ -1177,44 +1338,51 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Two-Software Comparison",
                      ui.navset_pill(
                          ui.nav_panel("File Import",
-                                      ui.card(
-                                          ui.card_header("Upload Search Reports"),
-                                          ui.row(
-                                              ui.column(4,
-                                                  ui.input_file("compare_searchreport1","Upload first search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
-                                                  ui.input_radio_buttons("compare_software1","First search software:",{"spectronaut":"Spectronaut",
-                                                                                            "diann":"DIA-NN (pre 2.0)",
-                                                                                            "diann2.0":"DIA-NN (2.0)",
-                                                                                            "fragpipe":"FragPipe",
-                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
-                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
-                                                                                            "bps_denovo":"BPS Novor"
-                                                                                            })
-                                                  ),
-                                              ui.column(4,
-                                                  ui.input_file("compare_searchreport2","Upload second search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
-                                                  ui.input_radio_buttons("compare_software2","Second search software:",{"spectronaut":"Spectronaut",
-                                                                                            "diann":"DIA-NN (pre 2.0)",
-                                                                                            "diann2.0":"DIA-NN (2.0)",
-                                                                                            "fragpipe":"FragPipe",
-                                                                                            "bps_timsrescore":"tims-rescore (BPS)",
-                                                                                            "bps_timsdiann":"tims-DIANN (BPS)",
-                                                                                            "bps_denovo":"BPS Novor"
-                                                                                            })
-                                                  )
+                                      ui.row(
+                                          ui.column(8,
+                                                    ui.card(
+                                                        ui.card_header("Upload Search Reports"),
+                                                        ui.row(
+                                                            ui.column(6,
+                                                                ui.input_file("compare_searchreport1","Upload first search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                                                ui.input_radio_buttons("software1_general","First search software:",{"spectronaut":"Spectronaut",
+                                                                                                                                    "diann":"DIA-NN",
+                                                                                                                                    "fragpipe":"FragPipe",
+                                                                                                                                    "bps":"Bruker ProteoScape/GlycoScape"
+                                                                                                                                    }),
+                                                                ui.hr(),
+                                                                ui.output_ui("software1_ui"),
+                                                                ui.hr(),
+                                                                ui.output_ui("software1_quant_ui")
+                                                                ),
+                                                            ui.column(6,
+                                                                ui.input_file("compare_searchreport2","Upload second search report:",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                                                ui.input_radio_buttons("software2_general","Second search software:",{"spectronaut":"Spectronaut",
+                                                                                                                                    "diann":"DIA-NN",
+                                                                                                                                    "fragpipe":"FragPipe",
+                                                                                                                                    "bps":"Bruker ProteoScape/GlycoScape"
+                                                                                                                                    }),
+                                                                ui.hr(),
+                                                                ui.output_ui("software2_ui"),
+                                                                ui.hr(),
+                                                                ui.output_ui("software2_quant_ui")
+                                                                )
+                                                                )
+                                                            )
+                                                    ),
+                                          ui.column(4,
+                                                    ui.card(
+                                                        ui.card_header("Update from Metadata Table"),
+                                                        ui.row(
+                                                            ui.input_action_button("compare_rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                                            ui.p(),
+                                                            ui.input_switch("compare_remove","Remove selected runs"),
+                                                            ui.input_switch("compare_reorder","Reorder runs"),
+                                                            ui.input_switch("compare_concentration","Update 'Concentration' column")
+                                                            )
+                                                        )
+                                                        )
                                                 ),
-                                            ),
-                                      ui.card(
-                                          ui.card_header("Update from Metadata Table"),
-                                          ui.row(
-                                              ui.column(3,
-                                                        ui.input_action_button("compare_rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate"))
-                                                        ),
-                                              ui.input_switch("compare_remove","Remove selected runs"),
-                                              ui.input_switch("compare_reorder","Reorder runs"),
-                                              ui.input_switch("compare_concentration","Update 'Concentration' column")
-                                              )
-                                          ),
                                       ui.card(
                                           ui.card_header("Metadata Tables"),
                                           ui.row(
@@ -1275,6 +1443,14 @@ app_ui=ui.page_fluid(
                      ui.navset_pill(
                          ui.nav_panel("Export Tables",
                                       ui.card(
+                                          ui.card_header("Table of Protein ID Metrics and CVs"),
+                                          ui.download_button("proteinidmetrics_download","Download Protein ID Metrics",width="300px",icon=icon_svg("file-arrow-down"))
+                                          ),
+                                      ui.card(
+                                          ui.card_header("Table of Precursor ID Metrics and CVs"),
+                                          ui.download_button("precursoridmetrics_download","Download Precursor ID Metrics",width="300px",icon=icon_svg("file-arrow-down"))
+                                          ),
+                                      ui.card(
                                           ui.card_header("Table of Peptide IDs"),
                                           ui.download_button("peptidelist","Download Peptide IDs",width="300px",icon=icon_svg("file-arrow-down")),
                                           ),
@@ -1292,15 +1468,11 @@ app_ui=ui.page_fluid(
                                           )
                                           ),
                                       ui.card(
-                                          ui.card_header("Table of Protein ID Metrics and CVs"),
-                                          ui.download_button("proteinidmetrics_download","Download Protein ID Metrics",width="300px",icon=icon_svg("file-arrow-down"))
+                                          ui.card_header("List of PTMs per Precursor"),
+                                          ui.download_button("ptmlist_download","Download Precursor PTMs",width="300px",icon=icon_svg("file-arrow-down"))
                                           ),
                                       ui.card(
-                                          ui.card_header("Table of Precursor ID Metrics and CVs"),
-                                          ui.download_button("precursoridmetrics_download","Download Precursor ID Metrics",width="300px",icon=icon_svg("file-arrow-down"))
-                                          ),
-                                      ui.card(
-                                          ui.card_header("List of MOMA Precursors"),
+                                          ui.card_header("List of MOMA Precursors (Duplicate from MOMA Tab)"),
                                           ui.row(
                                               ui.column(4,
                                                         ui.output_ui("cond_rep_list"),
@@ -1315,10 +1487,6 @@ app_ui=ui.page_fluid(
                                                         )
                                           )
                                           ),
-                                      ui.card(
-                                          ui.card_header("List of PTMs per Precursor"),
-                                          ui.download_button("ptmlist_download","Download Precursor PTMs",width="300px",icon=icon_svg("file-arrow-down"))
-                                          )
                                       )
                                 ),icon=icon_svg("file-export")
                      ),
@@ -1423,7 +1591,7 @@ app_ui=ui.page_fluid(
                                       ),
                          ),icon=icon_svg("desktop")
                      ),
-    widths=(2,8)
+    widths=(2,9)
     ),
     theme=theme.cerulean()
 )
@@ -1453,6 +1621,7 @@ import os
 import pandas as pd
 import pathlib
 import re
+from scipy.cluster.hierarchy import dendrogram, linkage
 import scipy.stats as stats
 from scipy.stats import norm
 import seaborn as sns
@@ -1524,6 +1693,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             numpeptides.append(replicatedata["EG.ModifiedPeptide"].nunique())
             #identified precursors
             numprecursors.append(len(replicatedata[["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
+        
         resultdf["proteins"]=numproteins
         resultdf["proteins2pepts"]=numproteins2pepts
         resultdf["peptides"]=numpeptides
@@ -1804,11 +1974,41 @@ def server(input: Inputs, output: Outputs, session: Session):
 # ============================================================================= File Import
 #region
 
+    #software choices to simplify the interface
+    @render.ui
+    def software_ui():
+        if input.software_general()=="spectronaut":
+            opts={"spectronaut":"directDIA",
+                  "ddalibrary":"DDA Library Search"}
+        if input.software_general()=="diann":
+            opts={"diann":"DIA-NN pre 2.0",
+                  "diann2.0":"DIA-NN 2.0"}
+        if input.software_general()=="fragpipe":
+            opts={"fragpipe":"FragPipe",
+                  "fragpipe_glyco":"FragPipe Glyco"}
+        if input.software_general()=="bps":
+            opts={"bps_timsrescore":"tims-rescore",
+                  "bps_timsdiann":"tims-DIANN",
+                  "bps_spectronaut":"Spectronaut",
+                  "bps_pulsar":"Pulsar",
+                  "bps_denovo":"BPS Novor",
+                  "glycoscape":"Glycoscape"}
+        return ui.input_radio_buttons("software","",choices=opts)
+    @render.ui
+    def software_quant_ui():
+        if input.software_general()=="bps":
+            if input.software()=="bps_denovo" or input.software()=="glycoscape":
+                pass
+            else:
+                return ui.input_radio_buttons("software_bps_report_type","",choices={"qual":"Qualitative","quant":"Quantitative"})
+
     #import search report file
     @reactive.calc
     def inputfile():
         if input.searchreport() is None:
             return pd.DataFrame()
+        ptmdict=ptmdict_apply()
+        #for DIA-NN and FragPipe input
         if ".tsv" in input.searchreport()[0]["name"]:
             if len(input.searchreport())>1:
                 searchoutput=pd.DataFrame()
@@ -1818,15 +2018,16 @@ def server(input: Inputs, output: Outputs, session: Session):
             else:
                 searchoutput=pd.read_csv(input.searchreport()[0]["datapath"],sep="\t")
             if input.software()=="diann":
-                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                if input.diann_mbr_switch()==False:
+                if input.diann_mbr_switch()=="Protein.Q.Value":
                     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
-                if input.diann_mbr_switch()==True:
+                elif input.diann_mbr_switch()=="Global.PG.Q.Value":
                     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                elif input.diann_mbr_switch()=="off":
+                    searchoutput=searchoutput
 
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                             "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
@@ -1840,7 +2041,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
                                             "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={#"Run":"R.FileName",
+                searchoutput.rename(columns={"Run":"R.FileName",
                             "Protein.Group":"PG.ProteinGroups",
                             "Protein.Ids":"PG.ProteinAccessions",
                             "Protein.Names":"PG.ProteinNames",
@@ -1860,26 +2061,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                             "Proteotypic":"PEP.IsProteotypic"},inplace=True)
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:7":"Deamidation (NQ)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
-            if input.software()=="ddalibrary":
-                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
-                                "PrecursorCharge":"FG.Charge",
-                                "ModifiedPeptide":"EG.ModifiedPeptide",
-                                "StrippedPeptide":"PEP.StrippedSequence",
-                                "IonMobility":"EG.IonMobility",
-                                "PrecursorMz":"FG.PrecMz",
-                                "ReferenceRunMS1Response":"FG.MS2Quantity",
-                                "Protein Name":"PG.ProteinNames"})
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
             if input.software()=="fragpipe":
-                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 
@@ -1893,7 +2076,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                         "Protein End","Assigned Modifications","Observed Modifications",
                                         "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                searchoutput.rename(columns={"Spectrum File":"R.FileName",
+                                            "Peptide":"PEP.StrippedSequence",
                                             "Modified Peptide":"EG.ModifiedPeptide",
                                             "Charge":"FG.Charge",
                                             "Retention":"EG.ApexRT",
@@ -1906,12 +2090,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             },inplace=True)
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "n":"",
-                    "147":"Oxidation (M)",
-                    "222":"Carbamidomethyl (C)",
-                    "43":"Acetyl (Protein N-term)",
-                    "111":""},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({"n":""},regex=True)#just to get rid of the preceding n in the modified sequence when N-term is acetylated
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
                 peps=searchoutput["PEP.StrippedSequence"].tolist()
                 modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
@@ -1972,7 +2153,18 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 #remove the "% glycan m/z" from the Total Glycan Composition
                 searchoutput["Total Glycan Composition"]=searchoutput["Total Glycan Composition"].str.split("%",expand=True)[0]
-        
+            if input.software()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
         #for BPS input
         if ".zip" in input.searchreport()[0]["name"]:
             os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -1983,162 +2175,401 @@ def server(input: Inputs, output: Outputs, session: Session):
             runlist=metadata_bps["processing_run_uuid"].tolist()
             cwd=os.getcwd()+"\\processing-run"
             os.chdir(cwd)
-
             if input.software()=="bps_timsrescore":
-                peptide_dict=dict()
-                samplename_list=[]
-                for run in runlist:
-                    os.chdir(cwd)
+                if input.software_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pgfdr.peptide.parquet")
+
+                    #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)&(peptide_dict[key]["protein_list"].str.contains("con_")==False)].reset_index(drop=True)
+                        df=df.rename(columns={"sample_name":"R.FileName",
+                                        "stripped_peptide":"PEP.StrippedSequence",
+                                        "precursor_mz":"FG.PrecMz",
+                                        "rt":"EG.ApexRT",
+                                        "charge":"FG.Charge",
+                                        "ook0":"EG.IonMobility",
+                                        "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
+
+                        proteingroups=[]
+                        proteinnames=[]
+                        proteinlist_column=df["protein_list"].tolist()
+                        for item in proteinlist_column:
+                            if item.count(";")==0:
+                                templist=item.split("|")
+                                proteingroups.append(templist[1])
+                                proteinnames.append(templist[2])
+                            else:
+                                proteingroups_torejoin=[]
+                                proteinnames_torejoin=[]
+                                for entry in item.split(";"):
+                                    templist=entry.split("|")
+                                    proteingroups_torejoin.append(templist[1])
+                                    proteinnames_torejoin.append(templist[2])
+                                proteingroups.append(";".join(proteingroups_torejoin))
+                                proteinnames.append(";".join(proteinnames_torejoin))
+                        df["PG.ProteinGroups"]=proteingroups
+                        df["PG.ProteinNames"]=proteinnames
+                        
+                        #adding a q-value filter before dropping the column
+                        df=df[df["global_peptide_qvalue"]<=0.01]
+
+                        df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                        "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                        "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                        "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                        "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                        
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_bps_report_type()=="quant":
+                    run=runlist[0]
                     os.chdir(cwd+"\\"+run)
-                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")
-                    peptide_dict[run]=pgfdr_peptide
-
-                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
-                for key in peptide_dict.keys():
-                    df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)].reset_index(drop=True)
-                    df=df.rename(columns={"sample_name":"R.FileName",
-                                    "stripped_peptide":"PEP.StrippedSequence",
-                                    "precursor_mz":"FG.PrecMz",
-                                    "rt":"EG.ApexRT",
-                                    "charge":"FG.Charge",
-                                    "ook0":"EG.IonMobility",
-                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
-
-                    proteingroups=[]
-                    proteinnames=[]
-                    proteinlist_column=df["protein_list"].tolist()
-                    for item in proteinlist_column:
-                        if item.count(";")==0:
-                            templist=item.split("|")
-                            proteingroups.append(templist[1])
-                            proteinnames.append(templist[2])
-                        else:
-                            proteingroups_torejoin=[]
-                            proteinnames_torejoin=[]
-                            for entry in item.split(";"):
-                                templist=entry.split("|")
-                                proteingroups_torejoin.append(templist[1])
-                                proteinnames_torejoin.append(templist[2])
-                            proteingroups.append(";".join(proteingroups_torejoin))
-                            proteinnames.append(";".join(proteinnames_torejoin))
-                    df["PG.ProteinGroups"]=proteingroups
-                    df["PG.ProteinNames"]=proteinnames
+                    searchoutput=pd.read_parquet("consolidation.peptide.parquet")
+                    proteinparquet=pd.read_parquet("maxlfq.protein.parquet")
                     
                     #adding a q-value filter before dropping the column
-                    df=df[df["global_peptide_qvalue"]<=0.01]
+                    searchoutput=searchoutput[searchoutput["global_peptide_qvalue"]<=0.01]
 
-                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
-                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
-                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
-                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
-                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "quantity":"FG.MS2Quantity",
+                                                    "precursor_mz":"FG.PrecMz",
+                                                    "charge":"FG.Charge",
+                                                    "rt_apex":"EG.ApexRT",
+                                                    "ook0":"EG.IonMobility"
+                                                    },inplace=True)
+
+                    searchoutput.drop(columns=["index","maxlfq_peptide_index","processing_run_uuid","maxlfq_run_index","candidate_id",
+                                            "protein_group_name","maxlfq_protein_group_index","global_peptide_qvalue",
+                                            "psm_pep","peptide_pep","is_target","is_contaminant","fwhm_rt_start","fwhm_rt_end"
+                                            ],errors="ignore",inplace=True)
                     
-                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_max_lfq"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_accession"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software()=="bps_timsdiann":
+                if input.software_bps_report_type()=="qual":
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(os.getcwd()+"\\"+run)
+                        bps_resultzip=ZipFile("tims-diann.result.zip")
+                        bps_resultzip.extractall()
+                        results=pd.read_csv("results.tsv",sep="\t")
+                        searchoutput=pd.concat([searchoutput,results])
+                    
+                    searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
+                    searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                            "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                            "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                            "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                            "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                            "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                            "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                            "Precursor.Normalised"],inplace=True,errors='ignore')
+
+                    searchoutput.rename(columns={"File.Name":"R.FileName",
+                                                "Protein.Group":"PG.ProteinGroups",
+                                                "Protein.Ids":"PG.ProteinAccessions",
+                                                "Protein.Names":"PG.ProteinNames",
+                                                "Genes":"PG.Genes",
+                                                "PG.Quantity":"PG.MS2Quantity",
+                                                "Modified.Sequence":"EG.ModifiedPeptide",
+                                                "Stripped.Sequence":"PEP.StrippedSequence",
+                                                "Precursor.Charge":"FG.Charge",
+                                                "Q.Value":"EG.Qvalue",
+                                                "PG.Q.Value":"PG.Qvalue",
+                                                "Precursor.Quantity":"FG.MS2Quantity",
+                                                "Precursor.Normalized":"FG.MS2RawQuantity",
+                                                "RT":"EG.ApexRT",
+                                                "Predicted.RT":"EG.RTPredicted",
+                                                "CScore":"EG.CScore",
+                                                "Proteotypic":"PEP.IsProteotypic",
+                                                "Exp.1/K0":"EG.IonMobility"},inplace=True)
+
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+                if input.software_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("tims-diann.peptide.parquet")
+                    proteinparquet=pd.read_parquet("tims-diann.protein.parquet")
+
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRt",
+                                                "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_quantity_normalised","precursor_ms1_quantity",
+                                            "precursor_q_value","precursor_quant_quality","calc_mz","irt","predicted_irt","predicted_rt",
+                                            "library_ook0","is_proteotypic","identified_by","precursor_ms1_profile_corr","precursor_fwhm",
+                                            "evidence","c_score","decoy_evidence","decoy_c_score","ms2_scan","fragment_id","fragment_mz",
+                                            "fragment_correlation","fragment_quantity","fragment_quantity_corrected","rt_start","rt_end"
+                                            ],errors="ignore",inplace=True)
+
+                    #rename ptms 
+                    searchoutput=searchoutput.reset_index(drop=True)
+                    searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                    searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+                    
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+            if input.software()=="bps_pulsar":
+                if input.software_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pulsar-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("pulsar-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
+
+                        df.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "precursor_quantity":"FG.MS2Quantity",
+                                                    "psm_measured_ms1_mz":"FG.PrecMz",
+                                                    "precursor_charge":"FG.Charge",
+                                                    "psm_rt_apex":"EG.ApexRT",
+                                                    "psm_ook0_apex":"EG.IonMobility",
+                                                    "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                    },inplace=True)
+                        df.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                                "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                                "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                                "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities","precursor_used_for_quant",
+                                                "precursor_theoretical_mz","psm_delta_ms1_mz","psm_ms1_rt","psm_ook0","psm_fwhm",
+                                                "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue"
+                                                ],errors="ignore",inplace=True)
+
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("pulsar-archive-merge.peptide.parquet")
+                    proteinparquet=pd.read_parquet("pulsar-archive-merge.protein.parquet")
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "psm_measured_ms1_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "psm_rt_apex":"EG.ApexRT",
+                                                "psm_ook0_apex":"EG.IonMobility",
+                                                "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                            "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                            "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                            "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities",
+                                            "precursor_used_for_quant","precursor_theoretical_mz","psm_delta_ms1_mz","psm_fwhm",
+                                            "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue",
+                                            "psm_ms1_rt","psm_ook0"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software()=="bps_spectronaut":
+                if input.software_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("spectronaut-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("spectronaut-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
+                        df["EG.PeakWidth"]=df["rt_end"]-df["rt_start"]
+                        df.rename(columns={"sample_name":"R.FileName",
+                                           "precursor_quantity":"FG.MS2Quantity",
+                                           "stripped_peptide":"PEP.StrippedSequence",
+                                           "precursor_mz":"FG.PrecMz",
+                                           "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                                           "precursor_charge":"FG.Charge",
+                                           "rt":"EG.ApexRT",
+                                           "measured_ook0":"EG.IonMobility"
+                                            },inplace=True)
+                        df.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity_ms1","precursor_quantity_ms2",
+                                         "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                                         "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality",
+                                         "precursor_fwhm","pep_score"
+                                        ],errors="ignore",inplace=True)
+
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("spectronaut-combine.peptide.parquet")
+                    proteinparquet=pd.read_parquet("spectronaut-combine.protein.parquet")
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                             "stripped_peptide":"PEP.StrippedSequence",
+                             "precursor_quantity_ms2":"FG.MS2Quantity",
+                             "precursor_mz":"FG.PrecMz",
+                             "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                             "precursor_charge":"FG.Charge",
+                             "rt":"EG.ApexRT",
+                             "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity","precursor_quantity_ms1",
+                           "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                           "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality","precursor_fwhm","pep_score"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
                 #rename ptms 
                 searchoutput=searchoutput.reset_index(drop=True)
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({
-                        "42.010565":"Acetyl (Protein N-term)",
-                        "57.021464":"Carbamidomethyl (C)",
-                        "79.966331":"Phospho (STY)",
-                        "15.994915":"Oxidation (M)"},regex=True)
-
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
-
-                #build and add the EG.ModifiedPeptide column
-                modifiedpeptides=[]
-                for i,entry in enumerate(searchoutput["ptm_locations"]):
-                    if entry=="-1":
-                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
-                    else:
-                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
-                        if len(searchoutput["ptm_locations"][i])==1:
-                            mod_loc=int(searchoutput["ptm_locations"][i])+1
-                            mod_add=searchoutput["ptms"][i]
-                            str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                        else:
-                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
-                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            for ele in ptmlocs:
-                                if ele=="":
-                                    ptmlocs.remove(ele)
-                            ptms_for_loop=[]
-                            for ele in ptms:
-                                ptms_for_loop.append("["+ele+"]")
-                            for j,loc in enumerate(ptmlocs):
-                                mod_loc=int(loc)+j+1
-                                mod_add=ptms_for_loop[j]
-                                str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
-                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-            if input.software()=="bps_timsdiann":
-                for run in runlist:
-                    os.chdir(cwd)
-                    os.chdir(os.getcwd()+"\\"+run)
-                    bps_resultzip=ZipFile("tims-diann.result.zip")
-                    bps_resultzip.extractall()
-                    results=pd.read_csv("results.tsv",sep="\t")
-                    searchoutput=pd.concat([searchoutput,results])
-
-                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
-
-                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
-                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
-                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
-                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
-                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
-                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
-                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
-                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
-                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
-                                        "Precursor.Normalised"],inplace=True,errors='ignore')
-
-                searchoutput.rename(columns={"File.Name":"R.FileName",
-                                            "Protein.Group":"PG.ProteinGroups",
-                                            "Protein.Ids":"PG.ProteinAccessions",
-                                            "Protein.Names":"PG.ProteinNames",
-                                            "Genes":"PG.Genes",
-                                            "PG.Quantity":"PG.MS2Quantity",
-                                            "Modified.Sequence":"EG.ModifiedPeptide",
-                                            "Stripped.Sequence":"PEP.StrippedSequence",
-                                            "Precursor.Charge":"FG.Charge",
-                                            "Q.Value":"EG.Qvalue",
-                                            "PG.Q.Value":"PG.Qvalue",
-                                            "Precursor.Quantity":"FG.MS2Quantity",
-                                            "Precursor.Normalized":"FG.MS2RawQuantity",
-                                            "RT":"EG.ApexRT",
-                                            "Predicted.RT":"EG.RTPredicted",
-                                            "CScore":"EG.CScore",
-                                            "Proteotypic":"PEP.IsProteotypic",
-                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
-
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "UniMod:1":"Acetyl (Protein N-term)",
-                    "UniMod:4":"Carbamidomethyl (C)",
-                    "UniMod:21":"Phospho (STY)",
-                    "UniMod:35":"Oxidation (M)"},regex=True)
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
             if input.software()=="bps_denovo":
                 denovo_score=65.0
                 peptide_dict=dict()
@@ -2200,52 +2631,8 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                     searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
 
-                #rename PTMs
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
-                                                                   "15.994915":"Oxidation (M)",
-                                                                   "15.9949":"Oxidation (M)",
-                                                                   "79.966331":"Phospho (STY)",
-                                                                   "0.984":"Deamidation (NQ)",
-                                                                   },regex=True)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
-
-                #build and add the EG.ModifiedPeptide column
-                modifiedpeptides=[]
-                for i,entry in enumerate(searchoutput["ptm_locations"]):
-                    if entry=="-1":
-                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
-                    else:
-                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
-                        if len(searchoutput["ptm_locations"][i])==1:
-                            mod_loc=int(searchoutput["ptm_locations"][i])+1
-                            mod_add=searchoutput["ptms"][i]
-                            str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                        else:
-                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
-                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            for ele in ptmlocs:
-                                if ele=="":
-                                    ptmlocs.remove(ele)
-                            ptms_for_loop=[]
-                            for ele in ptms:
-                                ptms_for_loop.append("["+ele+"]")
-                            for j,loc in enumerate(ptmlocs):
-                                mod_loc=int(loc)+j+1
-                                mod_add=ptms_for_loop[j]
-                                str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
-                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
             if input.software()=="glycoscape":
                 results_dict=dict()
                 for run in runlist:
@@ -2348,51 +2735,53 @@ def server(input: Inputs, output: Outputs, session: Session):
                     parquet["PG.ProteinNames"]=proteinnames
                     parquet.drop(columns=["protein_list"],inplace=True)
 
-                    #make EG.ModifiedPeptide column
                     parquet["ptms"]=parquet["ptms"].astype(str)
-                    parquet["ptms"]=parquet["ptms"].replace({
-                            "203.079373":"-HexNAc (N)",
-                            "42.010565":"Acetyl (Protein N-term)",
-                            "57.021464":"Carbamidomethyl (C)",
-                            "79.966331":"Phospho (STY)",
-                            "15.994915":"Oxidation (M)"},regex=True)
-                    parquet["ptm_locations"]=parquet["ptm_locations"].astype(str)
-                    parquet["ptm_locations"]=parquet["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
-
-                    modifiedpeptides=[]
-                    for i,entry in enumerate(parquet["ptm_locations"]):
-                        if entry=="-1":
-                            modifiedpeptides.append(parquet["PEP.StrippedSequence"].tolist()[i])
-                        else:
-                            str_to_list=list(parquet["PEP.StrippedSequence"].tolist()[i])
-                            if len(parquet["ptm_locations"].tolist()[i])==1:
-                                mod_loc=int(parquet["ptm_locations"].tolist()[i])+1
-                                mod_add=parquet["ptms"].tolist()[i]
-                                str_to_list.insert(mod_loc,mod_add)
-                                modifiedpeptides.append("".join(str_to_list))
-                            #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                            else:
-                                ptmlocs=parquet["ptm_locations"].tolist()[i].strip().split(" ")
-                                ptms=parquet["ptms"].tolist()[i].replace("[","").replace("]","").replace(") ","),").replace("\n ",",").split(",")
-                                for ele in ptmlocs:
-                                    if ele=="":
-                                        ptmlocs.remove(ele)
-                                ptms_for_loop=[]
-                                for ele in ptms:
-                                    ptms_for_loop.append("["+ele+"]")
-                                for j,loc in enumerate(ptmlocs):
-                                    mod_loc=int(loc)+j+1
-                                    mod_add=ptms_for_loop[j]
-                                    str_to_list.insert(mod_loc,mod_add)
-                                modifiedpeptides.append("".join(str_to_list))
-                    parquet["EG.ModifiedPeptide"]=modifiedpeptides
-                    parquet=parquet.drop(columns=["ptms","ptm_locations"])
+                    parquet["ptms"]=parquet["ptms"].replace(ptmdict,regex=True)
 
                     searchoutput=pd.concat([searchoutput,parquet],ignore_index=True)
+            
+            if "EG.ModifiedPeptide" not in searchoutput.columns:
+                #build and add the EG.ModifiedPeptide column
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+                modifiedpeptides=[]
+                for i,entry in enumerate(searchoutput["ptm_locations"]):
+                    if entry=="-1":
+                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
+                    else:
+                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
+                        if len(searchoutput["ptm_locations"][i])==1:
+                            mod_loc=int(searchoutput["ptm_locations"][i])+1
+                            mod_add=searchoutput["ptms"][i]
+                            str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
+                        else:
+                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
+                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
+                            for ele in ptmlocs:
+                                if ele=="":
+                                    ptmlocs.remove(ele)
+                            ptms_for_loop=[]
+                            for ele in ptms:
+                                ele=ele.strip()
+                                ptms_for_loop.append("["+ele+"]")
+                            for j,loc in enumerate(ptmlocs):
+                                mod_loc=int(loc)+j+1
+                                mod_add=ptms_for_loop[j]
+                                str_to_list.insert(mod_loc,mod_add)
+                            modifiedpeptides.append("".join(str_to_list))
+                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
+                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+            
+            searchoutput=searchoutput.drop(columns=["protein_group_parent_id"],errors="ignore")
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-        
+            #add Condition and Replicate columns for filling in from metadata
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+            
+            #change the cwd back to the code file since we changed it to the uploaded file 
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
         #for DIA-NN 2.0 input
         if ".parquet" in input.searchreport()[0]["name"]:
             if len(input.searchreport())>1:
@@ -2408,10 +2797,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                if input.diann_mbr_switch()==False:
+                if input.diann_mbr_switch()=="Protein.Q.Value":
                     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
-                if input.diann_mbr_switch()==True:
+                elif input.diann_mbr_switch()=="Global.PG.Q.Value":
                     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                elif input.diann_mbr_switch()=="off":
+                    searchoutput=searchoutput
 
                 searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
                                             "Stripped.Sequence":"PEP.StrippedSequence",
@@ -2445,14 +2836,24 @@ def server(input: Inputs, output: Outputs, session: Session):
                     
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+
+        #filter out decoy and contaminant sequences
+        searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
+        
+        #replace None values in protein name column, remove leading semicolon from protein name entries
+        if len(searchoutput[searchoutput["PG.ProteinNames"].isnull()])>0:
+            df=searchoutput[searchoutput["PG.ProteinNames"].isnull()]
+            for index in df.index.tolist():
+                if searchoutput.at[index,"PG.ProteinNames"]==None:
+                    searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinGroups"]
+        if len(searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")])>0:
+            df=searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")]
+            for index in df.index.tolist():
+                searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinNames"].strip(";")
 
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
-        searchoutput=searchoutput.sort_values('R.FileName')
+        searchoutput=searchoutput.sort_values(["R.Replicate","R.FileName"])
 
         return searchoutput
     
@@ -2524,14 +2925,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             return "Use the psm.tsv file as the file input."
         if input.software()=="fragpipe_glyco":
             return "Use the psm.tsv file as the file input. Use the Glycoproteomics tab for processing."
-        if input.software()=="bps_timsrescore":
-            return "Use the .zip file from the artefacts download."
-        if input.software()=="bps_timsdiann":
-            return "Use the .zip file from the artefacts download."
+        if input.software()=="bps_timsrescore" or input.software()=="bps_timsdiann" or input.software()=="bps_pulsar" or input.software()=="bps_spectronaut":
+            return "Use the .zip file from the artifacts download. File upload can take several minutes because of how protein information is mapped to the peptide file. Make sure to periodically check the timsplot folder and remove metadata.csv and the processing-run folder to free up space."
         if input.software()=="bps_denovo":
-            return "Use the .zip file from the artefacts download."
+            return "Use the .zip file from the artifacts download."
         if input.software()=="glycoscape":
-            return "Use the .zip file from the artefacts download. Use the Glycoproteomics tab for processing."
+            return "Use the .zip file from the artifacts download. Use the Glycoproteomics tab for processing."
 
     #download metadata table as shown
     @render.download(filename="metadata_"+str(date.today())+".csv")
@@ -2564,26 +2963,59 @@ def server(input: Inputs, output: Outputs, session: Session):
         metadata=metadata_table.data_view()
         metadata_condition=metadata_condition_table.data_view()
 
+        #update condition/replicate names/values from metadata
+        #if not filled out, autofill with generic values
         if input.condition_names()==True:
             RConditionlist=[]
             RReplicatelist=[]
-            for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+            for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
                 fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
-                RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-                RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+                if metadata["R.Condition"][fileindex]=="":
+                    RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
+                else:
+                    RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+                if metadata["R.Replicate"][fileindex]=="":
+                    RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
+                else:
+                    RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
             searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
             searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
             searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+        elif input.condition_names()==False:
+            #check if Condition or Replicate columns in the metadata are empty if the condition/replicate value switch is off
+            if metadata["R.Condition"].drop_duplicates().tolist()==[""]:
+                RConditionlist=[]
+                for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+                    fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+                    if metadata["R.Condition"][fileindex]=="":
+                        RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
+                    else:
+                        RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+                searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+            if metadata["R.Replicate"].drop_duplicates().tolist()==[""]:
+                RReplicatelist=[]
+                for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+                    fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
 
+                    if metadata["R.Replicate"][fileindex]=="":
+                        RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
+                    else:
+                        RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+                searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+                searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+
+        #remove checked runs
         if input.remove()==True:
             editedmetadata=metadata[metadata.remove !="x"]
             searchoutput=searchoutput.set_index("R.FileName").loc[editedmetadata["R.FileName"].tolist()].reset_index()
 
+        #reorder runs
         if input.reorder()==True:
             metadata_condition["order"]=metadata_condition["order"].astype(int)
             sortedmetadata_bycondition=metadata_condition.sort_values(by="order").reset_index(drop=True)
             searchoutput=searchoutput.set_index("R.Condition").loc[sortedmetadata_bycondition["R.Condition"].tolist()].reset_index()
 
+        #add concentration values
         if input.concentration()==True:
             concentrationlist=[]
             for run in searchoutput["R.Condition"].drop_duplicates().tolist():
@@ -2596,13 +3028,30 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput.insert(3,"Concentration",list(itertools.chain(*concentrationlist)))
                 searchoutput["Concentration"]=searchoutput["Concentration"].astype(float)
 
+        #filter protein names with cRAP database
+        if input.cRAP_filter()==True:
+            cRAP=['ADH1_YEAST','ALBU_BOVIN','ALBU_HUMAN','ALDOA_RABIT','AMYS_HUMAN','ANT3_HUMAN','ANXA5_HUMAN','B2MG_HUMAN','BGAL_ECOLI','BID_HUMAN','CAH1_HUMAN','CAH2_BOVIN','CAH2_HUMAN',
+                  'CAS1_BOVIN','CAS2_BOVIN','CASB_BOVIN','CASK_BOVIN','CATA_HUMAN','CATD_HUMAN','CATG_HUMAN','CO5_HUMAN','CRP_HUMAN','CTRA_BOVIN','CTRB_BOVIN','CYB5_HUMAN','CYC_HORSE',
+                  'CYC_HUMAN','DHE3_BOVIN','EGF_HUMAN','FABPH_HUMAN','GAG_SCVLA','GELS_HUMAN','GFP_AEQVI','GSTA1_HUMAN','GSTP1_HUMAN','HBA_HUMAN','HBB_HUMAN','IGF2_HUMAN','IL8_HUMAN',
+                  'K1C10_HUMAN','K1C15_SHEEP','K1C9_HUMAN','K1H1_HUMAN','K1H2_HUMAN','K1H4_HUMAN','K1H5_HUMAN','K1H6_HUMAN','K1H7_HUMAN','K1H8_HUMAN','K1HA_HUMAN','K1HB_HUMAN','K1M1_SHEEP',
+                  'K1M2_SHEEP','K22E_HUMAN','K2C1_HUMAN','K2M1_SHEEP','K2M2_SHEEP','K2M3_SHEEP','KCRM_HUMAN','KRA3_SHEEP','KRA33_SHEEP','KRA34_SHEEP','KRA3A_SHEEP','KRA61_SHEEP','KRB2A_SHEEP',
+                  'KRB2B_SHEEP','KRB2C_SHEEP','KRB2D_SHEEP','KRHB1_HUMAN','KRHB2_HUMAN','KRHB3_HUMAN','KRHB4_HUMAN','KRHB5_HUMAN','KRHB6_HUMAN','KRUC_SHEEP','LALBA_BOVIN','LALBA_HUMAN',
+                  'LEP_HUMAN','LYSC_CHICK','LYSC_HUMAN','LYSC_LYSEN','MYG_HORSE','MYG_HUMAN','NEDD8_HUMAN','NQO1_HUMAN','NQO2_HUMAN','OVAL_CHICK','PDGFB_HUMAN','PEPA_BOVIN','PEPA_PIG',
+                  'PEPB_PIG','PEPC_PIG','PLMP_GRIFR','PPIA_HUMAN','PRDX1_HUMAN','RASH_HUMAN','REF_HEVBR','RETBP_HUMAN','RS27A_HUMAN','SODC_HUMAN','SRPP_HEVBR','SSPA_STAAU','SUMO1_HUMAN',
+                  'SYH_HUMAN','TAU_HUMAN','THIO_HUMAN','TNFA_HUMAN','TRFE_HUMAN','TRFL_HUMAN','TRY1_BOVIN','TRY2_BOVIN','TRYP_PIG','UB2E1_HUMAN','UBE2C_HUMAN','UBE2I_HUMAN']
+            decoylist=[]
+            for protein in searchoutput["PG.ProteinNames"].drop_duplicates().tolist():
+                if protein in cRAP:
+                    decoylist.append(protein)
+            searchoutput=searchoutput.set_index("PG.ProteinNames").drop(decoylist).reset_index()
+            
         return searchoutput
 
     #switch for if MBR was used in DIANN, chaanges how we'll filter for Q value
     @render.ui
     def diann_mbr_ui():
-        if input.software()=="diann" or input.software()=="diann2.0":
-            return ui.input_switch("diann_mbr_switch","MBR used in DIA-NN? (Filter Protein.Q.Value if off, filter Global.PG.Q.Value if on)",value=False,width="700px")
+        if input.software_general()=="diann":
+            return ui.input_radio_buttons("diann_mbr_switch","Q value filtering option:",choices=["off","Protein.Q.Value","Global.PG.Q.Value"])
 
 #endregion
 
@@ -2760,16 +3209,14 @@ def server(input: Inputs, output: Outputs, session: Session):
     def conditioncolors():
         conditioncolors_table=pd.DataFrame({"Color per run":[]})
         return conditioncolors_table
-    #added a variable to help make sure that the rectangles that are shown for the color choices line up roughly with the table of sample conditions
-    @render.ui
-    def colorplot_height():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        height=40*numconditions
-        return ui.input_numeric("colorplot_height_input","Color per run height mod *no touchy >:(*",value=height)
+    
     #plot rectangles in line with the sample conditions they'll be associated with in downstream plotting
     @reactive.effect
     def _():
-        @render.plot(width=75,height=input.colorplot_height_input())
+        #added a variable to help make sure that the rectangles that are shown for the color choices line up roughly with the table of sample conditions
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        height=40*numconditions
+        @render.plot(width=75,height=height)
         def customcolors_plot():
             try:
                 searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -2793,6 +3240,46 @@ def server(input: Inputs, output: Outputs, session: Session):
             except:
                 pass
 
+    # ====================================== PTM Settings
+    #import ptmdict file locally (include in download from GitHub)
+    @reactive.calc
+    def ptmdict_setup():
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        ptmdict_download=pd.read_csv("ptmdict.csv",header=None).set_index(0)
+        ptmdict=ptmdict_download.to_dict(orient="dict")[1]
+        return ptmdict
+    #show ptmdict as a table to show current substitution list 
+    @render.table
+    def ptmdict_table():
+        try:
+            ptmdict=ptmdict_apply()
+        except:
+            ptmdict=ptmdict_setup()
+        ptmdict=pd.DataFrame.from_dict(ptmdict,orient="index").reset_index().rename(columns={"index":"PTM Identifier",0:"Replacement"})
+        return ptmdict
+    #apply any user-defined addition to the ptmdict, works even if you don't go to the PTM settings tab before plotting anything
+    #to overwrite current values in the table or adding new values, will have to go back to file import and hit apply changes
+    @reactive.calc
+    @reactive.event(input.ptm_apply,ignore_none=False)
+    def ptmdict_apply():
+        ptmdict=ptmdict_setup()
+        key=input.ptm_key_input()
+        value=input.ptm_value_input()
+        if key=="" and value=="":
+            ptmdict=ptmdict
+        else:
+            ptmdict[key]=value
+        return ptmdict
+    #save any user-defined mods, overwrite the main file to do so
+    @render.download(filename="ptmdict.csv")
+    def ptm_save():
+        ptmdict=ptmdict_apply()
+        ptmdict=pd.DataFrame.from_dict(ptmdict,orient="index").reset_index()
+
+        with io.BytesIO() as buf:
+            ptmdict.to_csv(buf,index=False,header=False)
+            yield buf.getvalue()
+
     # ====================================== File Stats
     #stats about the input file
     @render.table
@@ -2812,11 +3299,10 @@ def server(input: Inputs, output: Outputs, session: Session):
     def column_check():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         columnnames=searchoutput.columns.tolist()
-        expectedcolumns=["R.FileName","PG.ProteinGroups","PG.ProteinAccessions","PG.ProteinNames","PG.MS2Quantity",
-                        "PG.Genes","EG.ModifiedPeptide","FG.Charge","EG.Qvalue","PG.Qvalue",
-                        "FG.MS2Quantity","FG.MS2RawQuantity","EG.ApexRT","EG.RTPredicted","EG.Cscore","EG.IonMobility",
-                        "R.Condition","R.Replicate","Concentration","EG.PeakWidth",
-                        "PEP.StrippedSequence","PEP.IsProteotypic","EG.FWHM","EG.IsImputed","FG.PrecMz"]
+        expectedcolumns=["R.FileName","R.Condition","R.Replicate","Concentration",
+                         "PG.ProteinGroups","PG.ProteinAccessions","PG.ProteinNames","PG.Genes",
+                         "PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","FG.PrecMz",
+                         "PG.MS2Quantity","FG.MS2Quantity","EG.IonMobility","EG.ApexRT","EG.PeakWidth"]
         columnnames=searchoutput.columns.tolist()
         in_report=[]
         for i in expectedcolumns:
@@ -2825,7 +3311,6 @@ def server(input: Inputs, output: Outputs, session: Session):
             else:
                 in_report.append("FALSE")
         columncheck_df=pd.DataFrame({"Expected Column":expectedcolumns,"in_report":in_report})
-        columncheck_df["Needed?"]=["Yes","Yes","","Yes","Yes","","Yes","Yes","Yes","Yes","Yes","","Yes","","","Yes","Yes","Yes","Yes","","Yes","","","","Yes"]
         return columncheck_df
 
     # ====================================== File Preview
@@ -3216,7 +3701,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.upset_condition_or_run()=="specific_condition":
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             opts=sampleconditions
-            return ui.input_selectize("specific_condition_pick","Pick sample condition",choices=opts)
+            return ui.input_selectize("specific_condition_pick","Pick sample condition:",choices=opts)
     @render.data_frame
     def upsetplot_counts():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -3743,7 +4228,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             if input.peplengthinput()=="lineplot":
                 legendlist=[]
-                fig,ax=plt.subplots(figsize=(6,4))
+                fig,ax=plt.subplots()
                 for i in range(len(plottingdf)):
                     if len(plottingdf)==1:
                         x=list(set(plottingdf["Peptide Lengths"][0]))
@@ -3768,7 +4253,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.peplengthinput()=="barplot":
                 lengthmark=int(input.lengthmark_pick())
                 if len(plottingdf)==1:
-                    fig,ax=plt.subplots(figsize=(5,5))
+                    fig,ax=plt.subplots()
                     x=list(set(plottingdf["Peptide Lengths"][0]))
                     frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][0]))]
                     ax.bar(x,frequencies,color=colors,edgecolor="k")
@@ -3788,7 +4273,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.set_ylabel("Counts",fontsize=axisfont)
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
                 else:
-                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
+                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),sharey=True)
                     for i in range(len(plottingdf)):
                         x=list(set(plottingdf["Peptide Lengths"][i]))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptide Lengths"][i]))]
@@ -3934,7 +4419,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax1.text(0,0.7,"- - - - - - - "+str(n_75)+" Protein groups")
 
             log10df=np.log10(intensitydf).sort_values(by="PG.MS2Quantity",ascending=False).reset_index(drop=True)
-            dynamicrange=round(max(log10df["PG.MS2Quantity"])-min(log10df["PG.MS2Quantity"]),1)
+            dynamicrange=round(max(log10df["PG.MS2Quantity"])-min(log10df[log10df["PG.MS2Quantity"]!=float("-inf")]["PG.MS2Quantity"]),1)
+
             ax2.scatter(log10df.index,log10df["PG.MS2Quantity"],marker=".",s=markersize)
             ax2.set_ylabel("Log10(Area)")
             ax2.text(max(log10df.index)-0.6*(max(log10df.index)),max(log10df["PG.MS2Quantity"])-0.15*(max(log10df["PG.MS2Quantity"])),str(dynamicrange)+" log",fontsize=titlefont)
@@ -4252,6 +4738,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             ptmlist.append(re.findall(r"[^[]*\[([^]]*)\]",i))
         searchoutput["PTMs"]=ptmlist
         return(list(OrderedDict.fromkeys(itertools.chain(*ptmlist))))
+    #text showing what PTMs were detected
+    @render.text
+    def ptmlist_text():
+        listofptms=find_ptms()
+        return listofptms
     #generate list to pull from to pick PTMs
     @render.ui
     def ptmlist_ui():
@@ -4260,7 +4751,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         for i in range(len(listofptms)):
             ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
         ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
-        return ui.input_selectize("foundptms","Pick PTM to plot data for",choices=ptmdict,selected=listofptms[0])
+        return ui.input_selectize("foundptms","Pick PTM to plot data for:",choices=ptmdict,selected=listofptms[0])
     #function for doing ID calculations for a picked PTM
     #ptmresultdf,ptm=ptmcounts()
     @reactive.calc
@@ -4540,10 +5031,17 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             ax.axhline(y=20,color="black",linestyle="--")
 
-            for z,color in zip(plot["bodies"],colors):
-                z.set_facecolor(color)
-                z.set_edgecolor("black")
-                z.set_alpha(0.7)
+            if numconditions==1:
+                for z in plot["bodies"]:
+                    z.set_facecolor(colors)
+                    z.set_edgecolor("black")
+                    z.set_alpha(0.7)
+            else:
+                for z,color in zip(plot["bodies"],colors):
+                    z.set_facecolor(color)
+                    z.set_edgecolor("black")
+                    z.set_alpha(0.7)
+
     #show a table of mean/median CV values per condition for selected PTM
     @render.table
     def ptm_cvtable():
@@ -5520,9 +6018,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.hist(df["FG.PrecMz"],bins=bins,label=run,alpha=0.75)
                     ax.set_xlabel("Precursor m/z",fontsize=axisfont)
                 if input.histogram_pick()=="precursorintensity":
+                    df=df[df["FG.MS2Quantity"]!=0]
                     ax.hist(np.log10(df["FG.MS2Quantity"]),bins=bins,label=run,alpha=0.75)
                     ax.set_xlabel("log10(Precursor Intensity)",fontsize=axisfont)
                 if input.histogram_pick()=="proteinintensity":
+                    df=df[df["PG.MS2Quantity"]!=0]
                     ax.hist(np.log10(df["PG.MS2Quantity"]),bins=bins,label=run,alpha=0.75)
                     ax.set_xlabel("log10(Protein Intensity)",fontsize=axisfont)
             ax.legend()
@@ -5537,12 +6037,12 @@ def server(input: Inputs, output: Outputs, session: Session):
     def volcano_condition1():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         opts=sampleconditions
-        return ui.input_selectize("control_condition","Pick control condition",choices=opts)
+        return ui.input_selectize("control_condition","Pick control condition:",choices=opts)
     @render.ui
     def volcano_condition2():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         opts=sampleconditions
-        return ui.input_selectize("test_condition","Pick test condition",choices=opts,selected=sampleconditions[1])
+        return ui.input_selectize("test_condition","Pick test condition:",choices=opts,selected=sampleconditions[1])
     #calculation for fold change and p value
     @reactive.calc
     def volcano_calc():
@@ -5746,6 +6246,58 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.margins(0.02)
             fig.set_tight_layout(True)
 
+    # ====================================== Dendrogram/Protein Signal
+    @reactive.effect
+    def _():
+        @render.plot(width=input.dendrogram_width(),height=input.dendrogram_height())
+        def dendrogram_heatmap():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            df=searchoutput[["Cond_Rep","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+
+            data=pd.DataFrame()
+            for run in searchoutput["Cond_Rep"].drop_duplicates():
+                placeholder=df[df["Cond_Rep"]==run][["PG.ProteinGroups","PG.MS2Quantity"]].set_index("PG.ProteinGroups").sort_values("PG.MS2Quantity",ascending=False)
+                placeholder["PG.MS2Quantity"]=np.log10(placeholder["PG.MS2Quantity"])
+                data=pd.concat([data,placeholder],axis=1).rename(columns={"PG.MS2Quantity":run})
+            data=data.fillna(0)
+            data_transposed=data.transpose()
+
+            #make dendrogram linking the runs
+            clusteringlist=[]
+            for column in data.columns:
+                clusteringlist.append(data[column].tolist())
+            fig,ax=plt.subplots(nrows=2,ncols=2,height_ratios=(1,input.dendrogram_scaling()),width_ratios=(5,1))
+            datalinkage=linkage(clusteringlist)
+            dendrogram(datalinkage,labels=data.columns,ax=ax[0,0])
+
+            ax[0,0].set(ylabel="Distance")
+            ax[0,0].set_title("Run Linkage")
+            #ax[0].tick_params(axis="x",rotation=90)
+
+            #get tick labels in the order they're shown in the dendrogram
+            ticklabels=ax[0,0].get_xticklabels(which="major")
+            labels=[]
+            for ele in ticklabels:
+                labels.append(str(ele).split(", ")[2].split(")")[0].strip("''"))
+            ax[0,0].xaxis.set_ticklabels([])
+
+            #map the dendrogram labels to the df used for the heatmap
+            data_transposed=data_transposed.reindex(labels)
+
+            plottinglist=[]
+            for column in data_transposed.columns:
+                plottinglist.append(data_transposed[column].tolist())
+            heatmap=ax[1,0].imshow(plottinglist,cmap=input.dendrogram_cmap(),aspect="auto")
+            ax[1,0].set(xlabel="Run",ylabel="Protein")
+            ax[1,0].set_title("Protein Intensity Heatmap (log10)")
+            ax[1,0].tick_params(axis="x",rotation=90)
+            ax[1,0].set_xticks(np.arange(0,6),labels)
+            plt.colorbar(heatmap,ax=ax[1,1],location="left")
+
+            fig.set_tight_layout(True)
+            ax[0,1].remove()
+            ax[1,1].axes.set_axis_off()
+
     # ====================================== PCA
     #compute PCA and plot principal components
     @reactive.effect
@@ -5789,7 +6341,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 else:
                     firstindex+=repspercondition[i-1]
                 secondindex=firstindex+repspercondition[i]
-                ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors[i])
+                if numconditions==1:
+                    ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors)
+                else:
+                    ax1.scatter(X_trans[firstindex:secondindex,0],X_trans[firstindex:secondindex,1],label=sampleconditions[i],color=colors[i])
 
             ax1.legend(loc="upper left",bbox_to_anchor=[0,-0.1],fontsize=legendfont)
 
@@ -6229,7 +6784,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 fig.set_tight_layout(True)
 
             else:
-                fig,ax=plt.subplots(ncols=len(plottingdf))
+                fig,ax=plt.subplots(ncols=len(plottingdf),sharey=True)
                 for i,key in enumerate(plottingdf.keys()):
                     plotdf=plottingdf[key].set_index("Peptide Length")
                     if input.usepickedcharges()==True:
@@ -6265,11 +6820,12 @@ def server(input: Inputs, output: Outputs, session: Session):
     def organismtable():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         organismlist=[]
-        for entry in searchoutput["PG.ProteinNames"].drop_duplicates().str.split("_"):
-            organismlist.append(entry[-1])
+        for entry in searchoutput["PG.ProteinNames"].drop_duplicates().str.split(";"):
+            organismlist.append(entry[0].split("_")[-1])
         organism_table=pd.DataFrame()
         organism_table["Organism"]=list(set(organismlist))
         organism_table["Order"]=np.arange(1,len(organism_table["Organism"])+1).astype(str)
+        organism_table["Remove?"]=[""]*len(organism_table["Organism"])
         for column in searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True):
             organism_table[column+"_Quant Ratio"]=""
         return render.DataGrid(organism_table,editable=True,width="100%")
@@ -6278,6 +6834,15 @@ def server(input: Inputs, output: Outputs, session: Session):
     def organism_list_from_table():
         organism_table_view=organismtable.data_view()
         organismlist=list(organism_table_view.sort_values("Order")["Organism"])
+        organismlist_adjusted=[]
+        for i in range(len(organismlist)):
+            if "x" in organism_table_view["Remove?"][i]:
+                pass
+                #organismlist.remove(organismlist[i])
+            else:
+                organismlist_adjusted.append(organismlist[i])
+                #pass
+        organismlist=organismlist_adjusted
         return organismlist
     #generate dfs for ID counts and summed intensities per organism
     @reactive.calc
@@ -6339,8 +6904,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 titleprop="Precursor"
 
             x=np.arange(len(mixedproteomecounts["Cond_Rep"].tolist()))
-            width=0.25
-
+            width=input.countsperorganism_barwidth()
             relevantcolumns=[col for col in mixedproteomecounts if input.countsplotinput() in col]
             maxvalue=mixedproteomecounts[relevantcolumns].values.max()
 
@@ -6348,7 +6912,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             for i in range(len(organismlist)):
                 ax.bar(x+(i*width),mixedproteomecounts[organismlist[i]+"_"+input.countsplotinput()],width=width,label=organismlist[i],color=colors[i])
                 ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-            ax.set_xticks(x+width,mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+            if len(organismlist)==2:
+                ax.set_xticks(x+width/2,mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+            else:
+                ax.set_xticks(x+width,mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
             ax.set_ylim(top=maxvalue+(y_padding*maxvalue))
             ax.legend(loc='center left',bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
             ax.set_ylabel("Counts",fontsize=axisfont)
@@ -6416,6 +6983,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             organismlist=organism_list_from_table()
             organism_table=organismtable.data_view()
 
+            #incorporate removal of rows from Info tab table
+            for i in range(len(organism_table)):
+                if "x" in organism_table["Remove?"][i]:
+                    organism_table=organism_table[organism_table["Remove?"] != "x"]
+
             titlefont=input.titlefont()
             axisfont=input.axisfont()
             labelfont=input.labelfont()
@@ -6435,8 +7007,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             testcolumn=organism_table[[col for col in organism_table if testcondition in col]].columns[0]
             referencecolumn=organism_table[[col for col in organism_table if referencecondition in col]].columns[0]
 
-            testratios=organism_table.sort_values("Order")[testcolumn].astype(int).tolist()
-            referenceratios=organism_table.sort_values("Order")[referencecolumn].astype(int).tolist()
+            testratios=organism_table.sort_values("Order")[testcolumn].astype(float).tolist()
+            referenceratios=organism_table.sort_values("Order")[referencecolumn].astype(float).tolist()
             
             organism_merged=dict()
             ratio_average=pd.DataFrame()
@@ -6446,8 +7018,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ratio_average["Theoretical_Ratio"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
             if input.y_log_scale()=="log10":
                 ratio_average["Theoretical_Ratio"]=[np.log10(i/j) for i,j in zip(testratios,referenceratios)]
+            
             averagelist=[]
-
             for organism in organismlist:
                 df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
                 if input.quantratios_mean_median()=="mean":
@@ -6534,14 +7106,19 @@ def server(input: Inputs, output: Outputs, session: Session):
         organismlist=organism_list_from_table()
         organism_table=organismtable.data_view()
 
+        #incorporate removal of rows from Info tab table
+        for i in range(len(organism_table)):
+            if "x" in organism_table["Remove?"][i]:
+                organism_table=organism_table[organism_table["Remove?"] != "x"]
+
         referencecondition=input.referencecondition_list()
         testcondition=input.testcondition_list()
 
         testcolumn=organism_table[[col for col in organism_table if testcondition in col]].columns[0]
         referencecolumn=organism_table[[col for col in organism_table if referencecondition in col]].columns[0]
 
-        testratios=organism_table.sort_values("Order")[testcolumn].astype(int).tolist()
-        referenceratios=organism_table.sort_values("Order")[referencecolumn].astype(int).tolist()
+        testratios=organism_table.sort_values("Order")[testcolumn].astype(float).tolist()
+        referenceratios=organism_table.sort_values("Order")[referencecolumn].astype(float).tolist()
         
         organism_merged=dict()
         ratio_average=pd.DataFrame()
@@ -7516,7 +8093,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             imdiff=abs(coelutingpeptides["EG.IonMobility"][i]-coelutingpeptides["EG.IonMobility"][i+1])
             if rtdiff <= rttolerance and mzdiff <= mztolerance and imdiff >= imtolerance:
                 coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
-        coelutingpeptides=coelutingpeptides[["Group","EG.ModifiedPeptide","FG.Charge","FG.PrecMz","EG.ApexRT","EG.IonMobility"]]
+        #"Group" not in index tells us that there aren't any MOMA events
+        try:
+            coelutingpeptides=coelutingpeptides[["Group","EG.ModifiedPeptide","FG.Charge","FG.PrecMz","EG.ApexRT","EG.IonMobility"]]
+        except KeyError:
+            raise KeyError("No MOMA events found") from None
 
         return render.DataGrid(coelutingpeptides,editable=False)
     
@@ -7610,11 +8191,42 @@ def server(input: Inputs, output: Outputs, session: Session):
 #region
     # ====================================== Secondary File Import
     #region
+
+    #software choices to simplify the interface
+    @render.ui
+    def software_secondary_ui():
+        if input.software_secondary_general()=="spectronaut":
+            opts={"spectronaut":"directDIA",
+                  "ddalibrary":"DDA Library Search"}
+        if input.software_secondary_general()=="diann":
+            opts={"diann":"DIA-NN pre 2.0",
+                  "diann2.0":"DIA-NN 2.0"}
+        if input.software_secondary_general()=="fragpipe":
+            opts={"fragpipe":"FragPipe",
+                  "fragpipe_glyco":"FragPipe Glyco"}
+        if input.software_secondary_general()=="bps":
+            opts={"bps_timsrescore":"tims-rescore",
+                  "bps_timsdiann":"tims-DIANN",
+                  "bps_spectronaut":"Spectronaut",
+                  "bps_pulsar":"Pulsar",
+                  "bps_denovo":"BPS Novor",
+                  "glycoscape":"Glycoscape"}
+        return ui.input_radio_buttons("software_secondary","",choices=opts)
+    @render.ui
+    def software_secondary_quant_ui():
+        if input.software_secondary_general()=="bps":
+            if input.software_secondary()=="bps_denovo" or input.software_secondary()=="glycoscape":
+                pass
+            else:
+                return ui.input_radio_buttons("software_secondary_bps_report_type","",choices={"qual":"Qualitative","quant":"Quantitative"})
+
     #import search report file
     @reactive.calc
     def inputfile_secondary():
         if input.searchreport_secondary() is None:
             return pd.DataFrame()
+        ptmdict=ptmdict=ptmdict_apply()
+        #for DIA-NN and FragPipe input
         if ".tsv" in input.searchreport_secondary()[0]["name"]:
             if len(input.searchreport_secondary())>1:
                 searchoutput=pd.DataFrame()
@@ -7624,14 +8236,20 @@ def server(input: Inputs, output: Outputs, session: Session):
             else:
                 searchoutput=pd.read_csv(input.searchreport_secondary()[0]["datapath"],sep="\t")
             if input.software_secondary()=="diann":
-                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
+
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                             "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
-                                            "PEP","Global.Q.Value","Protein.Q.Value","Global.PG.Q.Value","GG.Q.Value",
+                                            "PEP","Global.Q.Value","GG.Q.Value",#"Protein.Q.Value","Global.PG.Q.Value",
                                             "Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated",
                                             "Quantity.Quality","RT.Stop","RT.Start","iRT","Predicted.iRT",
                                             "First.Protein.Description","Lib.Q.Value","Lib.PG.Q.Value","Ms1.Profile.Corr",
@@ -7640,7 +8258,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "Fragment.Correlations","MS2.Scan","iIM","Predicted.IM",
                                             "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
                                             "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
-                searchoutput.rename(columns={#"Run":"R.FileName",
+
+                searchoutput.rename(columns={"Run":"R.FileName",
                             "Protein.Group":"PG.ProteinGroups",
                             "Protein.Ids":"PG.ProteinAccessions",
                             "Protein.Names":"PG.ProteinNames",
@@ -7660,13 +8279,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                             "Proteotypic":"PEP.IsProteotypic"},inplace=True)
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
             if input.software_secondary()=="fragpipe":
-                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 
@@ -7680,7 +8294,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                         "Protein End","Assigned Modifications","Observed Modifications",
                                         "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                searchoutput.rename(columns={"Spectrum File":"R.FileName",
+                                            "Peptide":"PEP.StrippedSequence",
                                             "Modified Peptide":"EG.ModifiedPeptide",
                                             "Charge":"FG.Charge",
                                             "Retention":"EG.ApexRT",
@@ -7693,12 +8308,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             },inplace=True)
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "n":"",
-                    "147":"Oxidation (M)",
-                    "222":"Carbamidomethyl (C)",
-                    "43":"Acetyl (Protein N-term)",
-                    "111":""},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({"n":""},regex=True)#just to get rid of the preceding n in the modified sequence when N-term is acetylated
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
                 peps=searchoutput["PEP.StrippedSequence"].tolist()
                 modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
@@ -7756,202 +8368,433 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
                 searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
-        
+
+                #remove the "% glycan m/z" from the Total Glycan Composition
+                searchoutput["Total Glycan Composition"]=searchoutput["Total Glycan Composition"].str.split("%",expand=True)[0]
+            if input.software_secondary()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
+
         #for BPS input
         if ".zip" in input.searchreport_secondary()[0]["name"]:
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            searchoutput=pd.DataFrame()
+            bpszip=ZipFile(input.searchreport_secondary()[0]["datapath"])
+            bpszip.extractall()
+            metadata_bps=pd.read_csv("metadata.csv")
+            runlist=metadata_bps["processing_run_uuid"].tolist()
+            cwd=os.getcwd()+"\\processing-run"
+            os.chdir(cwd)
             if input.software_secondary()=="bps_timsrescore":
-                searchoutput=pd.DataFrame()
+                if input.software_secondary_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pgfdr.peptide.parquet")
 
-                bpszip=ZipFile(input.searchreport_secondary()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)&(peptide_dict[key]["protein_list"].str.contains("con_")==False)].reset_index(drop=True)
+                        df=df.rename(columns={"sample_name":"R.FileName",
+                                        "stripped_peptide":"PEP.StrippedSequence",
+                                        "precursor_mz":"FG.PrecMz",
+                                        "rt":"EG.ApexRT",
+                                        "charge":"FG.Charge",
+                                        "ook0":"EG.IonMobility",
+                                        "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
 
-                peptide_dict=dict()
-                samplename_list=[]
-                for run in runlist:
-                    #change working dir to next processing run subfolder
+                        proteingroups=[]
+                        proteinnames=[]
+                        proteinlist_column=df["protein_list"].tolist()
+                        for item in proteinlist_column:
+                            if item.count(";")==0:
+                                templist=item.split("|")
+                                proteingroups.append(templist[1])
+                                proteinnames.append(templist[2])
+                            else:
+                                proteingroups_torejoin=[]
+                                proteinnames_torejoin=[]
+                                for entry in item.split(";"):
+                                    templist=entry.split("|")
+                                    proteingroups_torejoin.append(templist[1])
+                                    proteinnames_torejoin.append(templist[2])
+                                proteingroups.append(";".join(proteingroups_torejoin))
+                                proteinnames.append(";".join(proteinnames_torejoin))
+                        df["PG.ProteinGroups"]=proteingroups
+                        df["PG.ProteinNames"]=proteinnames
+                        
+                        #adding a q-value filter before dropping the column
+                        df=df[df["global_peptide_qvalue"]<=0.01]
+
+                        df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                        "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                        "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                        "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                        "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                        
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_secondary_bps_report_type()=="quant":
+                    run=runlist[0]
                     os.chdir(cwd+"\\"+run)
-                    #read files from each processing run subfolder, I think only ones that are neeed are pgfdr.peptide and summary-results
-                    #candidates=pd.read_parquet("candidates.candidates.parquet")
-                    #timsrescorer=pd.read_parquet("timsrescorer.psm.parquet")
-                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")
-                    #pgfdr_protein=pd.read_parquet("pgfdr.protein.parquet")
-                    #summary_results=pd.read_parquet("summary-results.results.parquet")
-                    #samplename=summary_results["sample_name"][0]
-                    #samplename_list.append(samplename)
-                    
-                    peptide_dict[run]=pgfdr_peptide
-
-                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
-                for key in peptide_dict.keys():
-                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
-                    df=df.rename(columns={"sample_name":"R.FileName",
-                                    "stripped_peptide":"PEP.StrippedSequence",
-                                    "precursor_mz":"FG.PrecMz",
-                                    "rt":"EG.ApexRT",
-                                    "charge":"FG.Charge",
-                                    "ook0":"EG.IonMobility",
-                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
-
-                    proteingroups=[]
-                    proteinnames=[]
-                    proteinlist_column=df["protein_list"].tolist()
-                    for item in proteinlist_column:
-                        if item.count(";")==0:
-                            templist=item.split("|")
-                            proteingroups.append(templist[1])
-                            proteinnames.append(templist[2])
-                        else:
-                            proteingroups_torejoin=[]
-                            proteinnames_torejoin=[]
-                            for entry in item.split(";"):
-                                templist=entry.split("|")
-                                proteingroups_torejoin.append(templist[1])
-                                proteinnames_torejoin.append(templist[2])
-                            proteingroups.append(";".join(proteingroups_torejoin))
-                            proteinnames.append(";".join(proteinnames_torejoin))
-                    df["PG.ProteinGroups"]=proteingroups
-                    df["PG.ProteinNames"]=proteinnames
+                    searchoutput=pd.read_parquet("consolidation.peptide.parquet")
+                    proteinparquet=pd.read_parquet("maxlfq.protein.parquet")
                     
                     #adding a q-value filter before dropping the column
-                    df=df[df["global_peptide_qvalue"]<=0.01]
+                    searchoutput=searchoutput[searchoutput["global_peptide_qvalue"]<=0.01]
 
-                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
-                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
-                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
-                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
-                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "quantity":"FG.MS2Quantity",
+                                                    "precursor_mz":"FG.PrecMz",
+                                                    "charge":"FG.Charge",
+                                                    "rt_apex":"EG.ApexRT",
+                                                    "ook0":"EG.IonMobility"
+                                                    },inplace=True)
+
+                    searchoutput.drop(columns=["index","maxlfq_peptide_index","processing_run_uuid","maxlfq_run_index","candidate_id",
+                                            "protein_group_name","maxlfq_protein_group_index","global_peptide_qvalue",
+                                            "psm_pep","peptide_pep","is_target","is_contaminant","fwhm_rt_start","fwhm_rt_end"
+                                            ],errors="ignore",inplace=True)
                     
-                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
-
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_max_lfq"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_accession"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.MS2Quantity"]=protein_quant
                 #rename ptms 
                 searchoutput=searchoutput.reset_index(drop=True)
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({
-                        "42.010565":"Acetyl (Protein N-term)",
-                        "57.021464":"Carbamidomethyl (C)",
-                        "79.966331":"Phospho (STY)",
-                        "15.994915":"Oxidation (M)"},regex=True)
-
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
-
-                #build and add the EG.ModifiedPeptide column
-                modifiedpeptides=[]
-                for i,entry in enumerate(searchoutput["ptm_locations"]):
-                    if entry=="-1":
-                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
-                    else:
-                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
-                        if len(searchoutput["ptm_locations"][i])==1:
-                            mod_loc=int(searchoutput["ptm_locations"][i])+1
-                            mod_add=searchoutput["ptms"][i]
-                            str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                        else:
-                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
-                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            ptms_for_loop=[]
-                            for ele in ptms:
-                                ptms_for_loop.append("["+ele+"]")
-                            for j,loc in enumerate(ptmlocs):
-                                mod_loc=int(loc)+j+1
-                                mod_add=ptms_for_loop[j]
-                                str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
-                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
             if input.software_secondary()=="bps_timsdiann":
-                searchoutput=pd.DataFrame()
+                if input.software_secondary_bps_report_type()=="qual":
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(os.getcwd()+"\\"+run)
+                        bps_resultzip=ZipFile("tims-diann.result.zip")
+                        bps_resultzip.extractall()
+                        results=pd.read_csv("results.tsv",sep="\t")
+                        searchoutput=pd.concat([searchoutput,results])
+                    
+                    searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                bpszip=ZipFile(input.searchreport_secondary()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                            "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                            "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                            "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                            "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                            "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                            "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                            "Precursor.Normalised"],inplace=True,errors='ignore')
 
-                for run in runlist:
-                    os.chdir(cwd)
-                    os.chdir(os.getcwd()+"\\"+run)
-                    bps_resultzip=ZipFile("tims-diann.result.zip")
-                    bps_resultzip.extractall()
-                    results=pd.read_csv("results.tsv",sep="\t")
-                    searchoutput=pd.concat([searchoutput,results])
+                    searchoutput.rename(columns={"File.Name":"R.FileName",
+                                                "Protein.Group":"PG.ProteinGroups",
+                                                "Protein.Ids":"PG.ProteinAccessions",
+                                                "Protein.Names":"PG.ProteinNames",
+                                                "Genes":"PG.Genes",
+                                                "PG.Quantity":"PG.MS2Quantity",
+                                                "Modified.Sequence":"EG.ModifiedPeptide",
+                                                "Stripped.Sequence":"PEP.StrippedSequence",
+                                                "Precursor.Charge":"FG.Charge",
+                                                "Q.Value":"EG.Qvalue",
+                                                "PG.Q.Value":"PG.Qvalue",
+                                                "Precursor.Quantity":"FG.MS2Quantity",
+                                                "Precursor.Normalized":"FG.MS2RawQuantity",
+                                                "RT":"EG.ApexRT",
+                                                "Predicted.RT":"EG.RTPredicted",
+                                                "CScore":"EG.CScore",
+                                                "Proteotypic":"PEP.IsProteotypic",
+                                                "Exp.1/K0":"EG.IonMobility"},inplace=True)
 
-                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
 
-                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
-                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
-                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
-                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
-                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
-                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
-                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
-                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
-                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
-                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+                if input.software_secondary_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("tims-diann.peptide.parquet")
+                    proteinparquet=pd.read_parquet("tims-diann.protein.parquet")
 
-                searchoutput.rename(columns={"File.Name":"R.FileName",
-                                            "Protein.Group":"PG.ProteinGroups",
-                                            "Protein.Ids":"PG.ProteinAccessions",
-                                            "Protein.Names":"PG.ProteinNames",
-                                            "Genes":"PG.Genes",
-                                            "PG.Quantity":"PG.MS2Quantity",
-                                            "Modified.Sequence":"EG.ModifiedPeptide",
-                                            "Stripped.Sequence":"PEP.StrippedSequence",
-                                            "Precursor.Charge":"FG.Charge",
-                                            "Q.Value":"EG.Qvalue",
-                                            "PG.Q.Value":"PG.Qvalue",
-                                            "Precursor.Quantity":"FG.MS2Quantity",
-                                            "Precursor.Normalized":"FG.MS2RawQuantity",
-                                            "RT":"EG.ApexRT",
-                                            "Predicted.RT":"EG.RTPredicted",
-                                            "CScore":"EG.CScore",
-                                            "Proteotypic":"PEP.IsProteotypic",
-                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRt",
+                                                "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_quantity_normalised","precursor_ms1_quantity",
+                                            "precursor_q_value","precursor_quant_quality","calc_mz","irt","predicted_irt","predicted_rt",
+                                            "library_ook0","is_proteotypic","identified_by","precursor_ms1_profile_corr","precursor_fwhm",
+                                            "evidence","c_score","decoy_evidence","decoy_c_score","ms2_scan","fragment_id","fragment_mz",
+                                            "fragment_correlation","fragment_quantity","fragment_quantity_corrected","rt_start","rt_end"
+                                            ],errors="ignore",inplace=True)
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                    #rename ptms 
+                    searchoutput=searchoutput.reset_index(drop=True)
+                    searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                    searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+                    
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+            if input.software_secondary()=="bps_pulsar":
+                if input.software_secondary_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pulsar-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("pulsar-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "UniMod:1":"Acetyl (Protein N-term)",
-                    "UniMod:4":"Carbamidomethyl (C)",
-                    "UniMod:21":"Phospho (STY)",
-                    "UniMod:35":"Oxidation (M)"},regex=True)
+                        df.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "precursor_quantity":"FG.MS2Quantity",
+                                                    "psm_measured_ms1_mz":"FG.PrecMz",
+                                                    "precursor_charge":"FG.Charge",
+                                                    "psm_rt_apex":"EG.ApexRT",
+                                                    "psm_ook0_apex":"EG.IonMobility",
+                                                    "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                    },inplace=True)
+                        df.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                                "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                                "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                                "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities","precursor_used_for_quant",
+                                                "precursor_theoretical_mz","psm_delta_ms1_mz","psm_ms1_rt","psm_ook0","psm_fwhm",
+                                                "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue"
+                                                ],errors="ignore",inplace=True)
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_secondary_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("pulsar-archive-merge.peptide.parquet")
+                    proteinparquet=pd.read_parquet("pulsar-archive-merge.protein.parquet")
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "psm_measured_ms1_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "psm_rt_apex":"EG.ApexRT",
+                                                "psm_ook0_apex":"EG.IonMobility",
+                                                "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                            "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                            "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                            "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities",
+                                            "precursor_used_for_quant","precursor_theoretical_mz","psm_delta_ms1_mz","psm_fwhm",
+                                            "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue",
+                                            "psm_ms1_rt","psm_ook0"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software_secondary()=="bps_spectronaut":
+                if input.software_secondary_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("spectronaut-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("spectronaut-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
+                        df["EG.PeakWidth"]=df["rt_end"]-df["rt_start"]
+                        df.rename(columns={"sample_name":"R.FileName",
+                                           "precursor_quantity":"FG.MS2Quantity",
+                                           "stripped_peptide":"PEP.StrippedSequence",
+                                           "precursor_mz":"FG.PrecMz",
+                                           "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                                           "precursor_charge":"FG.Charge",
+                                           "rt":"EG.ApexRT",
+                                           "measured_ook0":"EG.IonMobility"
+                                            },inplace=True)
+                        df.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity_ms1","precursor_quantity_ms2",
+                                         "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                                         "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality",
+                                         "precursor_fwhm","pep_score"
+                                        ],errors="ignore",inplace=True)
+
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software_secondary_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("spectronaut-combine.peptide.parquet")
+                    proteinparquet=pd.read_parquet("spectronaut-combine.protein.parquet")
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                             "stripped_peptide":"PEP.StrippedSequence",
+                             "precursor_quantity_ms2":"FG.MS2Quantity",
+                             "precursor_mz":"FG.PrecMz",
+                             "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                             "precursor_charge":"FG.Charge",
+                             "rt":"EG.ApexRT",
+                             "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity","precursor_quantity_ms1",
+                           "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                           "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality","precursor_fwhm","pep_score"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
             if input.software_secondary()=="bps_denovo":
                 denovo_score=65.0
-
-                searchoutput=pd.DataFrame()
-
-                bpszip=ZipFile(input.searchreport()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
-
                 peptide_dict=dict()
                 protein_dict=dict()
                 for run in runlist:
+                    os.chdir(cwd)
                     #change working dir to next processing run subfolder
                     os.chdir(cwd+"\\"+run)
 
@@ -8007,18 +8850,119 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                     searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
 
-                #rename PTMs
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
-                                                                    "15.9949":"Oxidation (M)",
-                                                                    "15.994915":"Oxidation (M)",
-                                                                    "79.966331":"Phospho (STY)",
-                                                                    "0.984":"Deamidation (NQ)",
-                                                                    },regex=True)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software_secondary()=="glycoscape":
+                results_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
 
+                    results_dict[run]=pd.read_parquet("myriad-merger.glycopsm.parquet")
+
+                for key in results_dict.keys():
+                    parquet=results_dict[key]
+
+                    #filter parquet file
+                    parquet=parquet[parquet["mokapot_psm_qvalue"]<=0.01].reset_index(drop=True)
+
+                    parquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "observed_precursor_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "peptide_ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                },inplace=True)
+
+                    parquet.drop(columns=["index","processing_run_uuid","ms2_id","peptide_candidate_id","glycan_candidate_id",
+                                            "protein_group_parent_id","protein_group_name","leading_aa","trailing_aa","hexnac_modification",
+                                            "glycosylation_motif","is_contaminant","is_target","peptide_mh","peptide_calc_mh",
+                                            "peptide_isotope_offset","x_corr_score","delta_cn_score","number_matched_ions",
+                                            "mokapot_psm_score","mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep",
+                                            "global_peptide_score","Y1_mz","Y1_charge","experimental_glycan_mr","glycan_isotope_offset",
+                                            "glycan_composition_mass","filtered_glycan_rank","ambiguous_glycan_composition",
+                                            "glycan_rank","building_blocks_coverage","fucose_evidence","Y5Y1_evidence","has_core",
+                                            "sia_smaller_hn","composition_oxonium_count","composition_oxonium_intensity",
+                                            "spectrum_oxonium_count","oxonium_relative_intensity_sum","fucose_shadow_count",
+                                            "fucose_shadow_intensity_sum","bb_names","bb_oxonium_count","bb_oxonium_intensity",
+                                            "oxonium_ions_names","oxonium_ions_mzs","oxonium_ions_intensity","Y_ions_names",
+                                            "oxonium_relative_intensity_sum","Y_ions_mass_offset","Y_ions_intensity","extra_ions_names",
+                                            "extra_ions_mass_offset","extra_ions_intensity","Rec"    
+                                            ],inplace=True,errors="ignore")
+
+                    ### reordered how this works so that all the conversions are done in-loop instead of once the whole sheet has been concatenated
+                    ### this seems to run faster than concatenating everything and then doing conversions
+
+                    #convert glycan_composition column entries to format from fragger-glyco
+                    convert_dict={"H":"Hex","N":"HexNAc","F":"Fuc","S":"NeuAc","G":"NeuGc"}
+                    glycanlist=parquet["glycan_composition"].tolist()
+                    glycanlist_updated=[]
+                    glycanlist_ambiguous=[]
+                    for i,entry in enumerate(glycanlist):
+                        if entry is None or entry=="unidentified":
+                            glycanlist_updated.append(np.nan)
+                            glycanlist_ambiguous.append(np.nan)
+                        else:
+                            if "," in entry:
+                                entry=entry.split(",")[0]
+                                glycanlist_ambiguous.append(True)
+                            else:
+                                glycanlist_ambiguous.append(False)
+                            entrylist=list(entry)
+                            newglycanentry=[]
+                            for ele in entrylist:
+                                if ele.isnumeric()==True:
+                                    newglycanentry.append("("+ele+")")
+                                else:
+                                    newglycanentry.append(convert_dict[ele])
+                            glycanlist_updated.append("".join(newglycanentry))
+                    parquet["Total Glycan Composition"]=glycanlist_updated
+                    parquet["Ambiguous Glycan ID"]=glycanlist_ambiguous
+
+                    #unpack protein_list column
+                    proteinlist=parquet["protein_list"].str.split(";").tolist()
+
+                    truthlist=[]
+                    for entry in proteinlist:
+                        if "Reverse" not in entry[0] and "contaminant" not in str(entry):
+                            truthlist.append(True)
+                        else:
+                            truthlist.append(False)
+                    parquet=parquet[truthlist]
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=parquet["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+
+                    parquet["PG.ProteinGroups"]=proteingroups
+                    parquet["PG.ProteinNames"]=proteinnames
+                    parquet.drop(columns=["protein_list"],inplace=True)
+
+                    parquet["ptms"]=parquet["ptms"].astype(str)
+                    parquet["ptms"]=parquet["ptms"].replace(ptmdict,regex=True)
+
+                    searchoutput=pd.concat([searchoutput,parquet],ignore_index=True)
+            
+            if "EG.ModifiedPeptide" not in searchoutput.columns:
                 #build and add the EG.ModifiedPeptide column
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
                 modifiedpeptides=[]
                 for i,entry in enumerate(searchoutput["ptm_locations"]):
                     if entry=="-1":
@@ -8039,6 +8983,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                     ptmlocs.remove(ele)
                             ptms_for_loop=[]
                             for ele in ptms:
+                                ele=ele.strip()
                                 ptms_for_loop.append("["+ele+"]")
                             for j,loc in enumerate(ptmlocs):
                                 mod_loc=int(loc)+j+1
@@ -8047,13 +8992,16 @@ def server(input: Inputs, output: Outputs, session: Session):
                             modifiedpeptides.append("".join(str_to_list))
                 searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
                 searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+            
+            searchoutput=searchoutput.drop(columns=["protein_group_parent_id"],errors="ignore")
+            
+            #add Condition and Replicate columns for filling in from metadata
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+            
+            #change the cwd back to the code file since we changed it to the uploaded file 
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-        
         #for DIA-NN 2.0 input
         if ".parquet" in input.searchreport_secondary()[0]["name"]:
             if len(input.searchreport_secondary())>1:
@@ -8063,11 +9011,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                     searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_parquet(input.searchreport_secondary()[0]["datapath"])
-            if input.software()=="diann2.0":
+            if input.software_secondary()=="diann2.0":
                 searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
 
                 searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
                                             "Stripped.Sequence":"PEP.StrippedSequence",
@@ -8079,6 +9034,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "RT":"EG.ApexRT",
                                             "IM":"EG.IonMobility",
                                             "Precursor.Quantity":"FG.MS2Quantity",
+                                            "PG.MaxLFQ":"PG.MS2Quantity"
                                             },inplace=True)
 
                 searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
@@ -8100,11 +9056,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         searchoutput_secondary=searchoutput.sort_values('R.FileName')
@@ -8168,21 +9120,23 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.text
     def metadata_reminder_secondary():
         if input.software_secondary()=="spectronaut":
-            return "Use the Shiny report format when exporting search results. R.Condition and R.Replicate are automatically updated in the metadata based on this file. Click on 'Apply Changes' even if the metadata table was not updated."
+            return "Use the Shiny report format when exporting search results to a .tsv file."
         if input.software_secondary()=="diann":
-            return "Use the report.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the report.tsv file as the file input."
         if input.software_secondary()=="diann2.0":
-            return "Use the report.parquet file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the report.parquet file as the file input."
         if input.software_secondary()=="ddalibrary":
             return "DDA libraries have limited functionality, can only plot ID metrics."
         if input.software_secondary()=="fragpipe":
-            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the psm.tsv file as the file input."
         if input.software_secondary()=="fragpipe_glyco":
-            return "Use the psm.tsv file as the file input. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches. Use the Glycoproteomics tab for processing."
-        if input.software_secondary()=="bps_timsrescore":
-            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
-        if input.software_secondary()=="bps_timsdiann":
-            return "Use the .zip file from the artefacts download. Make sure to fill out R.Condition and R.Replicate columns in the metadata and click on 'Apply Changes' after selecting the necessary switches."
+            return "Use the psm.tsv file as the file input. Use the Glycoproteomics tab for processing."
+        if input.software_secondary()=="bps_timsrescore" or input.software()=="bps_timsdiann" or input.software()=="bps_pulsar" or input.software()=="bps_spectronaut":
+            return "Use the .zip file from the artifacts download. File upload can take several minutes because of how protein information is mapped to the peptide file."
+        if input.software_secondary()=="bps_denovo":
+            return "Use the .zip file from the artifacts download."
+        if input.software_secondary()=="glycoscape":
+            return "Use the .zip file from the artifacts download. Use the Glycoproteomics tab for processing."
 
     #download metadata table as shown
     @render.download(filename="metadata_"+str(date.today())+".csv")
@@ -8789,11 +9743,66 @@ def server(input: Inputs, output: Outputs, session: Session):
 # ============================================================================= Two-Software Comparison
 #region
     # ====================================== File Import
+    @render.ui
+    def software1_ui():
+        if input.software1_general()=="spectronaut":
+            opts={"spectronaut":"directDIA",
+                  "ddalibrary":"DDA Library Search"}
+        if input.software1_general()=="diann":
+            opts={"diann":"DIA-NN pre 2.0",
+                  "diann2.0":"DIA-NN 2.0"}
+        if input.software1_general()=="fragpipe":
+            opts={"fragpipe":"FragPipe",
+                  "fragpipe_glyco":"FragPipe Glyco"}
+        if input.software1_general()=="bps":
+            opts={"bps_timsrescore":"tims-rescore",
+                  "bps_timsdiann":"tims-DIANN",
+                  "bps_spectronaut":"Spectronaut",
+                  "bps_pulsar":"Pulsar",
+                  "bps_denovo":"BPS Novor",
+                  "glycoscape":"Glycoscape"}
+        return ui.input_radio_buttons("software1","",choices=opts)
+    @render.ui
+    def software1_quant_ui():
+        if input.software1_general()=="bps":
+            if input.software1()=="bps_denovo" or input.software1()=="glycoscape":
+                pass
+            else:
+                return ui.input_radio_buttons("software1_bps_report_type","",choices={"qual":"Qualitative","quant":"Quantitative"})
+    @render.ui
+    def software2_ui():
+        if input.software2_general()=="spectronaut":
+            opts={"spectronaut":"directDIA",
+                  "ddalibrary":"DDA Library Search"}
+        if input.software2_general()=="diann":
+            opts={"diann":"DIA-NN pre 2.0",
+                  "diann2.0":"DIA-NN 2.0"}
+        if input.software2_general()=="fragpipe":
+            opts={"fragpipe":"FragPipe",
+                  "fragpipe_glyco":"FragPipe Glyco"}
+        if input.software2_general()=="bps":
+            opts={"bps_timsrescore":"tims-rescore",
+                  "bps_timsdiann":"tims-DIANN",
+                  "bps_spectronaut":"Spectronaut",
+                  "bps_pulsar":"Pulsar",
+                  "bps_denovo":"BPS Novor",
+                  "glycoscape":"Glycoscape"}
+        return ui.input_radio_buttons("software2","",choices=opts)
+    @render.ui
+    def software2_quant_ui():
+        if input.software2_general()=="bps":
+            if input.software2()=="bps_denovo" or input.software2()=="glycoscape":
+                pass
+            else:
+                return ui.input_radio_buttons("software2_bps_report_type","",choices={"qual":"Qualitative","quant":"Quantitative"})
+
     #import first search report file
     @reactive.calc
     def compare_inputfile1():
         if input.compare_searchreport1() is None:
             return pd.DataFrame()
+        ptmdict=ptmdict=ptmdict_apply()
+        #for DIA-NN and FragPipe input
         if ".tsv" in input.compare_searchreport1()[0]["name"]:
             if len(input.compare_searchreport1())>1:
                 searchoutput=pd.DataFrame()
@@ -8802,11 +9811,17 @@ def server(input: Inputs, output: Outputs, session: Session):
                     searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_csv(input.compare_searchreport1()[0]["datapath"],sep="\t")
-            if input.compare_software1()=="diann":
-                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+            if input.software1()=="diann":
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
 
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                             "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
@@ -8820,7 +9835,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
                                             "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={#"Run":"R.FileName",
+                searchoutput.rename(columns={"Run":"R.FileName",
                             "Protein.Group":"PG.ProteinGroups",
                             "Protein.Ids":"PG.ProteinAccessions",
                             "Protein.Names":"PG.ProteinNames",
@@ -8840,26 +9855,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                             "Proteotypic":"PEP.IsProteotypic"},inplace=True)
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:7":"Deamidation (NQ)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
-            if input.compare_software1()=="ddalibrary":
-                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
-                                "PrecursorCharge":"FG.Charge",
-                                "ModifiedPeptide":"EG.ModifiedPeptide",
-                                "StrippedPeptide":"PEP.StrippedSequence",
-                                "IonMobility":"EG.IonMobility",
-                                "PrecursorMz":"FG.PrecMz",
-                                "ReferenceRunMS1Response":"FG.MS2Quantity",
-                                "Protein Name":"PG.ProteinNames"})
-            if input.compare_software1()=="fragpipe":
-                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+            if input.software1()=="fragpipe":
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 
@@ -8873,7 +9870,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                         "Protein End","Assigned Modifications","Observed Modifications",
                                         "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                searchoutput.rename(columns={"Spectrum File":"R.FileName",
+                                            "Peptide":"PEP.StrippedSequence",
                                             "Modified Peptide":"EG.ModifiedPeptide",
                                             "Charge":"FG.Charge",
                                             "Retention":"EG.ApexRT",
@@ -8886,12 +9884,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             },inplace=True)
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "n":"",
-                    "147":"Oxidation (M)",
-                    "222":"Carbamidomethyl (C)",
-                    "43":"Acetyl (Protein N-term)",
-                    "111":""},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({"n":""},regex=True)#just to get rid of the preceding n in the modified sequence when N-term is acetylated
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
                 peps=searchoutput["PEP.StrippedSequence"].tolist()
                 modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
@@ -8901,7 +9896,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     else:
                         modpeps[i]=modpeps[i]
                 searchoutput["EG.ModifiedPeptide"]=modpeps
-            if input.compare_software1()=="fragpipe_glyco":
+            if input.software1()=="fragpipe_glyco":
                 #if the Spectrum File column is just a single value, get the file names from the Spectrum column
                 if searchoutput["Spectrum"][0].split(".")[0] not in searchoutput["Spectrum File"][0]:
                     fragger_filelist=searchoutput["Spectrum"].str.split(".",expand=True).drop(columns=[1,2,3]).drop_duplicates().reset_index(drop=True)
@@ -8949,191 +9944,428 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
                 searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
-        
+
+                #remove the "% glycan m/z" from the Total Glycan Composition
+                searchoutput["Total Glycan Composition"]=searchoutput["Total Glycan Composition"].str.split("%",expand=True)[0]
+            if input.software1()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
         #for BPS input
         if ".zip" in input.compare_searchreport1()[0]["name"]:
-            if input.compare_software1()=="bps_timsrescore":
-                searchoutput=pd.DataFrame()
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            searchoutput=pd.DataFrame()
+            bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
+            bpszip.extractall()
+            metadata_bps=pd.read_csv("metadata.csv")
+            runlist=metadata_bps["processing_run_uuid"].tolist()
+            cwd=os.getcwd()+"\\processing-run"
+            os.chdir(cwd)
+            if input.software1()=="bps_timsrescore":
+                if input.software1_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pgfdr.peptide.parquet")
 
-                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)&(peptide_dict[key]["protein_list"].str.contains("con_")==False)].reset_index(drop=True)
+                        df=df.rename(columns={"sample_name":"R.FileName",
+                                        "stripped_peptide":"PEP.StrippedSequence",
+                                        "precursor_mz":"FG.PrecMz",
+                                        "rt":"EG.ApexRT",
+                                        "charge":"FG.Charge",
+                                        "ook0":"EG.IonMobility",
+                                        "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
 
-                peptide_dict=dict()
-                samplename_list=[]
-                for run in runlist:
-                    os.chdir(cwd)
+                        proteingroups=[]
+                        proteinnames=[]
+                        proteinlist_column=df["protein_list"].tolist()
+                        for item in proteinlist_column:
+                            if item.count(";")==0:
+                                templist=item.split("|")
+                                proteingroups.append(templist[1])
+                                proteinnames.append(templist[2])
+                            else:
+                                proteingroups_torejoin=[]
+                                proteinnames_torejoin=[]
+                                for entry in item.split(";"):
+                                    templist=entry.split("|")
+                                    proteingroups_torejoin.append(templist[1])
+                                    proteinnames_torejoin.append(templist[2])
+                                proteingroups.append(";".join(proteingroups_torejoin))
+                                proteinnames.append(";".join(proteinnames_torejoin))
+                        df["PG.ProteinGroups"]=proteingroups
+                        df["PG.ProteinNames"]=proteinnames
+                        
+                        #adding a q-value filter before dropping the column
+                        df=df[df["global_peptide_qvalue"]<=0.01]
+
+                        df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                        "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                        "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                        "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                        "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                        
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software1_bps_report_type()=="quant":
+                    run=runlist[0]
                     os.chdir(cwd+"\\"+run)
-                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")                   
-                    peptide_dict[run]=pgfdr_peptide
-
-                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
-                for key in peptide_dict.keys():
-                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
-                    df=df.rename(columns={"sample_name":"R.FileName",
-                                    "stripped_peptide":"PEP.StrippedSequence",
-                                    "precursor_mz":"FG.PrecMz",
-                                    "rt":"EG.ApexRT",
-                                    "charge":"FG.Charge",
-                                    "ook0":"EG.IonMobility",
-                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
-
-                    proteingroups=[]
-                    proteinnames=[]
-                    proteinlist_column=df["protein_list"].tolist()
-                    for item in proteinlist_column:
-                        if item.count(";")==0:
-                            templist=item.split("|")
-                            proteingroups.append(templist[1])
-                            proteinnames.append(templist[2])
-                        else:
-                            proteingroups_torejoin=[]
-                            proteinnames_torejoin=[]
-                            for entry in item.split(";"):
-                                templist=entry.split("|")
-                                proteingroups_torejoin.append(templist[1])
-                                proteinnames_torejoin.append(templist[2])
-                            proteingroups.append(";".join(proteingroups_torejoin))
-                            proteinnames.append(";".join(proteinnames_torejoin))
-                    df["PG.ProteinGroups"]=proteingroups
-                    df["PG.ProteinNames"]=proteinnames
+                    searchoutput=pd.read_parquet("consolidation.peptide.parquet")
+                    proteinparquet=pd.read_parquet("maxlfq.protein.parquet")
                     
                     #adding a q-value filter before dropping the column
-                    df=df[df["global_peptide_qvalue"]<=0.01]
+                    searchoutput=searchoutput[searchoutput["global_peptide_qvalue"]<=0.01]
 
-                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
-                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
-                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
-                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
-                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "quantity":"FG.MS2Quantity",
+                                                    "precursor_mz":"FG.PrecMz",
+                                                    "charge":"FG.Charge",
+                                                    "rt_apex":"EG.ApexRT",
+                                                    "ook0":"EG.IonMobility"
+                                                    },inplace=True)
+
+                    searchoutput.drop(columns=["index","maxlfq_peptide_index","processing_run_uuid","maxlfq_run_index","candidate_id",
+                                            "protein_group_name","maxlfq_protein_group_index","global_peptide_qvalue",
+                                            "psm_pep","peptide_pep","is_target","is_contaminant","fwhm_rt_start","fwhm_rt_end"
+                                            ],errors="ignore",inplace=True)
                     
-                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
-
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_max_lfq"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_accession"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.MS2Quantity"]=protein_quant
                 #rename ptms 
                 searchoutput=searchoutput.reset_index(drop=True)
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({
-                        "42.010565":"Acetyl (Protein N-term)",
-                        "57.021464":"Carbamidomethyl (C)",
-                        "79.966331":"Phospho (STY)",
-                        "15.994915":"Oxidation (M)"},regex=True)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software1()=="bps_timsdiann":
+                if input.software1_bps_report_type()=="qual":
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(os.getcwd()+"\\"+run)
+                        bps_resultzip=ZipFile("tims-diann.result.zip")
+                        bps_resultzip.extractall()
+                        results=pd.read_csv("results.tsv",sep="\t")
+                        searchoutput=pd.concat([searchoutput,results])
+                    
+                    searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+                    searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                            "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                            "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                            "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                            "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                            "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                            "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                            "Precursor.Normalised"],inplace=True,errors='ignore')
 
-                #build and add the EG.ModifiedPeptide column
-                modifiedpeptides=[]
-                for i,entry in enumerate(searchoutput["ptm_locations"]):
-                    if entry=="-1":
-                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
-                    else:
-                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
-                        if len(searchoutput["ptm_locations"][i])==1:
-                            mod_loc=int(searchoutput["ptm_locations"][i])+1
-                            mod_add=searchoutput["ptms"][i]
-                            str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                        else:
-                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
-                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            ptms_for_loop=[]
-                            for ele in ptms:
-                                ptms_for_loop.append("["+ele+"]")
-                            for j,loc in enumerate(ptmlocs):
-                                mod_loc=int(loc)+j+1
-                                mod_add=ptms_for_loop[j]
-                                str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
-                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+                    searchoutput.rename(columns={"File.Name":"R.FileName",
+                                                "Protein.Group":"PG.ProteinGroups",
+                                                "Protein.Ids":"PG.ProteinAccessions",
+                                                "Protein.Names":"PG.ProteinNames",
+                                                "Genes":"PG.Genes",
+                                                "PG.Quantity":"PG.MS2Quantity",
+                                                "Modified.Sequence":"EG.ModifiedPeptide",
+                                                "Stripped.Sequence":"PEP.StrippedSequence",
+                                                "Precursor.Charge":"FG.Charge",
+                                                "Q.Value":"EG.Qvalue",
+                                                "PG.Q.Value":"PG.Qvalue",
+                                                "Precursor.Quantity":"FG.MS2Quantity",
+                                                "Precursor.Normalized":"FG.MS2RawQuantity",
+                                                "RT":"EG.ApexRT",
+                                                "Predicted.RT":"EG.RTPredicted",
+                                                "CScore":"EG.CScore",
+                                                "Proteotypic":"PEP.IsProteotypic",
+                                                "Exp.1/K0":"EG.IonMobility"},inplace=True)
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-            if input.compare_software1()=="bps_timsdiann":
-                searchoutput=pd.DataFrame()
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
 
-                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+                if input.software1_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("tims-diann.peptide.parquet")
+                    proteinparquet=pd.read_parquet("tims-diann.protein.parquet")
 
-                for run in runlist:
-                    os.chdir(cwd)
-                    os.chdir(os.getcwd()+"\\"+run)
-                    bps_resultzip=ZipFile("tims-diann.result.zip")
-                    bps_resultzip.extractall()
-                    results=pd.read_csv("results.tsv",sep="\t")
-                    searchoutput=pd.concat([searchoutput,results])
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRt",
+                                                "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_quantity_normalised","precursor_ms1_quantity",
+                                            "precursor_q_value","precursor_quant_quality","calc_mz","irt","predicted_irt","predicted_rt",
+                                            "library_ook0","is_proteotypic","identified_by","precursor_ms1_profile_corr","precursor_fwhm",
+                                            "evidence","c_score","decoy_evidence","decoy_c_score","ms2_scan","fragment_id","fragment_mz",
+                                            "fragment_correlation","fragment_quantity","fragment_quantity_corrected","rt_start","rt_end"
+                                            ],errors="ignore",inplace=True)
 
-                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+                    #rename ptms 
+                    searchoutput=searchoutput.reset_index(drop=True)
+                    searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                    searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+                    
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+            if input.software1()=="bps_pulsar":
+                if input.software1_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pulsar-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("pulsar-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
 
-                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
-                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
-                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
-                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
-                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
-                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
-                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
-                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
-                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
-                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+                        df.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "precursor_quantity":"FG.MS2Quantity",
+                                                    "psm_measured_ms1_mz":"FG.PrecMz",
+                                                    "precursor_charge":"FG.Charge",
+                                                    "psm_rt_apex":"EG.ApexRT",
+                                                    "psm_ook0_apex":"EG.IonMobility",
+                                                    "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                    },inplace=True)
+                        df.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                                "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                                "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                                "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities","precursor_used_for_quant",
+                                                "precursor_theoretical_mz","psm_delta_ms1_mz","psm_ms1_rt","psm_ook0","psm_fwhm",
+                                                "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue"
+                                                ],errors="ignore",inplace=True)
 
-                searchoutput.rename(columns={"File.Name":"R.FileName",
-                                            "Protein.Group":"PG.ProteinGroups",
-                                            "Protein.Ids":"PG.ProteinAccessions",
-                                            "Protein.Names":"PG.ProteinNames",
-                                            "Genes":"PG.Genes",
-                                            "PG.Quantity":"PG.MS2Quantity",
-                                            "Modified.Sequence":"EG.ModifiedPeptide",
-                                            "Stripped.Sequence":"PEP.StrippedSequence",
-                                            "Precursor.Charge":"FG.Charge",
-                                            "Q.Value":"EG.Qvalue",
-                                            "PG.Q.Value":"PG.Qvalue",
-                                            "Precursor.Quantity":"FG.MS2Quantity",
-                                            "Precursor.Normalized":"FG.MS2RawQuantity",
-                                            "RT":"EG.ApexRT",
-                                            "Predicted.RT":"EG.RTPredicted",
-                                            "CScore":"EG.CScore",
-                                            "Proteotypic":"PEP.IsProteotypic",
-                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software1_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("pulsar-archive-merge.peptide.parquet")
+                    proteinparquet=pd.read_parquet("pulsar-archive-merge.protein.parquet")
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "psm_measured_ms1_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "psm_rt_apex":"EG.ApexRT",
+                                                "psm_ook0_apex":"EG.IonMobility",
+                                                "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                            "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                            "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                            "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities",
+                                            "precursor_used_for_quant","precursor_theoretical_mz","psm_delta_ms1_mz","psm_fwhm",
+                                            "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue",
+                                            "psm_ms1_rt","psm_ook0"
+                                            ],errors="ignore",inplace=True)
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "UniMod:1":"Acetyl (Protein N-term)",
-                    "UniMod:4":"Carbamidomethyl (C)",
-                    "UniMod:21":"Phospho (STY)",
-                    "UniMod:35":"Oxidation (M)"},regex=True)
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software1()=="bps_spectronaut":
+                if input.software1_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("spectronaut-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("spectronaut-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
+                        df["EG.PeakWidth"]=df["rt_end"]-df["rt_start"]
+                        df.rename(columns={"sample_name":"R.FileName",
+                                           "precursor_quantity":"FG.MS2Quantity",
+                                           "stripped_peptide":"PEP.StrippedSequence",
+                                           "precursor_mz":"FG.PrecMz",
+                                           "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                                           "precursor_charge":"FG.Charge",
+                                           "rt":"EG.ApexRT",
+                                           "measured_ook0":"EG.IonMobility"
+                                            },inplace=True)
+                        df.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity_ms1","precursor_quantity_ms2",
+                                         "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                                         "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality",
+                                         "precursor_fwhm","pep_score"
+                                        ],errors="ignore",inplace=True)
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-            if input.compare_software1()=="bps_denovo":
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software1_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("spectronaut-combine.peptide.parquet")
+                    proteinparquet=pd.read_parquet("spectronaut-combine.protein.parquet")
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                             "stripped_peptide":"PEP.StrippedSequence",
+                             "precursor_quantity_ms2":"FG.MS2Quantity",
+                             "precursor_mz":"FG.PrecMz",
+                             "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                             "precursor_charge":"FG.Charge",
+                             "rt":"EG.ApexRT",
+                             "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity","precursor_quantity_ms1",
+                           "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                           "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality","precursor_fwhm","pep_score"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software1()=="bps_denovo":
                 denovo_score=65.0
-
-                searchoutput=pd.DataFrame()
-
-                bpszip=ZipFile(input.compare_searchreport1()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
-
                 peptide_dict=dict()
                 protein_dict=dict()
                 for run in runlist:
@@ -9193,18 +10425,119 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                     searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
 
-                #rename PTMs
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
-                                                                    "15.994915":"Oxidation (M)",
-                                                                    "15.9949":"Oxidation (M)",
-                                                                    "79.966331":"Phospho (STY)",
-                                                                    "0.984":"Deamidation (NQ)",
-                                                                    },regex=True)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software1()=="glycoscape":
+                results_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
 
+                    results_dict[run]=pd.read_parquet("myriad-merger.glycopsm.parquet")
+
+                for key in results_dict.keys():
+                    parquet=results_dict[key]
+
+                    #filter parquet file
+                    parquet=parquet[parquet["mokapot_psm_qvalue"]<=0.01].reset_index(drop=True)
+
+                    parquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "observed_precursor_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "peptide_ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                },inplace=True)
+
+                    parquet.drop(columns=["index","processing_run_uuid","ms2_id","peptide_candidate_id","glycan_candidate_id",
+                                            "protein_group_parent_id","protein_group_name","leading_aa","trailing_aa","hexnac_modification",
+                                            "glycosylation_motif","is_contaminant","is_target","peptide_mh","peptide_calc_mh",
+                                            "peptide_isotope_offset","x_corr_score","delta_cn_score","number_matched_ions",
+                                            "mokapot_psm_score","mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep",
+                                            "global_peptide_score","Y1_mz","Y1_charge","experimental_glycan_mr","glycan_isotope_offset",
+                                            "glycan_composition_mass","filtered_glycan_rank","ambiguous_glycan_composition",
+                                            "glycan_rank","building_blocks_coverage","fucose_evidence","Y5Y1_evidence","has_core",
+                                            "sia_smaller_hn","composition_oxonium_count","composition_oxonium_intensity",
+                                            "spectrum_oxonium_count","oxonium_relative_intensity_sum","fucose_shadow_count",
+                                            "fucose_shadow_intensity_sum","bb_names","bb_oxonium_count","bb_oxonium_intensity",
+                                            "oxonium_ions_names","oxonium_ions_mzs","oxonium_ions_intensity","Y_ions_names",
+                                            "oxonium_relative_intensity_sum","Y_ions_mass_offset","Y_ions_intensity","extra_ions_names",
+                                            "extra_ions_mass_offset","extra_ions_intensity","Rec"    
+                                            ],inplace=True,errors="ignore")
+
+                    ### reordered how this works so that all the conversions are done in-loop instead of once the whole sheet has been concatenated
+                    ### this seems to run faster than concatenating everything and then doing conversions
+
+                    #convert glycan_composition column entries to format from fragger-glyco
+                    convert_dict={"H":"Hex","N":"HexNAc","F":"Fuc","S":"NeuAc","G":"NeuGc"}
+                    glycanlist=parquet["glycan_composition"].tolist()
+                    glycanlist_updated=[]
+                    glycanlist_ambiguous=[]
+                    for i,entry in enumerate(glycanlist):
+                        if entry is None or entry=="unidentified":
+                            glycanlist_updated.append(np.nan)
+                            glycanlist_ambiguous.append(np.nan)
+                        else:
+                            if "," in entry:
+                                entry=entry.split(",")[0]
+                                glycanlist_ambiguous.append(True)
+                            else:
+                                glycanlist_ambiguous.append(False)
+                            entrylist=list(entry)
+                            newglycanentry=[]
+                            for ele in entrylist:
+                                if ele.isnumeric()==True:
+                                    newglycanentry.append("("+ele+")")
+                                else:
+                                    newglycanentry.append(convert_dict[ele])
+                            glycanlist_updated.append("".join(newglycanentry))
+                    parquet["Total Glycan Composition"]=glycanlist_updated
+                    parquet["Ambiguous Glycan ID"]=glycanlist_ambiguous
+
+                    #unpack protein_list column
+                    proteinlist=parquet["protein_list"].str.split(";").tolist()
+
+                    truthlist=[]
+                    for entry in proteinlist:
+                        if "Reverse" not in entry[0] and "contaminant" not in str(entry):
+                            truthlist.append(True)
+                        else:
+                            truthlist.append(False)
+                    parquet=parquet[truthlist]
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=parquet["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+
+                    parquet["PG.ProteinGroups"]=proteingroups
+                    parquet["PG.ProteinNames"]=proteinnames
+                    parquet.drop(columns=["protein_list"],inplace=True)
+
+                    parquet["ptms"]=parquet["ptms"].astype(str)
+                    parquet["ptms"]=parquet["ptms"].replace(ptmdict,regex=True)
+
+                    searchoutput=pd.concat([searchoutput,parquet],ignore_index=True)
+            
+            if "EG.ModifiedPeptide" not in searchoutput.columns:
                 #build and add the EG.ModifiedPeptide column
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
                 modifiedpeptides=[]
                 for i,entry in enumerate(searchoutput["ptm_locations"]):
                     if entry=="-1":
@@ -9225,6 +10558,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                     ptmlocs.remove(ele)
                             ptms_for_loop=[]
                             for ele in ptms:
+                                ele=ele.strip()
                                 ptms_for_loop.append("["+ele+"]")
                             for j,loc in enumerate(ptmlocs):
                                 mod_loc=int(loc)+j+1
@@ -9233,13 +10567,15 @@ def server(input: Inputs, output: Outputs, session: Session):
                             modifiedpeptides.append("".join(str_to_list))
                 searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
                 searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
+            
+            searchoutput=searchoutput.drop(columns=["protein_group_parent_id"],errors="ignore")
+            
+            #add Condition and Replicate columns for filling in from metadata
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+            
+            #change the cwd back to the code file since we changed it to the uploaded file 
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
         #for DIA-NN 2.0 input
         if ".parquet" in input.compare_searchreport1()[0]["name"]:
             if len(input.compare_searchreport1())>1:
@@ -9249,11 +10585,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                     searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_parquet(input.compare_searchreport1()[0]["datapath"])
-            if input.compare_software1()=="diann2.0":
+            if input.software1()=="diann2.0":
                 searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
 
                 searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
                                             "Stripped.Sequence":"PEP.StrippedSequence",
@@ -9265,6 +10608,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "RT":"EG.ApexRT",
                                             "IM":"EG.IonMobility",
                                             "Precursor.Quantity":"FG.MS2Quantity",
+                                            "PG.MaxLFQ":"PG.MS2Quantity"
                                             },inplace=True)
 
                 searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
@@ -9286,22 +10630,21 @@ def server(input: Inputs, output: Outputs, session: Session):
                     
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
+        #filter out decoy and contaminant sequences
+        searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
+        
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         file1=searchoutput.sort_values('R.FileName')
-
         return file1
-
     #import second search report file
     @reactive.calc
     def compare_inputfile2():
         if input.compare_searchreport2() is None:
             return pd.DataFrame()
+        ptmdict=ptmdict=ptmdict_apply()
+        #for DIA-NN and FragPipe input
         if ".tsv" in input.compare_searchreport2()[0]["name"]:
             if len(input.compare_searchreport2())>1:
                 searchoutput=pd.DataFrame()
@@ -9310,11 +10653,17 @@ def server(input: Inputs, output: Outputs, session: Session):
                     searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_csv(input.compare_searchreport2()[0]["datapath"],sep="\t")
-            if input.compare_software2()=="diann":
-                searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
+            if input.software2()=="diann":
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
 
                 searchoutput.drop(columns=["File.Name","PG.Normalized","PG.MaxLFQ","Genes.Quantity",
                                             "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Precursor.Id",
@@ -9328,7 +10677,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "Predicted.iIM","PG.Normalised","PTM.Informative","PTM.Specific","PTM.Localising",
                                             "PTM.Q.Value","PTM.Site.Confidence","Lib.PTM.Site.Confidence"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={#"Run":"R.FileName",
+                searchoutput.rename(columns={"Run":"R.FileName",
                             "Protein.Group":"PG.ProteinGroups",
                             "Protein.Ids":"PG.ProteinAccessions",
                             "Protein.Names":"PG.ProteinNames",
@@ -9348,26 +10697,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                             "Proteotypic":"PEP.IsProteotypic"},inplace=True)
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:7":"Deamidation (NQ)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
-            if input.compare_software2()=="ddalibrary":
-                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
-                                "PrecursorCharge":"FG.Charge",
-                                "ModifiedPeptide":"EG.ModifiedPeptide",
-                                "StrippedPeptide":"PEP.StrippedSequence",
-                                "IonMobility":"EG.IonMobility",
-                                "PrecursorMz":"FG.PrecMz",
-                                "ReferenceRunMS1Response":"FG.MS2Quantity",
-                                "Protein Name":"PG.ProteinNames"})
-            if input.compare_software2()=="fragpipe":
-                searchoutput.rename(columns={"Spectrum File":"R.FileName"},inplace=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+            if input.software2()=="fragpipe":
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 
@@ -9381,7 +10712,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                                         "Protein End","Assigned Modifications","Observed Modifications",
                                         "Purity","Is Unique","Protein","Protein Description","Mapped Genes","Mapped Proteins"],inplace=True,errors='ignore')
 
-                searchoutput.rename(columns={"Peptide":"PEP.StrippedSequence",
+                searchoutput.rename(columns={"Spectrum File":"R.FileName",
+                                            "Peptide":"PEP.StrippedSequence",
                                             "Modified Peptide":"EG.ModifiedPeptide",
                                             "Charge":"FG.Charge",
                                             "Retention":"EG.ApexRT",
@@ -9394,12 +10726,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             },inplace=True)
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "n":"",
-                    "147":"Oxidation (M)",
-                    "222":"Carbamidomethyl (C)",
-                    "43":"Acetyl (Protein N-term)",
-                    "111":""},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({"n":""},regex=True)#just to get rid of the preceding n in the modified sequence when N-term is acetylated
+
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
                 peps=searchoutput["PEP.StrippedSequence"].tolist()
                 modpeps=searchoutput["EG.ModifiedPeptide"].tolist()
@@ -9409,7 +10738,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     else:
                         modpeps[i]=modpeps[i]
                 searchoutput["EG.ModifiedPeptide"]=modpeps
-            if input.compare_software2()=="fragpipe_glyco":
+            if input.software2()=="fragpipe_glyco":
                 #if the Spectrum File column is just a single value, get the file names from the Spectrum column
                 if searchoutput["Spectrum"][0].split(".")[0] not in searchoutput["Spectrum File"][0]:
                     fragger_filelist=searchoutput["Spectrum"].str.split(".",expand=True).drop(columns=[1,2,3]).drop_duplicates().reset_index(drop=True)
@@ -9457,192 +10786,428 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 searchoutput["EG.ApexRT"]=searchoutput["EG.ApexRT"]/60
                 searchoutput["Is Unique"]=searchoutput["Is Unique"].astype(str)
-        
+
+                #remove the "% glycan m/z" from the Total Glycan Composition
+                searchoutput["Total Glycan Composition"]=searchoutput["Total Glycan Composition"].str.split("%",expand=True)[0]
+            if input.software2()=="ddalibrary":
+                searchoutput.rename(columns={"ReferenceRun":"R.FileName"},inplace=True)
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+                searchoutput=searchoutput.rename(columns={"ReferenceRun":"R.FileName",
+                                "PrecursorCharge":"FG.Charge",
+                                "ModifiedPeptide":"EG.ModifiedPeptide",
+                                "StrippedPeptide":"PEP.StrippedSequence",
+                                "IonMobility":"EG.IonMobility",
+                                "PrecursorMz":"FG.PrecMz",
+                                "ReferenceRunMS1Response":"FG.MS2Quantity",
+                                "Protein Name":"PG.ProteinNames"})
         #for BPS input
         if ".zip" in input.compare_searchreport2()[0]["name"]:
-            if input.compare_software2()=="bps_timsrescore":
-                searchoutput=pd.DataFrame()
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            searchoutput=pd.DataFrame()
+            bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
+            bpszip.extractall()
+            metadata_bps=pd.read_csv("metadata.csv")
+            runlist=metadata_bps["processing_run_uuid"].tolist()
+            cwd=os.getcwd()+"\\processing-run"
+            os.chdir(cwd)
+            if input.software2()=="bps_timsrescore":
+                if input.software2_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pgfdr.peptide.parquet")
 
-                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key][(peptide_dict[key]["protein_list"].str.contains("Reverse")==False)&(peptide_dict[key]["protein_list"].str.contains("contaminant")==False)&(peptide_dict[key]["protein_list"].str.contains("con_")==False)].reset_index(drop=True)
+                        df=df.rename(columns={"sample_name":"R.FileName",
+                                        "stripped_peptide":"PEP.StrippedSequence",
+                                        "precursor_mz":"FG.PrecMz",
+                                        "rt":"EG.ApexRT",
+                                        "charge":"FG.Charge",
+                                        "ook0":"EG.IonMobility",
+                                        "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
 
-                peptide_dict=dict()
-                samplename_list=[]
-                for run in runlist:
-                    os.chdir(cwd)
+                        proteingroups=[]
+                        proteinnames=[]
+                        proteinlist_column=df["protein_list"].tolist()
+                        for item in proteinlist_column:
+                            if item.count(";")==0:
+                                templist=item.split("|")
+                                proteingroups.append(templist[1])
+                                proteinnames.append(templist[2])
+                            else:
+                                proteingroups_torejoin=[]
+                                proteinnames_torejoin=[]
+                                for entry in item.split(";"):
+                                    templist=entry.split("|")
+                                    proteingroups_torejoin.append(templist[1])
+                                    proteinnames_torejoin.append(templist[2])
+                                proteingroups.append(";".join(proteingroups_torejoin))
+                                proteinnames.append(";".join(proteinnames_torejoin))
+                        df["PG.ProteinGroups"]=proteingroups
+                        df["PG.ProteinNames"]=proteinnames
+                        
+                        #adding a q-value filter before dropping the column
+                        df=df[df["global_peptide_qvalue"]<=0.01]
+
+                        df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
+                                        "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
+                                        "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
+                                        "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
+                                        "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                        
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software2_bps_report_type()=="quant":
+                    run=runlist[0]
                     os.chdir(cwd+"\\"+run)
-
-                    pgfdr_peptide=pd.read_parquet("pgfdr.peptide.parquet")                    
-                    peptide_dict[run]=pgfdr_peptide
-
-                #filter, rename/remove columns, and generate ProteinGroups and ProteinNames columns from protein_list column
-                for key in peptide_dict.keys():
-                    df=peptide_dict[key][peptide_dict[key]["protein_list"].str.contains("Reverse")==False].reset_index(drop=True)
-                    df=df.rename(columns={"sample_name":"R.FileName",
-                                    "stripped_peptide":"PEP.StrippedSequence",
-                                    "precursor_mz":"FG.PrecMz",
-                                    "rt":"EG.ApexRT",
-                                    "charge":"FG.Charge",
-                                    "ook0":"EG.IonMobility",
-                                    "ppm_error":"FG.CalibratedMassAccuracy (PPM)"})
-
-                    proteingroups=[]
-                    proteinnames=[]
-                    proteinlist_column=df["protein_list"].tolist()
-                    for item in proteinlist_column:
-                        if item.count(";")==0:
-                            templist=item.split("|")
-                            proteingroups.append(templist[1])
-                            proteinnames.append(templist[2])
-                        else:
-                            proteingroups_torejoin=[]
-                            proteinnames_torejoin=[]
-                            for entry in item.split(";"):
-                                templist=entry.split("|")
-                                proteingroups_torejoin.append(templist[1])
-                                proteinnames_torejoin.append(templist[2])
-                            proteingroups.append(";".join(proteingroups_torejoin))
-                            proteinnames.append(";".join(proteinnames_torejoin))
-                    df["PG.ProteinGroups"]=proteingroups
-                    df["PG.ProteinNames"]=proteinnames
+                    searchoutput=pd.read_parquet("consolidation.peptide.parquet")
+                    proteinparquet=pd.read_parquet("maxlfq.protein.parquet")
                     
                     #adding a q-value filter before dropping the column
-                    df=df[df["global_peptide_qvalue"]<=0.01]
+                    searchoutput=searchoutput[searchoutput["global_peptide_qvalue"]<=0.01]
 
-                    df=df.drop(columns=["index","processing_run_uuid","ms2_id","candidate_id","protein_group_parent_id",
-                                    "protein_group_name","leading_aa","trailing_aa","mokapot_psm_score","mokapot_psm_qvalue",
-                                    "mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep","global_peptide_score",
-                                    "x_corr_score","delta_cn_score","precursor_mh","calc_mh","protein_list","is_contaminant",
-                                    "is_target","number_matched_ions","global_peptide_qvalue"],errors='ignore')
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "quantity":"FG.MS2Quantity",
+                                                    "precursor_mz":"FG.PrecMz",
+                                                    "charge":"FG.Charge",
+                                                    "rt_apex":"EG.ApexRT",
+                                                    "ook0":"EG.IonMobility"
+                                                    },inplace=True)
+
+                    searchoutput.drop(columns=["index","maxlfq_peptide_index","processing_run_uuid","maxlfq_run_index","candidate_id",
+                                            "protein_group_name","maxlfq_protein_group_index","global_peptide_qvalue",
+                                            "psm_pep","peptide_pep","is_target","is_contaminant","fwhm_rt_start","fwhm_rt_end"
+                                            ],errors="ignore",inplace=True)
                     
-                    searchoutput=pd.concat([searchoutput,df],ignore_index=True)
-
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_max_lfq"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_accession"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.MS2Quantity"]=protein_quant
                 #rename ptms 
                 searchoutput=searchoutput.reset_index(drop=True)
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({
-                        "42.010565":"Acetyl (Protein N-term)",
-                        "57.021464":"Carbamidomethyl (C)",
-                        "79.966331":"Phospho (STY)",
-                        "15.994915":"Oxidation (M)"},regex=True)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software2()=="bps_timsdiann":
+                if input.software2_bps_report_type()=="qual":
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(os.getcwd()+"\\"+run)
+                        bps_resultzip=ZipFile("tims-diann.result.zip")
+                        bps_resultzip.extractall()
+                        results=pd.read_csv("results.tsv",sep="\t")
+                        searchoutput=pd.concat([searchoutput,results])
+                    
+                    searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
 
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
+                    searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
+                                            "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
+                                            "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
+                                            "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
+                                            "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
+                                            "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
+                                            "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
+                                            "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
+                                            "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
+                                            "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
+                                            "Precursor.Normalised"],inplace=True,errors='ignore')
 
-                #build and add the EG.ModifiedPeptide column
-                modifiedpeptides=[]
-                for i,entry in enumerate(searchoutput["ptm_locations"]):
-                    if entry=="-1":
-                        modifiedpeptides.append(searchoutput["PEP.StrippedSequence"][i])
-                    else:
-                        str_to_list=list(searchoutput["PEP.StrippedSequence"][i])
-                        if len(searchoutput["ptm_locations"][i])==1:
-                            mod_loc=int(searchoutput["ptm_locations"][i])+1
-                            mod_add=searchoutput["ptms"][i]
-                            str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                        #if theres >1 ptm, we need to reformat some strings so we can insert them in the sequence
-                        else:
-                            ptmlocs=searchoutput["ptm_locations"][i].strip().split(" ")
-                            ptms=searchoutput["ptms"][i].replace("[","").replace("]","").replace(") ","),").split(",")
-                            ptms_for_loop=[]
-                            for ele in ptms:
-                                ptms_for_loop.append("["+ele+"]")
-                            for j,loc in enumerate(ptmlocs):
-                                mod_loc=int(loc)+j+1
-                                mod_add=ptms_for_loop[j]
-                                str_to_list.insert(mod_loc,mod_add)
-                            modifiedpeptides.append("".join(str_to_list))
-                searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
-                searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
+                    searchoutput.rename(columns={"File.Name":"R.FileName",
+                                                "Protein.Group":"PG.ProteinGroups",
+                                                "Protein.Ids":"PG.ProteinAccessions",
+                                                "Protein.Names":"PG.ProteinNames",
+                                                "Genes":"PG.Genes",
+                                                "PG.Quantity":"PG.MS2Quantity",
+                                                "Modified.Sequence":"EG.ModifiedPeptide",
+                                                "Stripped.Sequence":"PEP.StrippedSequence",
+                                                "Precursor.Charge":"FG.Charge",
+                                                "Q.Value":"EG.Qvalue",
+                                                "PG.Q.Value":"PG.Qvalue",
+                                                "Precursor.Quantity":"FG.MS2Quantity",
+                                                "Precursor.Normalized":"FG.MS2RawQuantity",
+                                                "RT":"EG.ApexRT",
+                                                "Predicted.RT":"EG.RTPredicted",
+                                                "CScore":"EG.CScore",
+                                                "Proteotypic":"PEP.IsProteotypic",
+                                                "Exp.1/K0":"EG.IonMobility"},inplace=True)
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-            if input.compare_software2()=="bps_timsdiann":
-                searchoutput=pd.DataFrame()
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
 
-                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
+                    searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+                if input.software2_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("tims-diann.peptide.parquet")
+                    proteinparquet=pd.read_parquet("tims-diann.protein.parquet")
 
-                for run in runlist:
-                    os.chdir(cwd)
-                    os.chdir(os.getcwd()+"\\"+run)
-                    bps_resultzip=ZipFile("tims-diann.result.zip")
-                    bps_resultzip.extractall()
-                    results=pd.read_csv("results.tsv",sep="\t")
-                    searchoutput=pd.concat([searchoutput,results])
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "precursor_mz":"FG.PrecMz",
+                                                "ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRt",
+                                                "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_quantity_normalised","precursor_ms1_quantity",
+                                            "precursor_q_value","precursor_quant_quality","calc_mz","irt","predicted_irt","predicted_rt",
+                                            "library_ook0","is_proteotypic","identified_by","precursor_ms1_profile_corr","precursor_fwhm",
+                                            "evidence","c_score","decoy_evidence","decoy_c_score","ms2_scan","fragment_id","fragment_mz",
+                                            "fragment_correlation","fragment_quantity","fragment_quantity_corrected","rt_start","rt_end"
+                                            ],errors="ignore",inplace=True)
 
-                searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+                    #rename ptms 
+                    searchoutput=searchoutput.reset_index(drop=True)
+                    searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                    searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+                    
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+            if input.software2()=="bps_pulsar":
+                if input.software2_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("pulsar-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("pulsar-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
 
-                searchoutput.drop(columns=["Run","PG.Normalised","Genes.Quantity",
-                                        "Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","PG.MaxLFQ",
-                                        "Precursor.Id","Protein.Q.Value","GG.Q.Value","Label.Ratio",
-                                        "Quantity.Quality","RT.Start","RT.Stop","iRT","Predicted.iRT",
-                                        "First.Protein.Description","Lib.Q.Value","Ms1.Profile.Corr",
-                                        "Ms1.Corr.Sum","Ms1.Area","Evidence","Decoy.Evidence","Decoy.CScore",
-                                        "Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations",
-                                        "MS2.Scan","Precursor.FWHM","Precursor.Error.Ppm","Corr.Precursor.Error.Ppm",
-                                        "Data.Points","Ms1.Iso.Corr.Sum","Library.Precursor.Mz","Corrected.Precursor.Mz",
-                                        "Precursor.Calibrated.Mz","Fragment.Info","Fragment.Calibrated.Mz","Lib.1/K0",
-                                        "Precursor.Normalised"],inplace=True,errors='ignore')
+                        df.rename(columns={"sample_name":"R.FileName",
+                                                    "stripped_peptide":"PEP.StrippedSequence",
+                                                    "precursor_quantity":"FG.MS2Quantity",
+                                                    "psm_measured_ms1_mz":"FG.PrecMz",
+                                                    "precursor_charge":"FG.Charge",
+                                                    "psm_rt_apex":"EG.ApexRT",
+                                                    "psm_ook0_apex":"EG.IonMobility",
+                                                    "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                    },inplace=True)
+                        df.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                                "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                                "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                                "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities","precursor_used_for_quant",
+                                                "precursor_theoretical_mz","psm_delta_ms1_mz","psm_ms1_rt","psm_ook0","psm_fwhm",
+                                                "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue"
+                                                ],errors="ignore",inplace=True)
 
-                searchoutput.rename(columns={"File.Name":"R.FileName",
-                                            "Protein.Group":"PG.ProteinGroups",
-                                            "Protein.Ids":"PG.ProteinAccessions",
-                                            "Protein.Names":"PG.ProteinNames",
-                                            "Genes":"PG.Genes",
-                                            "PG.Quantity":"PG.MS2Quantity",
-                                            "Modified.Sequence":"EG.ModifiedPeptide",
-                                            "Stripped.Sequence":"PEP.StrippedSequence",
-                                            "Precursor.Charge":"FG.Charge",
-                                            "Q.Value":"EG.Qvalue",
-                                            "PG.Q.Value":"PG.Qvalue",
-                                            "Precursor.Quantity":"FG.MS2Quantity",
-                                            "Precursor.Normalized":"FG.MS2RawQuantity",
-                                            "RT":"EG.ApexRT",
-                                            "Predicted.RT":"EG.RTPredicted",
-                                            "CScore":"EG.CScore",
-                                            "Proteotypic":"PEP.IsProteotypic",
-                                            "Exp.1/K0":"EG.IonMobility"},inplace=True)
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(UniMod:7)","")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software2_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("pulsar-archive-merge.peptide.parquet")
+                    proteinparquet=pd.read_parquet("pulsar-archive-merge.protein.parquet")
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "precursor_quantity":"FG.MS2Quantity",
+                                                "psm_measured_ms1_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "psm_rt_apex":"EG.ApexRT",
+                                                "psm_ook0_apex":"EG.IonMobility",
+                                                "psm_ppmerror":"FG.CalibratedMassAccuracy (PPM)"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","precursor_id","ms2_frame_id","protein_group_name",
+                                            "ptm_confidence_index","ptm_confidence_values","ptm_confidence_locations","peptide_quantity",
+                                            "psm_q_value","peptide_q_value","psm_n_matched_ms2_ions","peptide_molecular_weight",
+                                            "peptide_n_missed_cleavages","peptide_score","precursor_iso_quantities",
+                                            "precursor_used_for_quant","precursor_theoretical_mz","psm_delta_ms1_mz","psm_fwhm",
+                                            "psm_localization_confidence","is_proteotypic","psm_pep_score","psm_score","psm_svalue",
+                                            "psm_ms1_rt","psm_ook0"
+                                            ],errors="ignore",inplace=True)
 
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                    "UniMod:1":"Acetyl (Protein N-term)",
-                    "UniMod:4":"Carbamidomethyl (C)",
-                    "UniMod:21":"Phospho (STY)",
-                    "UniMod:35":"Oxidation (M)"},regex=True)
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software2()=="bps_spectronaut":
+                if input.software2_bps_report_type()=="qual":
+                    peptide_dict=dict()
+                    protein_dict=dict()
+                    for run in runlist:
+                        os.chdir(cwd)
+                        os.chdir(cwd+"\\"+run)
+                        peptide_dict[run]=pd.read_parquet("spectronaut-id.peptide.parquet")
+                        protein_dict[run]=pd.read_parquet("spectronaut-id.protein.parquet")
+                    for key in peptide_dict.keys():
+                        df=peptide_dict[key]
+                        proteinparquet=protein_dict[key]
+                        df["EG.PeakWidth"]=df["rt_end"]-df["rt_start"]
+                        df.rename(columns={"sample_name":"R.FileName",
+                                           "precursor_quantity":"FG.MS2Quantity",
+                                           "stripped_peptide":"PEP.StrippedSequence",
+                                           "precursor_mz":"FG.PrecMz",
+                                           "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                                           "precursor_charge":"FG.Charge",
+                                           "rt":"EG.ApexRT",
+                                           "measured_ook0":"EG.IonMobility"
+                                            },inplace=True)
+                        df.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity_ms1","precursor_quantity_ms2",
+                                         "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                                         "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality",
+                                         "precursor_fwhm","pep_score"
+                                        ],errors="ignore",inplace=True)
 
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-                
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-            if input.compare_software2()=="bps_denovo":
+                        #map protein names and quant from protein file to peptide file
+                        df=df.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                        proteinparquet=proteinparquet.sort_values(by=["protein_group_id"]).reset_index(drop=True)
+                        #pull protein and gene info from protein parquet file and add to df 
+                        protein_name=[]
+                        protein_group=[]
+                        protein_quant=[]
+                        #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                        #map to sorted searchoutput which will already by in run and protein id order
+                        for i in range(len(df["protein_group_parent_id"].tolist())):
+                            protein_name.append(proteinparquet["protein_name"].iloc[df["protein_group_parent_id"][i]])
+                            protein_group.append(proteinparquet["protein_accession"].iloc[df["protein_group_parent_id"][i]])
+                            protein_quant.append(proteinparquet["pg_quantity"].iloc[df["protein_group_parent_id"][i]])
+                        df["PG.ProteinNames"]=protein_name
+                        df["PG.ProteinGroups"]=protein_group
+                        df["PG.ProteinAccessions"]=protein_group
+                        df["PG.MS2Quantity"]=protein_quant
+
+                        searchoutput=pd.concat([searchoutput,df],ignore_index=True)
+                if input.software2_bps_report_type()=="quant":
+                    run=runlist[0]
+                    os.chdir(cwd+"\\"+run)
+                    searchoutput=pd.read_parquet("spectronaut-combine.peptide.parquet")
+                    proteinparquet=pd.read_parquet("spectronaut-combine.protein.parquet")
+                    searchoutput["EG.PeakWidth"]=searchoutput["rt_end"]-searchoutput["rt_start"]
+                    searchoutput.rename(columns={"sample_name":"R.FileName",
+                             "stripped_peptide":"PEP.StrippedSequence",
+                             "precursor_quantity_ms2":"FG.MS2Quantity",
+                             "precursor_mz":"FG.PrecMz",
+                             "mass_accuracy":"FG.CalibratedMassAccuracy (PPM)",
+                             "precursor_charge":"FG.Charge",
+                             "rt":"EG.ApexRT",
+                             "measured_ook0":"EG.IonMobility"
+                                                },inplace=True)
+                    searchoutput.drop(columns=["index","processing_run_id","protein_group_name","precursor_quantity","precursor_quantity_ms1",
+                           "precursor_q_value","c_score","c_score_normalised","precursor_mz_calibrated","rt_start","rt_end",
+                           "irt","predicted_irt","predicted_rt","is_proteotypic","is_imputed","shape_quality","precursor_fwhm","pep_score"
+                                            ],errors="ignore",inplace=True)
+
+                    #map protein names and quant from protein file to peptide file
+                    searchoutput=searchoutput.sort_values(by=["R.FileName","protein_group_parent_id"]).reset_index(drop=True)
+                    proteinparquet=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)
+                    proteinparquet_names=proteinparquet.sort_values(by=["sample_name","protein_group_id"]).reset_index(drop=True)[["protein_group_id","protein_group_name","protein_accession","protein_name","gene_id"]].set_index("protein_group_id").drop_duplicates()
+                    #pull protein and gene info from protein parquet file and add to df 
+                    protein_name=[]
+                    protein_group=[]
+                    gene_id=[]
+                    protein_quant=[]
+                    #per run, loop through the searchoutput protein id and pull info from proteinparquet from each protein id
+                    #map to sorted searchoutput which will already by in run and protein id order
+                    for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+                        searchoutput_df=searchoutput[searchoutput["R.FileName"]==run]
+                        proteinparquet_df=proteinparquet[proteinparquet["sample_name"]==run]
+                        for i in searchoutput_df["protein_group_parent_id"].tolist():
+                            protein_quant.append(proteinparquet_df[proteinparquet_df["protein_group_id"]==i]["pg_quantity"].values[0])
+                    for i in range(len(searchoutput["protein_group_parent_id"].tolist())):
+                        protein_name.append(proteinparquet_names["protein_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        protein_group.append(proteinparquet_names["protein_group_name"].iloc[searchoutput["protein_group_parent_id"][i]])
+                        gene_id.append(proteinparquet_names["gene_id"].iloc[searchoutput["protein_group_parent_id"][i]])
+                    searchoutput["PG.ProteinNames"]=protein_name
+                    searchoutput["PG.ProteinGroups"]=protein_group
+                    searchoutput["PG.ProteinAccessions"]=protein_group
+                    searchoutput["PG.Genes"]=gene_id
+                    searchoutput["PG.MS2Quantity"]=protein_quant
+                #rename ptms 
+                searchoutput=searchoutput.reset_index(drop=True)
+                searchoutput["ptms"]=searchoutput["ptms"].astype(str)
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software2()=="bps_denovo":
                 denovo_score=65.0
-
-                searchoutput=pd.DataFrame()
-
-                bpszip=ZipFile(input.compare_searchreport2()[0]["datapath"])
-                bpszip.extractall()
-                metadata_bps=pd.read_csv("metadata.csv")
-                runlist=metadata_bps["processing_run_uuid"].tolist()
-                cwd=os.getcwd()+"\\processing-run"
-                os.chdir(cwd)
-
                 peptide_dict=dict()
                 protein_dict=dict()
                 for run in runlist:
@@ -9702,18 +11267,119 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                     searchoutput=pd.concat([searchoutput,peptideparquet],ignore_index=True)
 
-                #rename PTMs
                 searchoutput["ptms"]=searchoutput["ptms"].astype(str)
-                searchoutput["ptms"]=searchoutput["ptms"].replace({"57.0215":"Carbamidomethyl (C)",
-                                                                    "15.994915":"Oxidation (M)",
-                                                                    "15.9949":"Oxidation (M)",
-                                                                    "79.966331":"Phospho (STY)",
-                                                                    "0.984":"Deamidation (NQ)",
-                                                                    },regex=True)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
-                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","[-1]").str.replace("[","").str.replace("]","")
+                searchoutput["ptms"]=searchoutput["ptms"].replace(ptmdict,regex=True)
+            if input.software2()=="glycoscape":
+                results_dict=dict()
+                for run in runlist:
+                    os.chdir(cwd)
+                    #change working dir to next processing run subfolder
+                    os.chdir(cwd+"\\"+run)
 
+                    results_dict[run]=pd.read_parquet("myriad-merger.glycopsm.parquet")
+
+                for key in results_dict.keys():
+                    parquet=results_dict[key]
+
+                    #filter parquet file
+                    parquet=parquet[parquet["mokapot_psm_qvalue"]<=0.01].reset_index(drop=True)
+
+                    parquet.rename(columns={"sample_name":"R.FileName",
+                                                "stripped_peptide":"PEP.StrippedSequence",
+                                                "observed_precursor_mz":"FG.PrecMz",
+                                                "precursor_charge":"FG.Charge",
+                                                "rt":"EG.ApexRT",
+                                                "ook0":"EG.IonMobility",
+                                                "peptide_ppm_error":"FG.CalibratedMassAccuracy (PPM)",
+                                                },inplace=True)
+
+                    parquet.drop(columns=["index","processing_run_uuid","ms2_id","peptide_candidate_id","glycan_candidate_id",
+                                            "protein_group_parent_id","protein_group_name","leading_aa","trailing_aa","hexnac_modification",
+                                            "glycosylation_motif","is_contaminant","is_target","peptide_mh","peptide_calc_mh",
+                                            "peptide_isotope_offset","x_corr_score","delta_cn_score","number_matched_ions",
+                                            "mokapot_psm_score","mokapot_psm_pep","mokapot_peptide_qvalue","mokapot_peptide_pep",
+                                            "global_peptide_score","Y1_mz","Y1_charge","experimental_glycan_mr","glycan_isotope_offset",
+                                            "glycan_composition_mass","filtered_glycan_rank","ambiguous_glycan_composition",
+                                            "glycan_rank","building_blocks_coverage","fucose_evidence","Y5Y1_evidence","has_core",
+                                            "sia_smaller_hn","composition_oxonium_count","composition_oxonium_intensity",
+                                            "spectrum_oxonium_count","oxonium_relative_intensity_sum","fucose_shadow_count",
+                                            "fucose_shadow_intensity_sum","bb_names","bb_oxonium_count","bb_oxonium_intensity",
+                                            "oxonium_ions_names","oxonium_ions_mzs","oxonium_ions_intensity","Y_ions_names",
+                                            "oxonium_relative_intensity_sum","Y_ions_mass_offset","Y_ions_intensity","extra_ions_names",
+                                            "extra_ions_mass_offset","extra_ions_intensity","Rec"    
+                                            ],inplace=True,errors="ignore")
+
+                    ### reordered how this works so that all the conversions are done in-loop instead of once the whole sheet has been concatenated
+                    ### this seems to run faster than concatenating everything and then doing conversions
+
+                    #convert glycan_composition column entries to format from fragger-glyco
+                    convert_dict={"H":"Hex","N":"HexNAc","F":"Fuc","S":"NeuAc","G":"NeuGc"}
+                    glycanlist=parquet["glycan_composition"].tolist()
+                    glycanlist_updated=[]
+                    glycanlist_ambiguous=[]
+                    for i,entry in enumerate(glycanlist):
+                        if entry is None or entry=="unidentified":
+                            glycanlist_updated.append(np.nan)
+                            glycanlist_ambiguous.append(np.nan)
+                        else:
+                            if "," in entry:
+                                entry=entry.split(",")[0]
+                                glycanlist_ambiguous.append(True)
+                            else:
+                                glycanlist_ambiguous.append(False)
+                            entrylist=list(entry)
+                            newglycanentry=[]
+                            for ele in entrylist:
+                                if ele.isnumeric()==True:
+                                    newglycanentry.append("("+ele+")")
+                                else:
+                                    newglycanentry.append(convert_dict[ele])
+                            glycanlist_updated.append("".join(newglycanentry))
+                    parquet["Total Glycan Composition"]=glycanlist_updated
+                    parquet["Ambiguous Glycan ID"]=glycanlist_ambiguous
+
+                    #unpack protein_list column
+                    proteinlist=parquet["protein_list"].str.split(";").tolist()
+
+                    truthlist=[]
+                    for entry in proteinlist:
+                        if "Reverse" not in entry[0] and "contaminant" not in str(entry):
+                            truthlist.append(True)
+                        else:
+                            truthlist.append(False)
+                    parquet=parquet[truthlist]
+
+                    proteingroups=[]
+                    proteinnames=[]
+                    proteinlist_column=parquet["protein_list"].tolist()
+                    for item in proteinlist_column:
+                        if item.count(";")==0:
+                            templist=item.split("|")
+                            proteingroups.append(templist[1])
+                            proteinnames.append(templist[2])
+                        else:
+                            proteingroups_torejoin=[]
+                            proteinnames_torejoin=[]
+                            for entry in item.split(";"):
+                                templist=entry.split("|")
+                                proteingroups_torejoin.append(templist[1])
+                                proteinnames_torejoin.append(templist[2])
+                            proteingroups.append(";".join(proteingroups_torejoin))
+                            proteinnames.append(";".join(proteinnames_torejoin))
+
+                    parquet["PG.ProteinGroups"]=proteingroups
+                    parquet["PG.ProteinNames"]=proteinnames
+                    parquet.drop(columns=["protein_list"],inplace=True)
+
+                    parquet["ptms"]=parquet["ptms"].astype(str)
+                    parquet["ptms"]=parquet["ptms"].replace(ptmdict,regex=True)
+
+                    searchoutput=pd.concat([searchoutput,parquet],ignore_index=True)
+            
+            if "EG.ModifiedPeptide" not in searchoutput.columns:
                 #build and add the EG.ModifiedPeptide column
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].astype(str)
+                searchoutput["ptm_locations"]=searchoutput["ptm_locations"].str.replace("[]","-1").str.replace("[","").str.replace("]","")
                 modifiedpeptides=[]
                 for i,entry in enumerate(searchoutput["ptm_locations"]):
                     if entry=="-1":
@@ -9734,6 +11400,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                     ptmlocs.remove(ele)
                             ptms_for_loop=[]
                             for ele in ptms:
+                                ele=ele.strip()
                                 ptms_for_loop.append("["+ele+"]")
                             for j,loc in enumerate(ptmlocs):
                                 mod_loc=int(loc)+j+1
@@ -9742,13 +11409,15 @@ def server(input: Inputs, output: Outputs, session: Session):
                             modifiedpeptides.append("".join(str_to_list))
                 searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
                 searchoutput=searchoutput.drop(columns=["ptms","ptm_locations"])
-
-                searchoutput.insert(1,"R.Condition","")
-                searchoutput.insert(2,"R.Replicate","")
-
-                #change the cwd back to the code file since we changed it to the uploaded file 
-                os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
+            
+            searchoutput=searchoutput.drop(columns=["protein_group_parent_id"],errors="ignore")
+            
+            #add Condition and Replicate columns for filling in from metadata
+            searchoutput.insert(1,"R.Condition","")
+            searchoutput.insert(2,"R.Replicate","")
+            
+            #change the cwd back to the code file since we changed it to the uploaded file 
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
         #for DIA-NN 2.0 input
         if ".parquet" in input.compare_searchreport2()[0]["name"]:
             if len(input.compare_searchreport2())>1:
@@ -9758,11 +11427,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                     searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_parquet(input.compare_searchreport2()[0]["datapath"])
-            if input.compare_software2()=="diann2.0":
+            if input.software2()=="diann2.0":
                 searchoutput.rename(columns={"Run":"R.FileName"},inplace=True)
                 searchoutput.insert(1,"R.Condition","")
                 searchoutput.insert(2,"R.Replicate","")
                 searchoutput["EG.PeakWidth"]=searchoutput["RT.Stop"]-searchoutput["RT.Start"]
+
+                # if input.diann_mbr_switch()=="Protein.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Protein.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="Global.PG.Q.Value":
+                #     searchoutput=searchoutput[searchoutput["Global.PG.Q.Value"]<=0.01]
+                # elif input.diann_mbr_switch()=="off":
+                #     searchoutput=searchoutput
 
                 searchoutput.rename(columns={"Modified.Sequence":"EG.ModifiedPeptide",
                                             "Stripped.Sequence":"PEP.StrippedSequence",
@@ -9774,6 +11450,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                                             "RT":"EG.ApexRT",
                                             "IM":"EG.IonMobility",
                                             "Precursor.Quantity":"FG.MS2Quantity",
+                                            "PG.MaxLFQ":"PG.MS2Quantity"
                                             },inplace=True)
 
                 searchoutput.drop(columns=["Run.Index","Channel","Precursor.Id","Precursor.Lib.Index","Decoy",
@@ -9795,15 +11472,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                     
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("(","[")
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace(")","]")
-                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace({
-                        "UniMod:1":"Acetyl (Protein N-term)",
-                        "UniMod:4":"Carbamidomethyl (C)",
-                        "UniMod:21":"Phospho (STY)",
-                        "UniMod:35":"Oxidation (M)"},regex=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
+        #filter out decoy and contaminant sequences
+        searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
+        
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
         file2=searchoutput.sort_values('R.FileName')
-
         return file2
 
     #upload filled metadata table
@@ -10065,31 +11740,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             axisfont=input.axisfont()
             labelfont=input.labelfont()
 
-            if input.compare_software1()=="spectronaut":
-                label1="Spectronaut"
-            if input.compare_software1()=="diann":
-                label1="DIA-NN"
-            if input.compare_software1()=="fragpipe":
-                label1="FragPipe"
-            if input.compare_software1()=="bps_timsrescore":
-                label1="tims-Rescore"
-            if input.compare_software1()=="bps_timsdiann":
-                label1="tims-DIANN"
-            if input.compare_software1()=="bps_denovo":
-                label1="BPS Novor"
-
-            if input.compare_software2()=="spectronaut":
-                label2="Spectronaut"
-            if input.compare_software2()=="diann":
-                label2="DIA-NN"
-            if input.compare_software2()=="fragpipe":
-                label2="FragPipe"
-            if input.compare_software2()=="bps_timsrescore":
-                label2="tims-Rescore"
-            if input.compare_software2()=="bps_timsdiann":
-                label2="tims-DIANN"
-            if input.compare_software2()=="bps_denovo":
-                label2="BPS Novor"
+            label1=input.software1()
+            label2=input.software2()
 
             fig,ax=plt.subplots(nrows=2,ncols=2,sharex=True)
             ax1=ax[0,0]
@@ -10188,35 +11840,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         def compare_venn_plot():
             file1,file2,resultdf1,averagedf1,resultdf2,averagedf2=compare_variables_dfs()
 
-            if input.compare_software1()=="spectronaut":
-                label1="Spectronaut"
-            if input.compare_software1()=="diann":
-                label1="DIA-NN"
-            if input.compare_software1()=="diann2.0":
-                label1="DIA-NN 2.0"
-            if input.compare_software1()=="fragpipe":
-                label1="FragPipe"
-            if input.compare_software1()=="bps_timsrescore":
-                label1="tims-Rescore"
-            if input.compare_software1()=="bps_timsdiann":
-                label1="tims-DIANN"
-            if input.compare_software1()=="bps_denovo":
-                label1="BPS Novor"
-
-            if input.compare_software2()=="spectronaut":
-                label2="Spectronaut"
-            if input.compare_software2()=="diann":
-                label2="DIA-NN"
-            if input.compare_software2()=="diann2.0":
-                label2="DIA-NN 2.0"
-            if input.compare_software2()=="fragpipe":
-                label2="FragPipe"
-            if input.compare_software2()=="bps_timsrescore":
-                label2="tims-Rescore"
-            if input.compare_software2()=="bps_timsdiann":
-                label2="tims-DIANN"
-            if input.compare_software2()=="bps_denovo":
-                label2="BPS Novor"
+            label1=input.software1()
+            label2=input.software2()
 
             if input.compare_venn_conditionorrun()=="condition":
                 A=file1[file1["R.Condition"]==input.compare_venn_run_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
@@ -10421,7 +12046,14 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.download(filename=lambda: f"Peptide List_{input.searchreport()[0]['name']}.csv")
     def peptidelist():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        peptidetable=searchoutput[["R.Condition","R.Replicate","PG.Genes","PG.ProteinAccessions","PG.ProteinNames","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
+
+        columnlist=["R.Condition","R.Replicate","PG.Genes","PG.ProteinAccessions","PG.ProteinNames","PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge"]
+        for column in columnlist:
+            if column not in searchoutput.columns:
+                columnlist.remove(column)
+            else:
+                pass
+        peptidetable=searchoutput[columnlist].drop_duplicates().reset_index(drop=True)
         with io.BytesIO() as buf:
             peptidetable.to_csv(buf,index=False)
             yield buf.getvalue()
@@ -10473,34 +12105,42 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.download(filename=lambda: f"Protein CV Table_{input.searchreport()[0]['name']}.csv")
     def proteinidmetrics_download():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        cvproteingroup=searchoutput[["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-        cvproteinmean=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"Mean"})
-        cvproteinstdev=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"Stdev"})
-        cvproteincount=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).size().reset_index(drop=True)
-        cvproteintable=pd.concat([cvproteinmean,cvproteinstdev],axis=1).reindex(cvproteinmean.index)
-        cvproteintable["CV"]=cvproteintable["Stdev"]/cvproteintable["Mean"]*100
-        cvproteintable["# replicates observed"]=cvproteincount.tolist()
-        cvproteintable=cvproteintable.reset_index()
-        with io.BytesIO() as buf:
-            cvproteintable.to_csv(buf,index=False)
-            yield buf.getvalue()
-    
+        columnlist=["R.Condition","R.Replicate","PG.ProteinGroups","PG.MS2Quantity"]
+        try:
+            cvproteingroup=searchoutput[columnlist].drop_duplicates().reset_index(drop=True)
+            cvproteinmean=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).mean().rename(columns={"PG.MS2Quantity":"Mean"})
+            cvproteinstdev=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).std().rename(columns={"PG.MS2Quantity":"Stdev"})
+            cvproteincount=cvproteingroup.drop(columns="R.Replicate").groupby(["R.Condition","PG.ProteinGroups"]).size().reset_index(drop=True)
+            cvproteintable=pd.concat([cvproteinmean,cvproteinstdev],axis=1).reindex(cvproteinmean.index)
+            cvproteintable["CV"]=cvproteintable["Stdev"]/cvproteintable["Mean"]*100
+            cvproteintable["# replicates observed"]=cvproteincount.tolist()
+            cvproteintable=cvproteintable.reset_index()
+            with io.BytesIO() as buf:
+                cvproteintable.to_csv(buf,index=False)
+                yield buf.getvalue()
+        except KeyError:
+            raise KeyError("PG.MS2Quantity not present in search results") from None
+
     #download table of precursor ID metrics/CVs
     @render.download(filename=lambda: f"Precursor CV Table_{input.searchreport()[0]['name']}.csv")
     def precursoridmetrics_download():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        cvprecursorgroup=searchoutput[["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+        columnlist=["R.Condition","R.Replicate","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]
+        try:
+            cvprecursorgroup=searchoutput[columnlist].drop_duplicates().reset_index(drop=True)
 
-        cvprecursormean=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"Mean"})
-        cvprecursorstdev=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Stdev"})
-        cvprecursorcount=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).size().reset_index(drop=True)
-        cvprecursortable=pd.concat([cvprecursormean,cvprecursorstdev],axis=1).reindex(cvprecursormean.index)
-        cvprecursortable["CV"]=cvprecursortable["Stdev"]/cvprecursortable["Mean"]*100
-        cvprecursortable["# replicates observed"]=cvprecursorcount.tolist()
-        cvprecursortable=cvprecursortable.reset_index()
-        with io.BytesIO() as buf:
-            cvprecursortable.to_csv(buf,index=False)
-            yield buf.getvalue()
+            cvprecursormean=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).mean().rename(columns={"FG.MS2Quantity":"Mean"})
+            cvprecursorstdev=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).std().rename(columns={"FG.MS2Quantity":"Stdev"})
+            cvprecursorcount=cvprecursorgroup.drop(columns="R.Replicate").groupby(["R.Condition","EG.ModifiedPeptide","FG.Charge"]).size().reset_index(drop=True)
+            cvprecursortable=pd.concat([cvprecursormean,cvprecursorstdev],axis=1).reindex(cvprecursormean.index)
+            cvprecursortable["CV"]=cvprecursortable["Stdev"]/cvprecursortable["Mean"]*100
+            cvprecursortable["# replicates observed"]=cvprecursorcount.tolist()
+            cvprecursortable=cvprecursortable.reset_index()
+            with io.BytesIO() as buf:
+                cvprecursortable.to_csv(buf,index=False)
+                yield buf.getvalue()
+        except KeyError:
+            raise KeyError("FG.MS2Quantity not present in search results") from None
     
     #download table of MOMA precursors for a specified run
     @render.download(filename=lambda: f"MOMA Table_{input.searchreport()[0]['name']}.csv")
