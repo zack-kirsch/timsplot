@@ -34,21 +34,21 @@
   - Charge State per Peptide Length
     - adjusted so y axes are on the same scale for subplots
 - Mixed Proteome
- - adjusted how organism names are detected (using just first entry in protein groups that contain semicolons)
- - added Remove column to the info setup to allow for removing unwanted rows from further use in the plotting functions
- - adjusted how organism names can be removed from downstream plotting functions
- - Counts per Organism
-   - added a bar width slider 
- - Quant Ratios
-   - changed how values are interpreted from the input table (initially interpreted as int, changed to float)
+  - adjusted how organism names are detected (using just first entry in protein groups that contain semicolons)
+  - added Remove column to the info setup to allow for removing unwanted rows from further use in the plotting functions
+  - adjusted how organism names can be removed from downstream plotting functions
+  - Counts per Organism
+    - added a bar width slider 
+  - Quant Ratios
+    - changed how values are interpreted from the input table (initially interpreted as int, changed to float)
 - De Novo
- - adjusted file import to mirror main file import
+  - adjusted file import to mirror main file import
 - Two Software Comparison
- - adjusted file import to mirror main file import
+  - adjusted file import to mirror main file import
 - MOMA
- - added custom error message for when there are no MOMA events detected
+  - added custom error message for when there are no MOMA events detected
 - Export Tables
- - added error messages / error handling for downloadable tables
+  - added error messages / error handling for downloadable tables
 
 ## 2025.04.01
 - ID Counts
