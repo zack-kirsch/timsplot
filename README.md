@@ -32,7 +32,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 </details>
 
 4. **Install required extensions in Visual Studio Code:** In Visual Studio Code, make sure to install the Python and Shiny extensions so the IDE can properly interpret the app file through the Extensions:Marketplace tab.
-5. **Download the app from the GitHub repository:** Clone or download the repository containing the app code from the GitHub repository (<https://github.com/zack-kirsch/timsTOF_visualization_tool>).
+5. **Download the app from the GitHub repository:** Clone or download the repository containing the app code from the GitHub repository (<https://github.com/zack-kirsch/timsplot>).
 6. **Run and access the app:** Set the downloaded app directory as the working directory under the Explorer tab in Visual Studio Code and open the app.py file. Click the play button in the top right to launch the Shiny app. If the extensions have been installed properly, you should see `Run Shiny App` when hovering over the button.
 
 ## Input File Format
@@ -40,7 +40,7 @@ Note: multiple files from the same software can be uploaded at a time. In the Up
 - Spectronaut: Use the report template listed as "Shiny Report Format.rs" to export the search results.
 - DIA-NN: The input is the main report .tsv file. (for DIA-NN 2.0, the input is the report.parquet file)
 - FragPipe (and FragPipe Glyco): The input is the psm.tsv result file.
-- BPS Novor, tims-rescore, tims-DIANN, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
+- BPS Novor, tims-rescore, tims-DIANN, Spectronaut (from BPS), Pulsar, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
 
 # Disclaimer
 This application is not supported by or affiliated with Bruker. It has been developed and tested to the best of the author's abilities, but please use caution when using the application as it may not have had the same level of testing and scrutiny as officially supported software. The application is provided "as-is" and the author assumes no responsibility for errors, bugs, or issues that may arise. Any inquiries, bug reports, or features requests for this application should not be directed to Bruker. 
