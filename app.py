@@ -18,7 +18,7 @@ from faicons import icon_svg
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.04.01)"),
+    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.04.22)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
                      ui.row(
