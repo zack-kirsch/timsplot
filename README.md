@@ -42,5 +42,10 @@ Note: multiple files from the same software can be uploaded at a time. In the Up
 - FragPipe (and FragPipe Glyco): The input is the psm.tsv result file.
 - BPS Novor, tims-rescore, tims-DIANN, Spectronaut (from BPS), Pulsar, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
 
+## Alternative Launch Method
+timsplot may also be run using the command line after having installed python and the necessary libraries without the need for using Visual Studio Code
+- Navigate to the folder containing all of the timsplot files, right click and click on "Open in Terminal"
+- Type the command `py -m shiny run --reload --launch-browser app.py` to launch timsplot
+
 # Disclaimer
 This application is not supported by or affiliated with Bruker. It has been developed and tested to the best of the author's abilities, but please use caution when using the application as it may not have had the same level of testing and scrutiny as officially supported software. The application is provided "as-is" and the author assumes no responsibility for errors, bugs, or issues that may arise. Any inquiries, bug reports, or features requests for this application should not be directed to Bruker. 
