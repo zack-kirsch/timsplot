@@ -6,6 +6,7 @@ logomaker==0.8.2
 matplotlib-venn==0.11.10
 pyarrow==18.1.0
 scikit-learn==1.2.2
+seaborn==0.13.2
 shiny==1.1.0
 shinyswatch==0.7.0
 textalloc==1.1.8
