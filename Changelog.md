@@ -2,67 +2,67 @@
 ## 2025.06.09
 - UI overhaul, consolidated nearly all plotting options into collapsible ribbons at the top of each plotting page
 - File Import
- - adjusted how sorting works on file import to sort search file by the HyStar run ID at the end of the file name
- - added a button to download the updated search report after hitting Apply Changes button to make reuploading files (especially from BPS) simpler
- - fixed a bug for when NaN values in the ProteinNames column are filled with ProteinGroups values
- - moved around functions such that run removal happens before renaming, so user doesn't need to give a file a condition and replicate value in the metadata table if they just want to remove it
- - added support for importing combined_ion and combined_protein files from quantitative FragPipe runs
- - added support for Sage output (only in the main file import, not in de novo or in two-software comparison since sage support is still WIP)
- - removed the 'Update R.Condition and R.Replicate" switch. Previous logic was that R.Condition and R.Replicate were already filled and the switch was used to overwrite them. Now the search report will always be updated to whatever is in the metadata table. Blanks will be filled automatically as well
- - replicated the above line in the De Novo and Two-Software Comparison sections
+  - adjusted how sorting works on file import to sort search file by the HyStar run ID at the end of the file name
+  - added a button to download the updated search report after hitting Apply Changes button to make reuploading files (especially from BPS) simpler
+  - fixed a bug for when NaN values in the ProteinNames column are filled with ProteinGroups values
+  - moved around functions such that run removal happens before renaming, so user doesn't need to give a file a condition and replicate value in the metadata table if they just want to remove it
+  - added support for importing combined_ion and combined_protein files from quantitative FragPipe runs
+  - added support for Sage output (only in the main file import, not in de novo or in two-software comparison since sage support is still WIP)
+  - removed the 'Update R.Condition and R.Replicate" switch. Previous logic was that R.Condition and R.Replicate were already filled and the switch was used to overwrite them. Now the search report will always be updated to whatever is in the metadata table. Blanks will be filled automatically as well
+  - replicated the above line in the De Novo and Two-Software Comparison sections
 - Settings
- - added handling for necessary font size sliders across majority of plotting functions
- - added axis label font slider and applied to plotting functions
+  - added handling for necessary font size sliders across majority of plotting functions
+  - added axis label font slider and applied to plotting functions
 - ID Counts
- - consolidated ID Counts and Average Counts into a single pane
- - IDs with CV Cutoff
-   - added a table showing the percents of the counts at each cutoff level compared to the average number of ID counts
- - Protein/Peptide Signal Tracker
-   - changed grouping key to protein names instead of protein groups
-   - added a switch to change y-axis minimum to zero
-   - added a switch to change the y-axis scale to log10
+  - consolidated ID Counts and Average Counts into a single pane
+  - IDs with CV Cutoff
+    - added a table showing the percents of the counts at each cutoff level compared to the average number of ID counts
+  - Protein/Peptide Signal Tracker
+    - changed grouping key to protein names instead of protein groups
+    - added a switch to change y-axis minimum to zero
+    - added a switch to change the y-axis scale to log10
  - CV Plots
    - added histogram as an alternative plot option
 - Metrics
- - Charge States
-   - changed overall logic, added features (show counts/percent, averages w/ error bars, show only for IDs of specific peptide length)
-   - fixed a bug where the charge state counting was including duplicate precursors
- - Missed Cleavages
-   - Changed how calculation is done to accommodate peptides that don't follow enzyme rules
+  - Charge States
+    - changed overall logic, added features (show counts/percent, averages w/ error bars, show only for IDs of specific peptide length)
+    - fixed a bug where the charge state counting was including duplicate precursors
+  - Missed Cleavages
+    - Changed how calculation is done to accommodate peptides that don't follow enzyme rules
 - PTMs
- - Counts per Condition
-   - reworked plotting setup, added functionality for showing average counts
- - PTMs per Precursor
-   - added an option to plot number of PTMs per precursor for a specific PTM
+  - Counts per Condition
+    - reworked plotting setup, added functionality for showing average counts
+  - PTMs per Precursor
+    - added an option to plot number of PTMs per precursor for a specific PTM
 - Heatmaps
- - Charge/PTM Heatmap
-   - added support for diagonal-PASEF windows (need to be imported, no template windows available)
- - Charge/PTM Scatter
-   - changed setup to allow for selection of multiple charges
- - Venn Diagram
-   - added a verbose download which gives more information than just ID names (works for everything besides when peptide core is compared)
+  - Charge/PTM Heatmap
+    - added support for diagonal-PASEF windows (need to be imported, no template windows available)
+  - Charge/PTM Scatter
+    - changed setup to allow for selection of multiple charges
+  - Venn Diagram
+    - added a verbose download which gives more information than just ID names (works for everything besides when peptide core is compared)
 - Statistics
- - Volcano Plot
-   - changed how protein labels are added to the plot to decrease label overlap
+  - Volcano Plot
+    - changed how protein labels are added to the plot to decrease label overlap
 - Immunopeptidomics
- - Charge States/Peptide Lengths
-   - added download button to pull tables that are used to construct figures
-   - fixed a bug with plotting where bars were not stacking properly
-   - adjusted plot ylim to give a bit more padding to the top of the bar plot
+  - Charge States/Peptide Lengths
+    - added download button to pull tables that are used to construct figures
+    - fixed a bug with plotting where bars were not stacking properly
+    - adjusted plot ylim to give a bit more padding to the top of the bar plot
 - Mixed Proteome
- - adjusted how sorting/removal of organisms in the setup table works to avoid errors
- - adjusted how organisms are detected from the search file
- - Summed Intensities
-   - added an option to plot summed precursor intensities
- - Quant Ratios
-   - added handling for precursors as an option for plotting quant ratios
-   - added switches to toggle experimental and theoretical ratios being shown as horizontal lines
+  - adjusted how sorting/removal of organisms in the setup table works to avoid errors
+  - adjusted how organisms are detected from the search file
+  - Summed Intensities
+    - added an option to plot summed precursor intensities
+  - Quant Ratios
+    - added handling for precursors as an option for plotting quant ratios
+    - added switches to toggle experimental and theoretical ratios being shown as horizontal lines
 - Dilution Series
- - changed how x axis is plotted so that concentrations are plotted to their actual value instead of an integer position
+  - changed how x axis is plotted so that concentrations are plotted to their actual value instead of an integer position
 - MOMA
- - added precursor intensity, protein groups, and protein names to spreadsheet output
+  - added precursor intensity, protein groups, and protein names to spreadsheet output
 - Export Tables
- - added precursor intensity, protein groups, and protein names to MOMA sheet output
+  - added precursor intensity, protein groups, and protein names to MOMA sheet output
 
 ## 2025.04.22
 - General
