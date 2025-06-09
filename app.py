@@ -18,7 +18,7 @@ from faicons import icon_svg
 #region
 
 app_ui=ui.page_fluid(
-    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.04.22)"),
+    ui.panel_title("timsplot: timsTOF Proteomics Data Visualization (v.2025.06.09)"),
     ui.navset_pill_list(
         ui.nav_panel("File Import",
                      ui.row(
@@ -28,11 +28,11 @@ app_ui=ui.page_fluid(
                                 ui.row(
                                     ui.column(6,
                                             ui.popover(ui.input_action_button("info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
-                                                ui.p("-Note: if using the app in a browser window, zoom out to 90% or farther (some OS scaling settings may cause UI elements to overlap)"),
-                                                ui.p("-Select software used for search and upload .tsv, .zip, or .parquet file (multiple .tsv or .parquet files can be uploaded)"),
-                                                ui.p("-Fill out R.Condition and R.Replicate in the metadata table as needed"),
-                                                ui.p("-Select necessary switches under 'Update from Metadata Table' and click the 'Apply Changes' button"),
-                                                ui.p("-Note: click on the 'Apply Changes' button after upload even if metadata table was not updated"),
+                                                ui.p("-Note: if using the app in a browser window, zoom out to 90% or farther (some OS scaling settings may cause UI elements to overlap)."),
+                                                ui.p("-Select software used for search and upload .tsv, .zip, or .parquet file (multiple .tsv or .parquet files can be uploaded)."),
+                                                ui.p("-Fill out R.Condition and R.Replicate in the metadata table as needed."),
+                                                ui.p("-Select necessary switches under 'Update from Metadata Table' and click the 'Apply Changes' button."),
+                                                ui.p("-Note: click on the 'Apply Changes' button after upload even if metadata table was not updated."),
                                                 placement="right"
                                             ),
                                             ui.p(),
@@ -47,8 +47,9 @@ app_ui=ui.page_fluid(
                                             ),
                                     ui.column(6,
                                             ui.input_file("searchreport","Upload search report(s):",accept=[".tsv",".zip",".parquet"],multiple=True),
+                                            ui.output_text("metadata_reminder"),
+                                            ui.output_ui("fragger_combine_ui"),
                                             ui.output_ui("diann_mbr_ui"),
-                                            ui.output_text("metadata_reminder")
                                             ),
                                         )
                                     )
@@ -57,19 +58,30 @@ app_ui=ui.page_fluid(
                             ui.card(
                                 ui.card_header("Update from Metadata Table"),
                                 ui.row(
-                                    ui.input_action_button("rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
-                                    ui.p(),
+                                    ui.column(3),
+                                    ui.input_action_button("rerun_metadata","Apply Metadata to Search File",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                    ui.column(3),
+                                    ),
+                                ui.row(
                                     ui.column(6,
-                                                ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                                                #ui.input_switch("condition_names","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
                                                 ui.input_switch("remove","Remove selected runs"),
-                                                ui.input_switch("cRAP_filter","Filter protein list with cRAP database"),
+                                                ui.input_switch("reorder","Reorder runs"),
                                                 ),
                                     ui.column(6,
-                                                ui.input_switch("reorder","Reorder runs"),
                                                 ui.input_switch("concentration","Update 'Concentration' column"),
+                                                ui.input_switch("cRAP_filter","Filter protein list with cRAP database"),
                                                 #ui.tags.a("cRAP Database",href="https://www.thegpm.org/crap/",target="_blank")
                                         )
-                                        )
+                                        ),
+                                ui.row(
+                                    ui.popover(ui.input_action_button("searchreport_download_info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
+                                            ui.p("-After hitting 'Apply Changes' button, updated search file can be downloaded for easier reuploads."),
+                                            ui.p("-Use 'Spectronaut' as the software choice for reuploads since necessary columns are already renamed/added."),
+                                            placement="right"),
+                                    ui.column(1),
+                                    ui.download_button("searchreport_download","Download updated file for reuploads",width="350px",icon=icon_svg("file-arrow-down")),
+                                    )
                                     )
                                 )
                             ),
@@ -78,8 +90,9 @@ app_ui=ui.page_fluid(
                          ui.row(
                              ui.column(2,
                                        ui.popover(ui.input_action_button("metadata_info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
-                                       ui.p("-To remove runs, add an 'x' to the 'remove' column"),
-                                       ui.p("-To reorder conditions, order them numerically in the 'order' column"),
+                                       ui.p("-To remove runs, add an 'x' to the 'remove' column."),
+                                       ui.p("-To reorder conditions, order them numerically in the 'order' column. Runs will be sorted by the HyStar ID at the end of the file name. Runs being out of order due to this sorting can be fixed by explicitly setting the order in the 'order' column."),
+                                       ui.p("-When updating the Concentration column, make sure to unify the units that are being input. If inputting concentrations in ng and there are samples in pg, convert values to the same unit (either ng or pg, not both)."),
                                        placement="right")
                                        ),
                              ui.column(4,
@@ -105,9 +118,15 @@ app_ui=ui.page_fluid(
                          ui.nav_panel("Color Settings",
                                       ui.row(
                                              ui.column(4,
+                                                       ui.p(),
+                                                       ui.popover(ui.input_action_button("colors_info_btn","Instructions",class_="btn-success",icon=icon_svg("question")),
+                                                                  ui.p("-Replicates of the same condition will have the same color."),
+                                                                  ui.p("-'Pick for me' options choose colors based on splitting a rainbow spectrum across the number of conditions or by choosing colors from the matplotlib tableau colors."),
+                                                                  ui.p("-Custom colors can be input by adding them to the text box below. Make sure to not leave whitespace or extra lines."),
+                                                                  ui.p("-Hex codes can be used to specify custom colors."),
+                                                                  placement="right"),
                                                        ui.input_radio_buttons("coloroptions","Choose coloring option for output plots:",choices={"pickrainbow":"Pick for me (rainbow)","pickmatplot":"Pick for me (matplotlib tableau)","custom":"Custom"},selected="pickmatplot"),
-                                                       ui.input_text_area("customcolors","Input color names from the tables to the right, one per line (hex codes can also be used):",autoresize=True),
-                                                       ui.output_text("colornote"),
+                                                       ui.input_text_area("customcolors","Input custom color names (or hex codes), one per line:",autoresize=True),
                                                        ui.row(ui.column(5,
                                                                         ui.output_table("customcolors_table1")
                                                                         ),
@@ -134,10 +153,11 @@ app_ui=ui.page_fluid(
                                           ui.column(4,
                                                     ui.card(
                                                         ui.card_header("Plot Parameters"),
-                                                        ui.input_slider("titlefont","Plot title size",min=10,max=25,value=20,step=1,ticks=True),
-                                                        ui.input_slider("axisfont","Axis label size",min=10,max=25,value=15,step=1,ticks=True),
-                                                        ui.input_slider("labelfont","Data label size",min=10,max=25,value=15,step=1,ticks=True),
-                                                        ui.input_slider("legendfont","Legend size",min=10,max=25,value=10,step=1,ticks=True),
+                                                        ui.input_slider("titlefont","Plot title text size",min=10,max=25,value=20,step=1,ticks=True),
+                                                        ui.input_slider("axisfont","Axis title text size",min=10,max=25,value=15,step=1,ticks=True),
+                                                        ui.input_slider("axisfont_labels","Axis label text size",min=10,max=25,value=10,step=1,ticks=True),
+                                                        ui.input_slider("labelfont","Data label text size",min=10,max=25,value=15,step=1,ticks=True),
+                                                        ui.input_slider("legendfont","Legend text size",min=10,max=25,value=10,step=1,ticks=True),
                                                         ui.input_slider("ypadding","y-axis padding for data labels",min=0,max=1,value=0.3,step=0.05,ticks=True),
                                                         ui.input_slider("xaxis_label_rotation","x-axis label rotation",min=0,max=90,value=90,step=5,ticks=True)
                                                         )
@@ -191,168 +211,154 @@ app_ui=ui.page_fluid(
         ui.nav_panel("ID Counts",
                      ui.navset_pill(
                          ui.nav_panel("Counts per Condition",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("idmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("idmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              )
-                                              ),
-                                      ui.popover(ui.input_action_button("counts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graphs of the number of IDs per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
-                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
-                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
-                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_selectize("idplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("counts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar graphs of the number of IDs per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Proteins: number of unique values in the ProteinGroups column."),
+                                                         ui.p("-Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
+                                                         ui.p("-Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
+                                                         ui.p("-Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("idmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("idmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_radio_buttons("idmetrics_individual_average","Choose how to show ID counts:",choices={"individual":"Individual Counts","average":"Average Counts"}),
+                                                  ui.input_selectize("idplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("idmetricsplot")
                                     ),
-                         ui.nav_panel("Average Counts",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("avgidmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("avgidmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              )
-                                              ),
-                                      ui.popover(ui.input_action_button("avgcounts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graphs of the average number of IDs per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
-                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
-                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
-                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_selectize("avgidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
-                                      ui.output_plot("avgidmetricsplot")
-                                    ),
                          ui.nav_panel("CV Plots",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("cvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("cvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                              )
-                                            ),
-                                      ui.popover(ui.input_action_button("cvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Violin plots of the CVs per condition for the selected type of ID. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
-                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.column(3,
-                                              ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors","Peptide":"Peptides"}),
-                                              ui.input_switch("removetop5percent","Remove top 5%"),
-                                              ui.output_table("cv_table")
-                                                    ),
-                                          ui.column(7,
-                                                    ui.output_plot("cvplot")
-                                                    ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("cvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Violin plots of the CVs per condition for the selected type of ID. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
+                                                         ui.p("-Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("cvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("cvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("proteins_precursors_cvplot","Pick which IDs to plot",choices={"Protein":"Proteins","Precursor":"Precursors","Peptide":"Peptides"},width="200px"),
+                                                  ui.input_switch("removetop5percent","Remove top 5%",width="200px"),
+                                                  ui.column(3,
+                                                            ui.input_switch("cvplot_histogram_bins_switch","Show as histogram"),
+                                                            ui.output_ui("cvplot_histogram_bins_ui")
+                                                            )
+                                                  ),
                                           ),
-                                          
+                                          width="100%"
+                                      ),   
+                                      ui.output_table("cv_table"),
+                                      ui.output_plot("cvplot")
                                       ),
                          ui.nav_panel("IDs with CV Cutoff",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("countscvcutoff_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
-                                              ui.input_slider("countscvcutoff_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("cvcutoffplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar graphs for the numbers of IDs per condition that fall within CV cutoffs."),
+                                                         ui.p("-The 'Identified' bar is the average number of IDs per condition."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
+                                                         ui.p("-Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("countscvcutoff_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
+                                                  ui.input_slider("countscvcutoff_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors","peptides":"Peptides"}),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("cvcutoffplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graphs for the numbers of IDs per condition that fall within CV cutoffs."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Go to Settings -> Control Panel to change grouping key from stripped sequence to modified sequence (default is stripped sequence)."),
-                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_radio_buttons("proteins_precursors_idcutoffplot","Pick which IDs to plot",choices={"proteins":"Proteins","precursors":"Precursors","peptides":"Peptides"}),
+                                          width="100%"
+                                      ),
+                                      ui.output_table("countscvcutoff_table"),
                                       ui.output_plot("countscvcutoff")
                                     ),
                          ui.nav_panel("UpSet Plot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("upsetplot_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
-                                              ui.input_slider("upsetplot_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("upsetplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Plot showing the intersections of IDs found in each run/condition."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-The UpSet plot can be generated by comparing every condition, a selected condition, or by comparing all of the runs that were uploaded."),
+                                                         ui.p("-The table shows the results of the filtering options according to the plotting options."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("upsetplot_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
+                                                  ui.input_slider("upsetplot_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ),
+                                              ui.row(
+                                                  ui.input_selectize("protein_precursor_pick","Pick which IDs to plot:",choices={"Protein":"Protein","Peptide":"Peptide","Precursor":"Precursor"}),
+                                                  ui.input_radio_buttons("upsetfilter","Filtering option:",choices={"nofilter":"No filtering","1run":"IDs in only 1 run/replicate","n-1runs":"IDs in n-1 runs/replicates"}),
+                                                  ui.input_radio_buttons("upset_condition_or_run","Pick how to plot UpSet plot:",choices={"condition":"All conditions","specific_condition":"By specific condition","individual":"All runs"}),
+                                                  ui.output_ui("specific_condition_ui"),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("upsetplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Plot showing the intersections of IDs found in each run/condition."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("The UpSet plot can be generated by comparing every condition, a selected condition, or by comparing all of the runs that were uploaded."),
-                                                 ui.p("The table shows the results of the filtering options according to the plotting options."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.column(3,
-                                                    ui.input_radio_buttons("upset_condition_or_run","Pick how to plot UpSet plot:",choices={"condition":"All conditions","specific_condition":"By specific condition","individual":"All runs"}),
-                                                    ),
-                                          ui.column(3,
-                                                    ui.input_selectize("protein_precursor_pick","Pick which IDs to plot:",choices={"Protein":"Protein","Peptide":"Peptide","Precursor":"Precursor"}),
-                                                    ),
-                                          ui.column(3,
-                                                    ui.output_ui("specific_condition_ui")
-                                                    )
-                                          ),
-                                      ui.row(
-                                          ui.column(3,
-                                                    ui.input_radio_buttons("upsetfilter","Filtering option:",choices={"nofilter":"No filtering","1run":"IDs in only 1 run/replicate","n-1runs":"IDs in n-1 runs/replicates"})
-                                                    ),
-                                          ui.column(6,
-                                                    ui.output_data_frame("upsetplot_counts")
-                                                    )
-                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.output_data_frame("upsetplot_counts"),
                                       ui.output_plot("upsetplot")
                                       ),
                          ui.nav_panel("UpSet Plot (stats)",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("upsetplotstats_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("upsetplotstats_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("upsetplotstats_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Ion mobility vs m/z scatterplot/heatmap based on the UpSet plot calculations to visualize IDs that were only found in single runs/conditions."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-'Specific condition in entire result file' shows the IDs that were only found in the specified condition compared to the IDs in the whole result file."),
+                                                         ui.p("-'From specific condition' shows the IDs that were only found in single runs within the specified condition."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("upsetplotstats_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("upsetplotstats_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ),
+                                              ui.row(
+                                                  ui.input_radio_buttons("upsetplotstats_plottype","Choose how to plot:",choices={"scatter":"Scatterplot","2dhist":"2-D Histogram"}),
+                                                  ui.input_radio_buttons("upsetplotstats_peptide_precursor","ID type to plot:",choices={"Peptide":"Peptide","Precursor":"Precursor"}),
+                                                  ui.input_radio_buttons("upsetplotstats_whattoplot","Choose what to show for single-hit IDs:",choices={"individual":"From entire result file","condition":"Specific condition in entire result file","specific_condition":"From specific condition"},width="350px"),
+                                                  ui.output_ui("upsetplotstats_conditionlist_ui"),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("upsetplotstats_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Ion mobility vs m/z scatterplot/heatmap based on the UpSet plot calculations to visualize IDs that were only found in single runs/conditions."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("'Specific condition in entire result file' shows the IDs that were only found in the specified condition compared to the IDs in the whole result file."),
-                                                 ui.p("'From specific condition' shows the IDs that were only found in single runs within the specified condition."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.input_radio_buttons("upsetplotstats_whattoplot","Choose what to show for single-hit IDs:",choices={"individual":"From entire result file",
-                                                                                                                                                "condition":"Specific condition in entire result file",
-                                                                                                                                                "specific_condition":"From specific condition"},width="350px"),
-                                          ui.output_ui("upsetplotstats_conditionlist_ui"),                                       
-                                          ),
-                                      ui.row(
-                                          ui.input_radio_buttons("upsetplotstats_peptide_precursor","ID type to plot:",choices={"Peptide":"Peptide","Precursor":"Precursor"}),
-                                          ui.input_radio_buttons("upsetplotstats_plottype","Choose how to plot:",choices={"scatter":"Scatterplot","2dhist":"2-D Histogram"}),
-                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("upsetplotstats_singlehitIDplot"),
                                       ),
                          ui.nav_panel("Protein/Peptide Signal Tracker",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("tracker_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
-                                              ui.input_slider("tracker_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("signaltracker_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Scatterplot of protein or peptide signal across runs."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Selection of a protein group will show the PG.MS2Quantity across all runs and will show a table of all peptide sequences associated with that protein."),
+                                                         ui.p("-Selecting a peptide sequence will show the FG.MS2Quantity across all runs for all charge and modification states of the selected sequence."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("tracker_width","Plot width",min=100,max=7500,step=100,value=900,ticks=True),
+                                                  ui.input_slider("tracker_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.column(6,
+                                                            ui.input_switch("tracker_logscale","Set y-axis scale to log10"),
+                                                            ui.input_switch("tracker_yaxiszero","Set y-axis minimum to 0"),
+                                                            )
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("signaltracker_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Scatterplot of protein or peptide signal across runs."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Selection of a protein group will show the PG.MS2Quantity across all runs and will show a table of all peptide sequences associated with that protein."),
-                                                 ui.p("Selecting a peptide sequence will show the FG.MS2Quantity across all runs for all charge and modification states of the selected sequence."),
-                                                 placement="right"
-                                                 ),
+                                          width="100%"
+                                      ),
                                       ui.row(
                                           ui.column(6,
                                                     ui.output_data_frame("protein_df"),
@@ -368,113 +374,168 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Metrics",
                      ui.navset_pill(
                          ui.nav_panel("Charge State",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("chargestate_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("chargestate_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("chargestate_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Per file, the values shown are the number of unique modified peptide sequences per charge state."),
+                                                         ui.p("-Averages shown are average number of unique modified peptide sequences per charge state per sample condition."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("chargestate_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("chargestate_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.column(3,
+                                                            ui.input_radio_buttons("chargestate_counts_percent","Show numbers as counts or percent:",choices=["Percent","Counts"],selected="Percent"),
+                                                            ui.input_switch("chargestate_stacked","Show as stacked bar graphs",value=False),
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.input_radio_buttons("chargestate_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"},selected="condition"),
+                                                            ui.output_ui("chargestate_averages_ui"),
+                                                           )
+                                                  ),
+                                              ui.row(
+                                                  ui.input_switch("chargestate_peplength","Plot for specific peptide length"),
+                                                  ui.output_ui("chargestate_peplength_slider_ui"),
+                                                  )
                                           ),
-                                      ui.input_switch("chargestate_stacked","Show as stacked bar graphs"),
-                                      ui.input_radio_buttons("chargestate_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("chargestateplot")
                                       ),
                          ui.nav_panel("Peptide Length",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("peptidelength_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("peptidelength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("peptidelength_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Per file or per condition, the values shown are the number of unique unmodified peptide sequences per peptide length."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Optional marker automatically picks the maximum among the data."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("peptidelength_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("peptidelength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("peptidelengths_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                  ui.input_radio_buttons("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
+                                                  ui.output_ui("lengthmark_ui"),
+                                                  ),
                                           ),
-                                      ui.row(
-                                          ui.column(4,
-                                                    ui.input_radio_buttons("peptidelengths_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                    ui.input_radio_buttons("peplengthinput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"})
-                                                    ),
-                                          ui.output_ui("lengthmark_ui"),
-                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("peptidelengthplot")
                                       ),
                          ui.nav_panel("Peptides per Protein",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("pepsperprotein_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("pepsperprotein_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("pepsperprotein_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Per file or per condition, the values shown are the number of unique modified peptide sequencecs per protein."),                                                         
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("pepsperprotein_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("pepsperprotein_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("pepsperprotein_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                  ui.input_radio_buttons("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"}),
+                                                  ui.input_slider("pepsperprotein_xrange","X-axis high bound",min=0,max=200,value=50,step=5,ticks=True)
+                                                  ),
                                           ),
-                                      ui.row(
-                                          ui.column(4,
-                                                    ui.input_radio_buttons("pepsperprotein_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                    ui.input_radio_buttons("pepsperproteininput","Line plot or bar plot?",choices={"lineplot":"line plot","barplot":"bar plot"})
-                                                    ),
-                                          ui.column(4,
-                                                    ui.input_slider("pepsperprotein_xrange","X-axis high bound",min=0,max=200,value=50,step=5,ticks=True)
-                                                    )
-                                            ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("pepsperproteinplot")
                                       ),
                          ui.nav_panel("Dynamic Range",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("dynamicrange_width","Plot width",min=100,max=7500,step=100,value=500,ticks=True),
-                                              ui.input_slider("dynamicrange_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("dynamicrange_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Per sample condition, mean or median protein signal is ranked and shown in the plot."),
+                                                         ui.p("-Contribution to the overall protein signal is shown in the upper part of the plot, with the number of protein groups that contribute to 25%, 50% and 75% of the protein signal."),
+                                                         ui.p("-The table shows the top N proteins according to their mean or median signal."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("dynamicrange_width","Plot width",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_slider("dynamicrange_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.output_ui("sampleconditions_ui"),
+                                                  ui.input_selectize("meanmedian","Mean or median",choices={"mean":"mean","median":"median"}),
+                                                  ui.input_numeric("top_n","Input top N proteins to display:",value=25,min=5,step=5),
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
                                       ui.row(
-                                          ui.column(5,
-                                                    ui.output_ui("sampleconditions_ui"),
-                                                    ui.input_selectize("meanmedian","Mean or median",choices={"mean":"mean","median":"median"}),
-                                                    ui.input_numeric("top_n","Input top N proteins to display:",value=25,min=5,step=5),
-                                                    ui.output_data_frame("dynamicrange_proteinrank")
+                                          ui.column(6,
+                                                    ui.output_data_frame("dynamicrange_proteinrank"),
                                                     ),
-                                          ui.column(7,
+                                          ui.column(6,
                                                     ui.output_plot("dynamicrangeplot")
                                                     )
-                                            ),
-                                      ),
-                         ui.nav_panel("Mass Accuracy",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("massaccuracy_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("massaccuracy_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
                                           )
                                       ),
-                                      ui.row(
-                                          ui.column(3,
-                                                    ui.input_radio_buttons("massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"})
-                                                    ),
-                                          ui.column(4,
-                                                    ui.output_ui("massaccuracy_bins_ui")
-                                                    ),
+                         ui.nav_panel("Mass Accuracy",
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("massaccuracy_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Violin plot or histogram of ppm mass accuracy for each precursor."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("massaccuracy_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("massaccuracy_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"}),
+                                                  ui.output_ui("massaccuracy_bins_ui")
+                                                  ),
+                                          ),
+                                          width="100%"
                                       ),
                                       ui.output_plot("massaccuracy_plot")
                                       ),
                          ui.nav_panel("Data Completeness",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("datacompleteness_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("datacompleteness_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
-                                        ),
-                                      ui.popover(ui.input_action_button("datacompleteness_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")), 
-                                                 ui.p("Description:"),
-                                                 ui.p("Similar to UpSet plot, this calculates how many runs each unique protein or stripped/modified peptide is detected in."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_radio_buttons("protein_peptide","Pick what metric to plot:",choices={"proteins":"Proteins","peptides":"Modified Peptides","strippedpeptides":"Stripped Peptides"}),
-                                      ui.input_switch("datacompleteness_sampleconditions_switch","Plot for specific condition?",value=False),
-                                      ui.output_ui("datacompleteness_sampleconditions_ui"),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("datacompleteness_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Similar to UpSet plot, this calculates how many runs each unique protein or stripped/modified peptide is detected in."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("datacompleteness_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("datacompleteness_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("protein_peptide","Pick what metric to plot:",choices={"proteins":"Proteins","peptides":"Modified Peptides","strippedpeptides":"Stripped Peptides"}),
+                                                  ui.column(2,
+                                                            ui.input_switch("datacompleteness_sampleconditions_switch","Plot for specific condition?",value=False),
+                                                            ui.output_ui("datacompleteness_sampleconditions_ui"),
+                                                            )
+
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("datacompletenessplot")
                                       ),
                          ui.nav_panel("Peak Width",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("peakwidth_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("peakwidth_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
-                                        ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("peakwidth_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Violin plot of LC peak width for each precursor."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-If peak width is not exported in the original search file, peak width is calculated using the Start and End values for the retention time."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("peakwidth_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("peakwidth_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_switch("peakwidth_removetop5percent","Remove top 5%"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                       ui.row(
                                           ui.column(5,
-                                                    ui.input_switch("peakwidth_removetop5percent","Remove top 5%"),
                                                     ui.output_table("peakwidth_table"),
                                                     ),
                                           ui.column(7,
@@ -483,14 +544,24 @@ app_ui=ui.page_fluid(
                                             ),              
                                       ),
                          ui.nav_panel("Missed Cleavages",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("missedcleavages_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("missedcleavages_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                          )
-                                        ),
-                                      ui.input_slider("missedcleavages_barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
-                                      ui.input_radio_buttons("enzyme_rules","Enzyme cleavage rules",choices={"trypsin":"Trypsin (K/R)"}),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("missedcleavages_info_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar plot of numbers of missed cleavages. Peptide IDs that do not follow the enzyme rules are included."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Per file or per condition, stripped peptide sequences are checked against the selected enzyme cleavage rules."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("missedcleavages_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("missedcleavages_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_slider("missedcleavages_barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.2,ticks=True),
+                                                  ui.input_radio_buttons("enzyme_rules","Enzyme cleavage rules",choices={"trypsin":"Trypsin (K/R)"}),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("missedcleavages_plot")
                                       )
                         ),icon=icon_svg("chart-line")
@@ -504,83 +575,96 @@ app_ui=ui.page_fluid(
                                       ui.output_ui("ptmlist_ui")
                                       ),
                          ui.nav_panel("Counts per Condition",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("ptmidmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("ptmidmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("ptmcounts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar graphs of the number of IDs containing the specified PTM per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-The radio button can be used to toggle whether the bar graphs shown counts or the % of all IDs that contain the selected PTM."),
+                                                         ui.p("-Proteins: number of unique values in the ProteinGroups column."),
+                                                         ui.p("-Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
+                                                         ui.p("-Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
+                                                         ui.p("-Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("ptmidmetrics_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("ptmidmetrics_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_radio_buttons("ptmidmetrics_individual_average","Choose how to show ID counts:",choices={"individual":"Individual Counts","average":"Average Counts"}),
+                                                  ui.input_selectize("ptmidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
+                                                  ui.input_radio_buttons("ptm_counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("ptmcounts_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graphs of the number of IDs containing the specified PTM per run with subplots for each category. The dropdown menu can be used to plot each category individually instead of as subplots."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("The radio button can be used to toggle whether the bar graphs shown counts or the % of all IDs that contain the selected PTM."),
-                                                 ui.p("Proteins: number of unique values in the ProteinGroups column."),
-                                                 ui.p("Proteins with >2 Peptides: number of ProteinGroups that have more than 2 unique ModifiedPeptides."),
-                                                 ui.p("Peptides: number of unique values in the ModifiedPeptide column (agnostic to charge)."),
-                                                 ui.p("Precursors: number of unique values between the ModifiedPeptide and Charge columns."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.input_selectize("ptmidplotinput","Choose what metric to plot:",choices={"all":"All","proteins":"Proteins","proteins2pepts":"Proteins with >2 Peptides","peptides":"Peptides","precursors":"Precursors"},multiple=False,selected="all"),
-                                          ui.input_radio_buttons("ptm_counts_vs_enrich","Show counts or % of IDs?",choices={"counts":"Counts","percent":"% of IDs (enrichment)"})
-                                          ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("ptmidmetricsplot")
                                       ),
                          ui.nav_panel("CV Plots",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("ptmcvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("ptmcvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
-                                        ),
-                                      ui.popover(ui.input_action_button("ptmcvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Violin plots of the CVs per condition for the selected type of ID containing the selected PTM. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor","Peptide":"Peptide"}),
-                                          ui.input_switch("ptm_removetop5percent","Remove top 5%"),
-                                          ui.output_table("ptm_cvtable")
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("ptmcvplot_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Violin plots of the CVs per condition for the selected type of ID containing the selected PTM. Use the switch to remove top 5% outliers. The table displays the mean and median CV values for the shown plot and updates when the switch is toggled."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Peptide-level CVs are calculated from the top 3 precursors for a given sequence."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("ptmcvplot_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("ptmcvplot_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("ptm_proteins_precursors","Pick which IDs to plot",choices={"Protein":"Protein","Precursor":"Precursor","Peptide":"Peptide"}),
+                                                  ui.input_switch("ptm_removetop5percent","Remove top 5%"),
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
+                                      ui.output_table("ptm_cvtable"),
                                       ui.output_plot("ptm_cvplot")
                                       ),
                          ui.nav_panel("Mass Accuracy",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("ptm_massaccuracy_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("ptm_massaccuracy_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                          )
-                                      ),
-                                      ui.row(
-                                          ui.column(3,
-                                                    ui.input_radio_buttons("ptm_massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"})
-                                                    ),
-                                          ui.column(4,
-                                                    ui.output_ui("ptm_massaccuracy_bins_ui")
-                                                    ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Violin plot or histogram of ppm mass accuracy for each precursor containing the selected PTM."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("ptm_massaccuracy_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("ptm_massaccuracy_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("ptm_massaccuracy_violin_hist","Plot as a violin plot or histogram?",choices={"violin":"Violin Plot","histogram":"Histogram"}),
+                                                  ui.output_ui("ptm_massaccuracy_bins_ui")
+                                                  ),
+                                          ),
+                                          width="100%"
                                       ),
                                       ui.output_plot("ptm_massaccuracy_plot")
                                       ),
                          ui.nav_panel("PTMs per Precursor",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("ptmsperprecursor_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("ptmsperprecursor_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("ptmsperprecursor_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar graphs for the number of PTMs in each ModifiedPeptide value. Agnostic to PTM identity, a more detailed list of the PTM combinations can be exported in the Export Tables section."),
+                                                         ui.p("-For example, the '1' on the x-axis gives the number of all precursors that contain a single PTM, regardless of the PTM identity."),
+                                                         ui.p("-When plotting for a specific PTM, the '0' on the x-axis includes peptides that may be modified, just not with the selected PTM."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-For search results with many conditions, the bar width slider helps to avoid overlap of bar groups."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("ptmsperprecursor_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("ptmsperprecursor_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_slider("barwidth","Bar width:",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
+                                                  ui.column(3,
+                                                            ui.input_switch("ptmsperprecursor_specific","Plot for specific PTM"),
+                                                            ui.output_ui("ptmsperprecursor_ptmlist_ui"),
+                                                            )
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("ptmsperprecursor_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graphs for the number of PTMs in each ModifiedPeptide value. Agnostic to PTM identity, a more detailed list of the PTM combinations can be exported in the Export Tables section."),
-                                                 ui.p("For example, the '1' on the x-axis gives the number of all precursors that contain a single PTM, regardless of the PTM identity."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("For search results with many conditions, the bar width slider helps to avoid overlap of bar groups."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_slider("barwidth","Bar width:",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("ptmsperprecursor")
                                       )
                             ),icon=icon_svg("magnifying-glass")
@@ -588,55 +672,74 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Heatmaps",
                      ui.navset_pill(
                         ui.nav_panel("RT, m/z, IM Heatmaps",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("heatmap_width","Plot width",min=100,max=7500,step=100,value=1400,ticks=True),
-                                            ui.input_slider("heatmap_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
-                                            )
-                                        ),
-                                     ui.row(
-                                         ui.input_slider("heatmap_numbins","Number of bins:",min=10,max=250,value=100,step=10,ticks=True),
-                                         ui.input_selectize("heatmap_cmap","Heatmap Color:",choices={"default":"White_Blue_Red","viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"}),
-                                         ui.input_radio_buttons("conditiontype","Plot by individual replicate or by condition:",choices={"replicate":"By replicate","condition":"By condition"},width="350px"),
-                                         ui.output_ui("cond_rep_list_heatmap"),
-                                        ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("heatmap_width","Plot width",min=100,max=7500,step=100,value=1400,ticks=True),
+                                                  ui.input_slider("heatmap_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_radio_buttons("conditiontype","Plot by individual replicate or by condition:",choices={"replicate":"By replicate","condition":"By condition"},width="350px"),
+                                                  ui.output_ui("cond_rep_list_heatmap"),
+                                                  ),
+                                              ui.row(
+                                                  ui.input_slider("heatmap_numbins","Number of bins:",min=10,max=250,value=100,step=10,ticks=True),
+                                                  ui.input_selectize("heatmap_cmap","Heatmap Color:",choices={"default":"White_Blue_Red","viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"}),
+                                                  )
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.output_plot("replicate_heatmap")
                                      ),
                         ui.nav_panel("Charge/PTM Precursor Heatmap",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("chargeptmheatmap_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("chargeptmheatmap_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
-                                        ),
-                                     ui.row(
-                                         ui.column(3,
-                                                   ui.download_button("diawindows_template","Download DIA Window Template",width="300px",icon=icon_svg("file-arrow-down")),
-                                                   ui.input_file("diawindow_upload","Upload DIA windows as a .csv:"),
-                                                   ui.input_radio_buttons("windows_choice","Choose DIA windows to overlay:",choices={"imported":"Imported DIA windows","lubeck":"Lubeck DIA","phospho":"Phospho DIA","bremen":"Bremen DIA","None":"None"},selected="None"),
-                                                   ui.input_selectize("chargeptmheatmap_cmap","Heatmap Color:",choices={"default":"White_Blue_Red","viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"}),
-                                                   ui.input_slider("chargeptm_numbins_x","Number of m/z bins",min=10,max=250,value=100,step=10,ticks=True),
-                                                   ui.input_slider("chargeptm_numbins_y","Number of mobility bins",min=10,max=250,value=100,step=10,ticks=True),
-                                                   ui.output_ui("chargestates_chargeptmheatmap_ui"),
-                                                   ui.output_ui("ptm_chargeptmheatmap_ui"),
-                                                   ),
-                                         ui.column(6,
-                                                   ui.output_plot("chargeptmheatmap")
-                                                   )
-                                             ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("chargeptmheatmap_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("chargeptmheatmap_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_selectize("chargeptmheatmap_cmap","Heatmap Color:",choices={"default":"White_Blue_Red","viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"}),
+                                                  ui.input_slider("chargeptm_numbins_x","Number of m/z bins",min=10,max=250,value=100,step=10,ticks=True),
+                                                  ui.input_slider("chargeptm_numbins_y","Number of mobility bins",min=10,max=250,value=100,step=10,ticks=True),
+                                                  ),
+                                              ui.row(
+                                                  ui.column(3,
+                                                            ui.download_button("diawindows_template","Download DIA Window Template",width="300px",icon=icon_svg("file-arrow-down")),
+                                                            ui.input_file("diawindow_upload","Upload DIA windows as a .csv:"),
+                                                            ),
+                                                  ui.input_selectize("windows_choice","Choose DIA windows to overlay:",choices={"None":"None","lubeck":"Lubeck DIA","phospho":"Phospho DIA","bremen":"Bremen DIA","imported":"Imported DIA windows","diagonal":"Imported Diagonal-PASEF windows"},selected="None"),
+                                                  ui.output_ui("chargestates_chargeptmheatmap_ui"),
+                                                  ui.output_ui("ptm_chargeptmheatmap_ui"),
+                                                  )
+                                          ),
+                                          width="100%"
+                                      ),
+                                     ui.output_plot("chargeptmheatmap")
                                      ),
                         ui.nav_panel("Charge/PTM Precursor Scatter",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("chargeptmscatter_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                            ui.input_slider("chargeptmscatter_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
-                                        ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("chargeptmscatter_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("chargeptmscatter_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.output_ui("chargeptmscatter_cond_rep"),
+                                                  ui.output_ui("ptm_chargeptmscatter_ui"),
+                                                  ui.output_ui("chargestates_chargeptmscatter_ui"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.row(
                                          ui.column(3,
-                                                   ui.output_ui("chargeptmscatter_cond_rep"),
-                                                   ui.output_ui("ptm_chargeptmscatter_ui"),
-                                                   ui.output_ui("chargestates_chargeptmscatter_ui"),
                                                    ui.output_table("chargeptmscatter_table")
                                                    ),
                                          ui.column(8,
@@ -645,71 +748,92 @@ app_ui=ui.page_fluid(
                                             ),
                                      ),
                         ui.nav_panel("#IDs vs RT",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("idsvsrt_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("idsvsrt_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
-                                            )
-                                        ),
-                                     ui.popover(ui.input_action_button("idsvsrt_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                ui.p("Description:"),
-                                                ui.p("Histogram of the ApexRT values for each run. An estimate of the maximum retention time is used to determine the timespan of each histogram bin."),
-                                                ui.p("Notes:"),
-                                                ui.p("Changing the bin size changes the RT range over which IDs are grouped in the histogram."),
-                                                placement="right"
-                                                ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("idsvsrt_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Histogram of the ApexRT values for each run. An estimate of the maximum retention time is used to determine the timespan of each histogram bin."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Changing the bin size changes the RT range over which IDs are grouped in the histogram."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("idsvsrt_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("idsvsrt_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.output_ui("binslider_ui"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.row(
-                                        ui.column(3,ui.output_ui("ids_vs_rt_checkbox")),
-                                        ui.column(8,ui.output_ui("binslider_ui"),ui.output_plot("ids_vs_rt")))
+                                        ui.column(3,
+                                                  ui.output_ui("ids_vs_rt_checkbox")
+                                                  ),
+                                        ui.column(8,
+                                                  ui.output_plot("ids_vs_rt")
+                                                  )
+                                            )
                                      ),
                         ui.nav_panel("Venn Diagram",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                            ui.row(
+                                                  ui.input_slider("venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                  ),
+                                            ui.row(
+                                                  ui.column(3,
+                                                            ui.input_radio_buttons("venn_numcircles","Pick number of runs to compare:",choices={"2":"2","3":"3"}),
+                                                            ui.output_ui("venn_run1_ui"),
+                                                            ui.output_ui("venn_run2_ui"),
+                                                            ui.output_ui("venn_run3_ui"),
+                                                            ),
+                                                  ui.column(2,
+                                                            ui.input_radio_buttons("venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups","peptides":"Peptides","precursors":"Precursors","peptides_stripped":"Stripped Peptides"}),
+                                                            ui.output_ui("peptidecore_ui"),
+                                                            ui.download_button("venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down")),
+                                                            ui.download_button("venn_download_detailed","Download Detailed Venn list",width="300px",icon=icon_svg("file-arrow-down"))
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.output_ui("venn_ptm_ui"),
+                                                            ui.output_ui("venn_ptmlist_ui"),
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.output_ui("venn_specific_length_ui"),
+                                                            ui.output_ui("venn_peplength_ui"),
+                                                            ),
+                                                  ),
+                                          ),
+                                          width="100%"
                                         ),
-                                     ui.row(
-                                         ui.column(4,
-                                                   ui.input_radio_buttons("venn_numcircles","Pick number of runs to compare:",choices={"2":"2","3":"3"}),
-                                                   ui.input_radio_buttons("venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                   ui.input_radio_buttons("venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups",
-                                                                                                                            "peptides":"Peptides",
-                                                                                                                            "precursors":"Precursors",
-                                                                                                                            "peptides_stripped":"Stripped Peptides",
-                                                                                                                            }),
-                                                   ui.output_ui("venn_ptm_ui"),
-                                                   ui.output_ui("venn_ptmlist_ui"),
-                                                   ui.output_ui("venn_specific_length_ui"),
-                                                   ui.output_ui("venn_peplength_ui"),
-                                                   ui.output_ui("peptidecore_ui")
-                                                   ),
-                                         ui.column(4,
-                                                   ui.output_ui("venn_run1_ui"),
-                                                   ui.output_ui("venn_run2_ui"),
-                                                   ui.output_ui("venn_run3_ui"),
-                                                   ui.download_button("venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down"))
-                                                   )
-                                     ),
                                      ui.output_plot("venn_plot")
                                      ),
                         ui.nav_panel("Histogram",
-                                     ui.card(
-                                         ui.row(
-                                            ui.input_slider("histogram_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                            ui.input_slider("histogram_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
-                                        ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                                        #  ),
+                                              ui.row(
+                                                  ui.input_slider("histogram_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("histogram_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_slider("histogram_numbins","Number of bins:",min=10,max=250,value=100,step=10,ticks=True),
+                                                  ui.input_selectize("histogram_pick","Pick property to plot:",choices={"ionmobility":"Ion Mobility","precursormz":"Precursor m/z","precursorintensity":"Precursor Intensity","proteinintensity":"Protein Intensity"}),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.row(
-                                         ui.column(4,
+                                         ui.column(3,
                                                    ui.output_ui("histogram_cond_rep_list"),
-                                                   ui.input_radio_buttons("histogram_pick","Pick property to plot:",choices={"ionmobility":"Ion Mobility",
-                                                                                                                             "precursormz":"Precursor m/z",
-                                                                                                                             "precursorintensity":"Precursor Intensity",
-                                                                                                                             "proteinintensity":"Protein Intensity"}),
-                                                   ui.input_slider("histogram_numbins","Number of bins:",min=10,max=250,value=100,step=10,ticks=True),
                                                    ),
-                                         ui.column(8,
+                                         ui.column(9,
                                                    ui.output_plot("histogram_plot")
                                                    )
                                             )
@@ -719,48 +843,59 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Statistics",
                      ui.navset_pill(
                          ui.nav_panel("Volcano Plot",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("volcano_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("volcano_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("volcano_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Student's t-test assuming equal variances."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("volcano_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("volcano_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                                  ),
+                                              ui.row(
+                                                  ui.column(4,
+                                                            ui.output_ui("volcano_condition1"),
+                                                            ui.output_ui("volcano_condition2"),
+                                                            ui.download_button("volcano_download","Download protein table",width="300px",icon=icon_svg("file-arrow-down")),
+                                                            ui.input_switch("show_labels","Show protein labels"),
+                                                            ui.input_numeric("label_fontsize","Label size:",value=4),
+                                                            ),
+                                                ui.column(4,
+                                                            ui.input_slider("volcano_pvalue","log10 pvalue cutoff",min=0.5,max=5.0,value=1.0,step=0.1,ticks=True),
+                                                            ui.input_slider("volcano_foldchange","log2 fold change cutoff (absolute value)",min=0.1,max=2.0,value=0.5,step=0.1,ticks=True),
+                                                            ui.input_switch("volcano_h_v_lines","Show lines for pvalue and fold change cutoffs")
+                                                            ),
+                                                ui.column(4,
+                                                            ui.input_slider("volcano_xplotrange","Plot x Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,drag_range=True),
+                                                            ui.input_slider("volcano_yplotrange","Plot y Range:",min=-10,max=10,value=[0,2],step=0.5,ticks=True,drag_range=True),
+                                                            ui.input_switch("volcano_plotrange_switch","Use sliders for axis ranges")
+                                                            ),
+                                                    )
                                           ),
-                                          ui.row(
-                                              ui.column(4,
-                                                        ui.output_ui("volcano_condition1"),
-                                                        ui.output_ui("volcano_condition2"),
-                                                        ui.download_button("volcano_download","Download protein table",width="300px",icon=icon_svg("file-arrow-down")),
-                                                        ui.input_switch("show_labels","Show protein labels"),
-                                                        ui.input_numeric("label_fontsize","Label size:",value=4),
-                                                        ),
-                                              ui.column(4,
-                                                        ui.input_slider("volcano_pvalue","log10 pvalue cutoff",min=0.5,max=5.0,value=1.0,step=0.1,ticks=True),
-                                                        ui.input_slider("volcano_foldchange","log2 fold change cutoff (absolute value)",min=0.1,max=2.0,value=0.5,step=0.1,ticks=True),
-                                                        ui.input_switch("volcano_h_v_lines","Show lines for pvalue and fold change cutoffs")
-                                                        ),
-                                              ui.column(4,
-                                                        ui.input_slider("volcano_xplotrange","Plot x Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,drag_range=True),
-                                                        ui.input_slider("volcano_yplotrange","Plot y Range:",min=-10,max=10,value=[0,2],step=0.5,ticks=True,drag_range=True),
-                                                        ui.input_switch("volcano_plotrange_switch","Use sliders for axis ranges")
-                                                        ),
-                                          ),
-                                          ui.output_plot("volcanoplot")
+                                          width="100%"
+                                      ),
+                                      ui.output_plot("volcanoplot")
                                       ),
                          ui.nav_panel("Volcano Plot - Feature Plot",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("volcano_feature_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                            ui.input_slider("volcano_feature_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("volcanofeature_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Box-and-whisker plot of Protein Group intensity for selected proteins from the table with results based on the setup in the Volcano Plot tab."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Control and Test conditions specified in the Volcano Plot tab."),
+                                                         ui.p("-Select multiple rows in the data table by holding Control and clicking on rows."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("volcano_feature_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("volcano_feature_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("volcanofeature_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Box-and-whisker plot of Protein Group intensity for selected proteins from the table with results based on the setup in the Volcano Plot tab."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Control and Test conditions specified in the Volcano Plot tab."),
-                                                 ui.p("Select multiple rows in the data table by holding Control and clicking on rows."),
-                                                 placement="right"
-                                                 ),
+                                          width="100%"
+                                      ),
                                       ui.row(
                                           ui.column(6,
                                                     ui.output_data_frame("feature_table")
@@ -771,39 +906,56 @@ app_ui=ui.page_fluid(
                                             )
                                       ),
                          ui.nav_panel("Volcano Plot - Up/Down Regulation",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("volcano_regulation_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                            ui.input_slider("volcano_regulation_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("volcanoregulation_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Bar graph of p-values for up- or down-regulated proteins based on setup in the Volcano Plot tab."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("volcano_regulation_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("volcano_regulation_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_selectize("regulation_upordown","Show up- or down-regulated proteins?",choices={"up":"Upregulated","down":"Downregulated"}),
+                                                  ui.input_slider("regulation_topN","Pick top N proteins to show:",min=5,max=50,value=30,step=5,ticks=True),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("volcanoregulation_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Bar graph of p-values for up- or down-regulated proteins based on setup in the Volcano Plot tab."),
-                                                 placement="right"
-                                                 ),
-                                      ui.input_selectize("regulation_upordown","Show up- or down-regulated proteins?",choices={"up":"Upregulated","down":"Downregulated"}),
-                                      ui.input_slider("regulation_topN","Pick top N proteins to show:",min=5,max=50,value=30,step=5,ticks=True),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("volcano_updownregulation_plot")
                                       ),
                          ui.nav_panel("Dendrogram/Protein Signal",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("dendrogram_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                            ui.input_slider("dendrogram_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("dendrogram_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("dendrogram_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_selectize("dendrogram_cmap","Heatmap Color:",choices={"viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"},selected="magma"),
+                                                  ui.input_numeric("dendrogram_scaling","Subplot height ratio (useful when changing plot height):",value=3),
+                                                  ),
                                           ),
-                                      ui.input_selectize("dendrogram_cmap","Heatmap Color:",choices={"viridis":"Viridis","plasma":"Plasma","inferno":"Inferno","magma":"Magma","cividis":"Cividis"},selected="magma"),
-                                      ui.input_numeric("dendrogram_scaling","Subplot height ratio (useful when changing plot height):",value=3),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("dendrogram_heatmap")
                                       ),
                          ui.nav_panel("PCA",
-                                    ui.card(
-                                        ui.row(
-                                            ui.input_slider("pca_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("pca_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("pca_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("pca_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("pca_plot")
                                       )
                       ),icon=icon_svg("network-wired")
@@ -811,98 +963,107 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Immunopeptidomics",
                      ui.navset_pill(
                          ui.nav_panel("Sequence Motifs",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("seqmotif_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("seqmotif_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("sequencemotifs_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Weblogo plot for specific peptide length from selected run."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-'Information' matrix is the standard Weblogo style. Counts will scale the figure to the number of counts of each residue at each position."),
+                                                         placement="right"
+                                                        ),
+                                              ui.row(
+                                                  ui.input_slider("seqmotif_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("seqmotif_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("seqmotif_plottype","Pick kind of matrix to plot:",choices={"information":"Information","counts":"Counts"}),
+                                                  ui.output_ui("seqmotif_run_ui"),
+                                                  ui.input_slider("seqmotif_peplengths","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("sequencemotifs_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Weblogo plot for specific peptide length from selected run."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("'Information' matrix is the standard Weblogo style. Counts will scale the figure to the number of counts of each residue at each position."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.column(3,
-                                                    ui.input_radio_buttons("seqmotif_plottype","Pick kind of matrix to plot:",choices={"information":"Information","counts":"Counts"}),
-                                                    ui.input_slider("seqmotif_peplengths","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True),
-                                                    ui.output_ui("seqmotif_run_ui"),
-                                                    ),
-                                          ui.column(8,
-                                                    ui.output_plot("seqmotif_plot")
-                                                    )
-                                      )
+                                          width="100%"
+                                      ),                                      
+                                      ui.output_plot("seqmotif_plot")
                                       ),
                          ui.nav_panel("Charge States (Bar)",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("charge_barchart_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("charge_barchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("chargestatesbar_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Similar charge state plot as in Metrics section, but instead of separating precursors that were detected with multiple charges, charges are grouped together to show IDs that were detected with multiple charges."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("charge_barchart_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("charge_barchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("chargestate_bar_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"})
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("chargestatesbar_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Similar charge state plot as in Metrics section, but instead of separating precursors that were detected with multiple charges, charges are grouped together to show IDs that were detected with multiple charges."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
-                                                 placement="right"
-                                                 ),
+                                          width="100%"
+                                      ),
                                       ui.row(
-                                          ui.column(4,
-                                                    ui.input_radio_buttons("chargestate_bar_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"})
-                                                    ),
-                                          ui.column(4,
+                                          ui.column(2,
                                                     ui.input_switch("chargestate_charges_usepickedcharges","Use picked charges"),
-                                                    ui.output_ui("chargestate_charges_ui"))
-                                            ),
-                                      ui.output_plot("charge_barchart")
+                                                    ui.output_ui("chargestate_charges_ui")
+                                                    ),
+                                          ui.column(9,
+                                                    ui.output_plot("charge_barchart")
+                                                    )
+                                            )
                                       ),
                          ui.nav_panel("Charge States (Stacked)",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("charge_stackedbarchart_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("charge_stackedbarchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("chargestatesstacked_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Stacked representation of the charge state plot in Charge States (bar) with a table showing frequencies of different charges or charge combinations."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("charge_stackedbarchart_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("charge_stackedbarchart_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("chargestate_stacked_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                  ),
                                           ),
-                                      ui.popover(ui.input_action_button("chargestatesstacked_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Stacked representation of the charge state plot in Charge States (bar) with a table showing frequencies of different charges or charge combinations."),
-                                                 placement="right"
-                                                 ),
-                                      ui.row(
-                                          ui.input_radio_buttons("chargestate_stacked_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                          ui.output_data_frame("charge_stacked_table")
-                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.output_data_frame("charge_stacked_table"),
                                       ui.output_plot("charge_stacked_barchart")
                                       ),
                          ui.nav_panel("Charge States per Peptide Length",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("chargestate_peplength_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("chargestate_peplength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                          )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("chargestatespeplength_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Stacked bar graph of charge states detected per peptide length. Precursors found in multiple runs per condition are only counted once."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Use the slider to adjust the peptide length range over which the bar graph will be plotted."),
+                                                         ui.p("-Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
+                                                         placement="right"
+                                                         ),
+                                              ui.row(
+                                                  ui.input_slider("chargestate_peplength_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("chargestate_peplength_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.input_radio_buttons("chargestate_peplength_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                  ui.output_ui("chargestate_peplength_plotrange_ui"),
+                                                  ui.column(2,
+                                                            ui.output_ui("chargestate_peplength_download_ui"),
+                                                            ui.download_button("chargestate_peplength_download","Download Counts for Selected Run",width="300px",icon=icon_svg("file-arrow-down"))
+                                                            )
+                                                  )
                                           ),
-                                      ui.popover(ui.input_action_button("chargestatespeplength_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                 ui.p("Description:"),
-                                                 ui.p("Stacked bar graph of charge states detected per peptide length. Precursors found in multiple runs per condition are only counted once."),
-                                                 ui.p("Notes:"),
-                                                 ui.p("Use the slider to adjust the peptide length range over which the bar graph will be plotted."),
-                                                 ui.p("Use the checklist to choose which charges specifically to plot in the bar graph and use the switch at the top to activate this feature."),
-                                                 placement="right"
-                                                 ),
+                                          width="100%"
+                                      ),
                                       ui.row(
-                                          ui.column(4,
-                                                    ui.input_radio_buttons("chargestate_peplength_condition_or_run","Plot by condition or by individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                    ui.output_ui("chargestate_peplength_plotrange_ui")
-                                                    ),
-                                          ui.column(4,
+                                          ui.column(2,
                                                     ui.input_switch("usepickedcharges","Use picked charges"),
                                                     ui.output_ui("chargestate_peplength_charges_ui")
-                                                    )
-                                          ),
-                                      ui.output_plot("chargestate_peplength")
+                                                    ),
+                                          ui.column(9,
+                                                    ui.output_plot("chargestate_peplength_plot")
+                                                    ),
+                                            )
                                       ),
                      ),icon=icon_svg("vial-virus")
                      ),
@@ -911,77 +1072,99 @@ app_ui=ui.page_fluid(
                              ui.nav_panel("Info",
                                           ui.popover(ui.input_action_button("mixedproteomesetup_btn","Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
                                                      ui.p("Description:"),
-                                                     ui.p("Setup for mixed proteome calculations."),
+                                                     ui.p("-Setup for mixed proteome calculations."),
                                                      ui.p("Notes:"),
-                                                     ui.p("Organisms are automatically detected from the PG.ProteinNames column in the search report."),
-                                                     ui.p("Edit the table with the desired plotting order for the organisms and their ratios in comparative sample conditions."),
-                                                     ui.p("Add an 'x' to the Remove column to remove a line completely from being used in later plotting functions.")
+                                                     ui.p("-Organisms are automatically detected from the PG.ProteinNames column in the search report."),
+                                                     ui.p("-Edit the table with the desired plotting order for the organisms and their ratios in comparative sample conditions."),
+                                                     ui.p("-Add an 'x' to the Remove column to remove a line completely from being used in later plotting functions."),
                                                      ),
                                           ui.output_data_frame("organismtable"),
-                                          ui.input_radio_buttons("coloroptions_sumint","Use matplotlib tableau colors or blues/grays?",choices={"matplot":"matplotlib tableau","bluegray":"blues/grays"},width="400px")
+                                          ui.input_radio_buttons("coloroptions_sumint","Use matplotlib tableau colors or blues/grays?",choices={"matplot":"matplotlib tableau","bluegray":"blues/grays"},width="400px"),
+                                          ui.output_text_verbatim("organisms")
                                           ),
                              ui.nav_panel("Counts per Organism",
-                                          ui.card(
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #             ),
                                               ui.row(
                                                   ui.input_slider("countsperorganism_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                                  ui.input_slider("countsperorganism_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                                )
-                                            ),
-                                          ui.input_slider("countsperorganism_barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
-                                          ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"},multiple=False),
-                                          ui.output_plot("countsperorganism")
+                                                  ui.input_slider("countsperorganism_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.input_selectize("countsplotinput","Choose what metric to plot:",choices={"proteins":"Proteins","peptides":"Peptides","precursors":"Precursors"},multiple=False),
+                                                  ui.input_slider("countsperorganism_barwidth","Bar width",min=0.1,max=1,step=0.05,value=0.25,ticks=True),
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
+                                      ui.output_plot("countsperorganism")
+                                    ),
                              ui.nav_panel("Summed Intensities",
-                                          ui.card(
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #             ),
                                               ui.row(
                                                   ui.input_slider("summedintensities_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                                  ui.input_slider("summedintensities_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                              )
-                                            ),
-                                          ui.output_plot("summedintensities")
+                                                  ui.input_slider("summedintensities_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.input_selectize("summedintensities_pick","Choose what metric to plot:",choices={"protein":"Proteins","precursor":"Precursors"}),
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
+                                      ui.output_plot("summedintensities")
+                                      ),
                              ui.nav_panel("Quant Ratios",
-                                          ui.card(
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                              ui.popover(ui.input_action_button("mixedproteome_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+                                                         ui.p("Description:"),
+                                                         ui.p("-Plots of number of proteins per organism used in the calculations (those that were found in test and reference conditions), quant ratios, and histogram of quant ratios."),
+                                                         ui.p("Notes:"),
+                                                         ui.p("-Experimental ratios will be shown as a dashed line and theoretical ratios (calculated from the Info tab) will be shown as a solid line"),
+                                                         ui.p("-The table shows the calculated theoretical and experimental quant ratios according to the y-axis log scale specified."),
+                                                         ui.p("-Sliders can be used to adjust the y-axis plot range and CV cutoff % and are activated by their respective switches."),
+                                                         placement="right"
+                                                         ),
                                               ui.row(
                                                   ui.input_slider("quantratios_width","Plot width",min=100,max=7500,step=100,value=1200,ticks=True),
                                                   ui.input_slider("quantratios_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
-                                              )
-                                            ),
-                                          ui.popover(ui.input_action_button("mixedproteome_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
-                                                     ui.p("Description:"),
-                                                     ui.p("Plots of number of proteins per organism used in the calculations (those that were found in test and reference conditions), quant ratios, and histogram of quant ratios."),
-                                                     ui.p("Notes:"),
-                                                     ui.p("Experimental ratios will be shown as a dashed line and theoretical ratios (calculated from the Info tab) will be shown as a solid line"),
-                                                     ui.p("The table shows the calculated theoretical and experimental quant ratios according to the y-axis log scale specified."),
-                                                     ui.p("Sliders can be used to adjust the y-axis plot range and CV cutoff % and are activated by their respective switches."),
-                                                     placement="right"
-                                                     ),
-                                          ui.row(
-                                              ui.column(3,
-                                                        ui.output_ui("referencecondition"),
-                                                        ui.output_ui("testcondition"),
-                                                        ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
-                                                        ui.row(
-                                                            ui.column(6,
-                                                                      ui.input_radio_buttons("x_log_scale","x-axis Log Scale:",choices=["log2","log10"]),
-                                                                     ),
-                                                            ui.column(6,
-                                                                      ui.input_radio_buttons("y_log_scale","y-axis Log Scale:",choices=["log2","log10"]),  
-                                                                     )
+                                                  ui.column(3,
+                                                            ui.input_slider("plotrange","Plot Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="300px",drag_range=True),
+                                                            ui.input_switch("plotrange_switch","Use slider for y-axis range?")
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.input_slider("cvcutofflevel","CV Cutoff Level (%):",min=10,max=50,value=20,step=10,ticks=True,width="300px"),
+                                                            ui.input_switch("cvcutoff_switch","Include CV cutoff?")
+                                                            ),
+                                                  ),
+                                              ui.row(
+                                                  ui.column(3,
+                                                            ui.output_ui("referencecondition"),
+                                                            ui.output_ui("testcondition"),
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.input_selectize("quantratios_IDpick","Choose what metric to plot:",choices={"protein":"Proteins","precursor":"Precursors"}),
+                                                            ui.input_radio_buttons("quantratios_mean_median","Plot using mean or median quant?",choices={"mean":"mean","median":"median"}),
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.input_switch("mixedproteome_showexperimentalratios","Show experimental ratios (dashed line)",value=True),
+                                                            ui.input_switch("mixedproteome_showtheoreticalratios","Show theoretical ratios (solid line)",value=True)
+                                                            ),
+                                                  ui.column(2,
+                                                            ui.input_radio_buttons("x_log_scale","x-axis Log Scale:",choices=["log2","log10"]),
+                                                            ui.input_radio_buttons("y_log_scale","y-axis Log Scale:",choices=["log2","log10"]), 
                                                             )
-                                                        ),
-                                              ui.column(3,
-                                                        ui.input_slider("plotrange","Plot Range:",min=-10,max=10,value=[-2,2],step=0.5,ticks=True,width="400px",drag_range=True),
-                                                        ui.input_switch("plotrange_switch","Use slider for y-axis range?"),
-                                                        ui.input_slider("cvcutofflevel","CV Cutoff Level (%):",min=10,max=50,value=20,step=10,ticks=True,width="400px"),
-                                                        ui.input_switch("cvcutoff_switch","Include CV cutoff?")
-                                                        ),
-                                              ui.column(6,
-                                                        ui.output_table("quantratios_table"),
-                                                        )
-                                                        ),
-                                          ui.output_plot("quantratios")
-                                          )
+                                                  )
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.output_table("quantratios_table"),
+                                      ui.output_plot("quantratios")
+                                      )
                             ),icon=icon_svg("flask")
                       ),
         ui.nav_panel("PRM",
@@ -1002,22 +1185,36 @@ app_ui=ui.page_fluid(
                                      ui.output_data_frame("prm_table")
                                      ),
                         ui.nav_panel("PRM Peptides - Individual Tracker",
-                                     ui.card(
-                                        ui.row(
-                                            ui.input_slider("prmpeptracker_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("prmpeptracker_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                        )
-                                     ),
-                                     ui.output_ui("prmpeptracker_pick"),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("prmpeptracker_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("prmpeptracker_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.output_ui("prmpeptracker_pick"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.output_plot("prmpeptracker_plot")
                                      ),
                         ui.nav_panel("PRM Peptides - Intensity Across Runs",
-                                     ui.card(
-                                        ui.row(
-                                            ui.input_slider("prmpepintensity_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("prmpepintensity_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                        )
-                                     ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("prmpepintensity_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("prmpepintensity_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
                                      ui.output_plot("prmpepintensity_plot"),
                                      ),
                         ),icon=icon_svg("crosshairs")
@@ -1025,13 +1222,20 @@ app_ui=ui.page_fluid(
         ui.nav_panel("Dilution Series",
                      ui.navset_pill(
                          ui.nav_panel("Dilution Ratios",
-                                      ui.card(
-                                          ui.row(
-                                            ui.input_slider("dilutionseries_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                            ui.input_slider("dilutionseries_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True)
-                                            )
-                                            ),
-                                      ui.output_ui("normalizingcondition"),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("dilutionseries_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("dilutionseries_height","Plot height",min=100,max=7500,step=100,value=700,ticks=True),
+                                                  ui.output_ui("normalizingcondition"),
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),                                     
                                       ui.output_plot("dilutionseries_plot")
                                     )
                      ),icon=icon_svg("vials")
@@ -1126,11 +1330,11 @@ app_ui=ui.page_fluid(
                                       ui.card(
                                           ui.popover(ui.input_action_button("momainfo_btn","Instructions",class_="btn-success",icon=icon_svg("question"),width="300px"),
                                                      ui.p("Description:"),
-                                                     ui.p("MOMA (mobility offset mass aligned) precursors from the search file are found based on m/z, retention time, and ion mobility tolerances set by the sliders."),
-                                                     ui.p("The possible MOMA events shown in the table can be used to generate extracted ion mobiligrams from user-uploaded raw data corresponding to the runs in the search file."),
+                                                     ui.p("-MOMA (mobility offset mass aligned) precursors from the search file are found based on m/z, retention time, and ion mobility tolerances set by the sliders."),
+                                                     ui.p("-The possible MOMA events shown in the table can be used to generate extracted ion mobiligrams from user-uploaded raw data corresponding to the runs in the search file."),
                                                      ui.p("Notes:"),
-                                                     ui.p("The m/z and retention time sliders are used as tolerances in both finding MOMA events and plotting EIMs."),
-                                                     ui.p("The 'Group' column is just a placeholder to mark MOMA groups."),
+                                                     ui.p("-The m/z and retention time sliders are used as tolerances in both finding MOMA events and plotting EIMs."),
+                                                     ui.p("-The 'Group' column is just a placeholder to mark MOMA groups."),
                                           placement="right"
                                           ),
                                           ui.row(
@@ -1215,14 +1419,18 @@ app_ui=ui.page_fluid(
                                                     ui.card(
                                                         ui.card_header("Update from Metadata Table"),
                                                         ui.row(
-                                                            ui.input_action_button("rerun_metadata_secondary","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                                            ui.column(2),
+                                                            ui.column(5,
+                                                                      ui.input_action_button("rerun_metadata_secondary","Apply Metadata to Search File",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                                                     ),
+                                                            ui.column(2),
                                                             ui.p(),
                                                             ui.column(6,
-                                                                        ui.input_switch("condition_names_secondary","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
-                                                                        ui.input_switch("remove_secondary","Remove selected runs")            
+                                                                        #ui.input_switch("condition_names_secondary","Update 'R.Condition' and 'R.Replicate' columns",width="100%"),
+                                                                        ui.input_switch("remove_secondary","Remove selected runs"),
+                                                                        ui.input_switch("reorder_secondary","Reorder runs"),
                                                                     ),
                                                             ui.column(6,
-                                                                        ui.input_switch("reorder_secondary","Reorder runs"),
                                                                         ui.input_switch("concentration_secondary","Update 'Concentration' column")
                                                                     )
                                                                 )
@@ -1255,27 +1463,45 @@ app_ui=ui.page_fluid(
                                                 )
                                       ),
                          ui.nav_panel("Compare - Peptide Lengths",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("peplength_compare_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("peplength_compare_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("peplength_compare_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("peplength_compare_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.output_ui("compare_len_samplelist"),
+                                                  ),
                                           ),
-                                      ui.output_ui("compare_len_samplelist"),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("peplength_compare_plot")
                                       ),
                          ui.nav_panel("Compare - Stripped Peptide IDs",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("denovocompare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("denovocompare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("denovocompare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("denovocompare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.output_ui("denovocompare_venn_samplelist"),
+                                                  ui.column(3,
+                                                            ui.input_switch("denovocompare_specific_length","Compare specific peptide length?",value=False,width="300px"),
+                                                            ui.output_ui("denovocompare_specific_length_ui"),
+                                                            ),
+                                                  ui.input_switch("denovocompare_peptidecore","Only consider peptide core (cut first and last 2 residues)",value=False,width="300px"),
+                                                  ),
+                                              ui.row(
+                                                  ui.download_button("denovocompare_venn_download","Download Peptide List",width="300px",icon=icon_svg("file-arrow-down")),
+                                                  ),
                                           ),
-                                      ui.output_ui("denovocompare_venn_samplelist"),
-                                      ui.input_switch("denovocompare_specific_length","Compare specific peptide length?",value=False,width="300px"),
-                                      ui.output_ui("denovocompare_specific_length_ui"),
-                                      ui.input_switch("denovocompare_peptidecore","Only consider peptide core (cut first and last 2 residues)",value=False,width="300px"),
-                                      ui.download_button("denovocompare_venn_download","Download Peptide List",width="300px",icon=icon_svg("file-arrow-down")),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("denovocompare_venn_plot")
                                       ),
                          ui.nav_panel("Compare - Sequence Motifs",
@@ -1308,31 +1534,39 @@ app_ui=ui.page_fluid(
                                       )
                                       ),
                          ui.nav_panel("IDs Found in Fasta",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("fasta_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                              ui.input_slider("fasta_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("fasta_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("fasta_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                                  ),
                                           ),
+                                          width="100%"
+                                      ),
                                       ui.output_plot("fasta_plot")
                                       ),
                          ui.nav_panel("Position Confidence",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("confidence_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
-                                              ui.input_slider("confidence_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
-                                            )
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("confidence_width","Plot width",min=100,max=7500,step=100,value=800,ticks=True),
+                                                  ui.input_slider("confidence_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.output_ui("confidence_condition_ui"),
+                                                  ui.input_slider("confidence_lengthslider","Pick peptide length to plot for:",min=7,max=20,step=1,value=9,ticks=True)
+                                                  ),
                                           ),
-                                      ui.row(
-                                          ui.column(4,
-                                                    ui.output_ui("confidence_condition_ui"),
-                                                    ui.input_slider("confidence_lengthslider","Pick peptide length to plot for:",min=7,max=20,step=1,value=9,ticks=True)
-                                                    ),
-                                          ui.column(8,
-                                                    ui.output_plot("confidence_plot")
-                                                    )   
-                                            ),
+                                          width="100%"
                                       ),
+                                      ui.output_plot("confidence_plot")
+                                    ),
                                 ),icon=icon_svg("atom")
                      ),
         ui.nav_panel("Two-Software Comparison",
@@ -1374,11 +1608,14 @@ app_ui=ui.page_fluid(
                                                     ui.card(
                                                         ui.card_header("Update from Metadata Table"),
                                                         ui.row(
-                                                            ui.input_action_button("compare_rerun_metadata","Apply Changes",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
-                                                            ui.p(),
+                                                            ui.column(2),
+                                                            ui.column(5,
+                                                                    ui.input_action_button("compare_rerun_metadata","Apply Metadata to Search File",width="300px",class_="btn-primary",icon=icon_svg("rotate")),
+                                                                    ),
                                                             ui.input_switch("compare_remove","Remove selected runs"),
                                                             ui.input_switch("compare_reorder","Reorder runs"),
-                                                            ui.input_switch("compare_concentration","Update 'Concentration' column")
+                                                            ui.input_switch("compare_concentration","Update 'Concentration' column"),
+                                                            ui.column(2)
                                                             )
                                                         )
                                                         )
@@ -1405,37 +1642,54 @@ app_ui=ui.page_fluid(
                                             ),
                                       ),
                           ui.nav_panel("ID Counts",
-                                       ui.card(
-                                           ui.row(
-                                               ui.input_slider("compare_id_counts_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                               ui.input_slider("compare_id_counts_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
-                                               )
-                                            ),
-                                       ui.output_plot("compare_id_counts")
-                                       ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #             ),
+                                              ui.row(
+                                                  ui.input_slider("compare_id_counts_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("compare_id_counts_height","Plot height",min=100,max=7500,step=100,value=1000,ticks=True)
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.output_plot("compare_id_counts")
+                                      ),
                           ui.nav_panel("Venn Diagram",
-                                       ui.card(
-                                           ui.row(
-                                               ui.input_slider("compare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
-                                               ui.input_slider("compare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True)
-                                            )
-                                        ),
-                                       ui.row(
-                                           ui.column(4,
-                                                     ui.input_radio_buttons("compare_venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
-                                                     ui.input_radio_buttons("compare_venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups","peptides":"Peptides","precursors":"Precursors","peptides_stripped":"Stripped Peptides",}),
-                                                     #ui.input_switch("compare_venn_specific_length","Compare specific peptide length?",value=False,width="300px"),
-                                                     ui.output_ui("compare_venn_ptm_ui"),
-                                                     ui.output_ui("compare_venn_ptmlist_ui"),
-                                                     ui.output_ui("compare_venn_specific_length_ui"),
-                                                     ui.output_ui("compare_venn_peplength_ui")
-                                                   ),
-                                           ui.column(4,
-                                                     ui.output_ui("compare_venn_run_ui"),
-                                                     ui.download_button("compare_venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down"))
-                                                   )
-                                       ),
-                                       ui.output_plot("compare_venn_plot")
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("compare_venn_width","Plot width",min=100,max=7500,step=100,value=1000,ticks=True),
+                                                  ui.input_slider("compare_venn_height","Plot height",min=100,max=7500,step=100,value=500,ticks=True),
+                                                  ui.column(3,
+                                                            ui.input_radio_buttons("compare_venn_conditionorrun","Plot by condition or individual run?",choices={"condition":"Condition","individual":"Individual Run"}),
+                                                            ui.output_ui("compare_venn_run_ui")
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.input_radio_buttons("compare_venn_plotproperty","Metric to compare:",choices={"proteingroups":"Protein Groups","peptides":"Peptides","precursors":"Precursors","peptides_stripped":"Stripped Peptides",}),
+                                                            ui.download_button("compare_venn_download","Download Venn list",width="300px",icon=icon_svg("file-arrow-down"))
+                                                            )
+                                                  ),
+                                              ui.row(
+                                                  ui.column(3,
+                                                            ui.output_ui("compare_venn_ptm_ui"),
+                                                            ui.output_ui("compare_venn_ptmlist_ui")
+                                                            ),
+                                                  ui.column(3,
+                                                            ui.output_ui("compare_venn_specific_length_ui"),
+                                                            ui.output_ui("compare_venn_peplength_ui")
+                                                            )
+                                                    )
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.output_plot("compare_venn_plot")
                                      ),
                         ),icon=icon_svg("code-compare")
                     ),
@@ -1499,95 +1753,136 @@ app_ui=ui.page_fluid(
                                       ui.output_text_verbatim("uploadedfiles")
                                       ),
                          ui.nav_panel("TIC Plot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("tic_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("tic_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("tic_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("tic_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_switch("stacked_tic","Stack TIC Plots")
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.output_ui("rawfile_checkboxes_tic")
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("TIC_plot")
+                                                    )
                                             )
-                                          ),
-                                      ui.card(
-                                          ui.row(
-                                              ui.output_ui("rawfile_checkboxes_tic")),
-                                          ui.row(
-                                              ui.input_switch("stacked_tic","Stack TIC Plots"))
-                                          ),
-                                      ui.output_plot("TIC_plot")
                                       ),
                          ui.nav_panel("BPC Plot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("bpc_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("bpc_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("bpc_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("bpc_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_switch("stacked_bpc","Stack BPC Plots")
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.output_ui("rawfile_checkboxes_bpc")
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("BPC_plot")
+                                                    )
                                             )
-                                          ),
-                                      ui.card(
-                                          ui.row(
-                                              ui.output_ui("rawfile_checkboxes_bpc")),
-                                          ui.row(
-                                              ui.input_switch("stacked_bpc","Stack BPC Plots"))
-                                          ),
-                                      ui.output_plot("BPC_plot")
                                       ),
                          ui.nav_panel("Accumulation Time",
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("accutime_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("accutime_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                              ui.row(
+                                                  ui.input_slider("accutime_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                                  ui.input_slider("accutime_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                                  ui.input_switch("stacked_accutime","Stack BPC Plots")
+                                                  ),
+                                          ),
+                                          width="100%"
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.output_ui("rawfile_checkboxes_accutime")
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("accutime_plot")
+                                                    )
                                             )
-                                          ),
-                                      ui.card(
-                                          ui.row(
-                                              ui.output_ui("rawfile_checkboxes_accutime")),
-                                          ui.row(
-                                              ui.input_switch("stacked_accutime","Stack Plots"))
-                                          ),
-                                      ui.output_plot("accutime_plot")
                                       ),
                          ui.nav_panel("EIC Plot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.column(4,
-                                                        ui.output_ui("rawfile_buttons_eic"),
-                                                        ui.input_action_button("eic_load_rawfile","Load Raw File",width="300px",class_="btn-primary")
-                                                        ),
-                                              ui.column(4,
-                                                        ui.input_text("eic_mz_input","Input m/z for EIC:"),
-                                                        ui.input_text("eic_ppm_input","Input mass error (ppm) for EIC:"),
-                                                        ),
-                                              ui.column(4,
-                                                        ui.input_switch("include_mobility","Include mobility in EIC"),
-                                                        ui.output_ui("mobility_input")
-                                                        ),
-                                                ),
-                                          ),
-                                      ui.card(
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
                                           ui.row(
                                               ui.input_slider("eic_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("eic_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
+                                              ui.input_slider("eic_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                              ui.column(3,
+                                                        ui.input_text("eic_mz_input","Input m/z for EIC:"),
+                                                        ui.input_text("eic_ppm_input","Input mass error (ppm) for EIC:")
+                                                        ),
+                                              ui.column(3,
+                                                        ui.input_switch("include_mobility","Include mobility in EIC"),
+                                                        ui.output_ui("mobility_input")
+                                                        )
+                                              ),
                                           ),
-                                      ui.output_plot("eic")
+                                          width="100%"
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.output_ui("rawfile_buttons_eic"),
+                                                    ui.input_action_button("eic_load_rawfile","Load Raw File",width="300px",class_="btn-primary")
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("eic")
+                                                    )
+                                          )
                                       ),
                          ui.nav_panel("EIM Plot",
-                                      ui.card(
-                                          ui.row(
-                                              ui.column(4,
-                                                        ui.output_ui("rawfile_buttons_eim"),
-                                                        ui.input_action_button("eim_load_rawfile","Load Raw File",width="300px",class_="btn-primary")
-                                                        ),
-                                              ui.column(4,
-                                                        ui.input_text("eim_mz_input","Input m/z for EIM:"),
-                                                        ui.input_text("eim_ppm_input","Input mass error (ppm) for EIM:"),
-                                                        ),
-                                                ),
+                                      ui.accordion(
+                                          ui.accordion_panel("Plot Options",
+                                            #   ui.popover(ui.input_action_button("_btn","Plot Instructions",width="300px",class_="btn-success",icon=icon_svg("question")),
+
+                                            #              placement="right"
+                                            #              ),
+                                      ui.row(
+                                          ui.input_slider("eim_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
+                                          ui.input_slider("eim_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True),
+                                          ui.column(3,
+                                                    ui.input_text("eim_mz_input","Input m/z for EIM:"),
+                                                    ui.input_text("eim_ppm_input","Input mass error (ppm) for EIM:")
+                                                    ),
                                           ),
-                                      ui.card(
-                                          ui.row(
-                                              ui.input_slider("eim_width","Plot width",min=100,max=7500,step=100,value=1500,ticks=True),
-                                              ui.input_slider("eim_height","Plot height",min=100,max=7500,step=100,value=600,ticks=True)
-                                            )
-                                          ),
-                                      ui.output_plot("eim")
+                                        ),
+                                          width="100%"
+                                      ),
+                                      ui.row(
+                                          ui.column(3,
+                                                    ui.output_ui("rawfile_buttons_eim"),
+                                                    ui.input_action_button("eim_load_rawfile","Load Raw File",width="300px",class_="btn-primary")
+                                                    ),
+                                          ui.column(8,
+                                                    ui.output_plot("eim")
+                                                    )
+                                          )
                                       ),
                          ),icon=icon_svg("desktop")
                      ),
@@ -1613,13 +1908,12 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle,Polygon
 from matplotlib.ticker import MaxNLocator,MultipleLocator
 from matplotlib_venn import venn2,venn2_circles,venn3,venn3_circles
 import numpy as np
 import os
 import pandas as pd
-import pathlib
 import re
 from scipy.cluster.hierarchy import dendrogram, linkage
 import scipy.stats as stats
@@ -1628,6 +1922,7 @@ import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+import textalloc as ta
 from tkinter import *
 from upsetplot import *
 from zipfile import ZipFile
@@ -1638,8 +1933,34 @@ matplotlib.use('Agg')
 # =============================================================================
 # Server
 # =============================================================================
-
+#region
 def server(input: Inputs, output: Outputs, session: Session):
+
+# ============================================================================= UI calls for use around the app
+#region
+
+    #render ui call for dropdown calling sample condition names
+    @render.ui
+    def sampleconditions_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=sampleconditions
+        return ui.input_selectize("conditionname","Pick sample condition:",choices=opts)
+
+    #render ui call for dropdown calling replicate number
+    @render.ui
+    def replicates_ui():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=np.arange(1,max(repspercondition)+1,1)
+        return ui.input.selectize("replicate","Replicate number",opts)
+
+    #render ui call for dropdown calling Cond_Rep column
+    @render.ui
+    def cond_rep_list():
+        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+        opts=resultdf["Cond_Rep"].tolist()
+        return ui.input_selectize("cond_rep","Pick run:",choices=opts)
+
+#endregion
 
 # ============================================================================= Metrics Functions for Plotting
 #region
@@ -1865,32 +2186,6 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         return cvcalc_df
 
-    #charge states
-    @reactive.calc
-    def chargestates():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-
-        chargestatedf_condition=pd.DataFrame()
-        chargestatedf_run=pd.DataFrame()
-
-        chargestatelist=[]
-        chargestategroup=searchoutput[["R.Condition","EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
-        for condition in sampleconditions:
-            df=pd.DataFrame(chargestategroup[chargestategroup["R.Condition"]==condition].drop(columns=["R.Condition","EG.ModifiedPeptide"]))
-            chargestatelist.append(df["FG.Charge"].tolist())
-        chargestatedf_condition["Sample Names"]=sampleconditions
-        chargestatedf_condition["Charge States"]=chargestatelist
-
-        chargestatelist=[]
-        chargestategroup=searchoutput[["Cond_Rep","EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)
-        for run in searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True):
-            df=pd.DataFrame(chargestategroup[chargestategroup["Cond_Rep"]==run].drop(columns=["Cond_Rep","EG.ModifiedPeptide"]))
-            chargestatelist.append(df["FG.Charge"].tolist())
-        chargestatedf_run["Sample Names"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
-        chargestatedf_run["Charge States"]=chargestatelist
-
-        return chargestatedf_condition,chargestatedf_run
-
     #peptide lengths
     @reactive.calc
     def peptidelengths():
@@ -1978,8 +2273,8 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.ui
     def software_ui():
         if input.software_general()=="spectronaut":
-            opts={"spectronaut":"directDIA",
-                  "ddalibrary":"DDA Library Search"}
+            opts={"spectronaut":"directDIA / library-based search",
+                  "ddalibrary":"DDA Library"}
         if input.software_general()=="diann":
             opts={"diann":"DIA-NN pre 2.0",
                   "diann2.0":"DIA-NN 2.0"}
@@ -1992,12 +2287,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                   "bps_spectronaut":"Spectronaut",
                   "bps_pulsar":"Pulsar",
                   "bps_denovo":"BPS Novor",
+                  "sage":"Sage",
                   "glycoscape":"Glycoscape"}
         return ui.input_radio_buttons("software","",choices=opts)
     @render.ui
     def software_quant_ui():
         if input.software_general()=="bps":
-            if input.software()=="bps_denovo" or input.software()=="glycoscape":
+            if input.software()=="sage" or input.software()=="bps_denovo" or input.software()=="glycoscape":
                 pass
             else:
                 return ui.input_radio_buttons("software_bps_report_type","",choices={"qual":"Qualitative","quant":"Quantitative"})
@@ -2011,10 +2307,129 @@ def server(input: Inputs, output: Outputs, session: Session):
         #for DIA-NN and FragPipe input
         if ".tsv" in input.searchreport()[0]["name"]:
             if len(input.searchreport())>1:
-                searchoutput=pd.DataFrame()
-                for i in range(len(input.searchreport())):
-                    run=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
-                    searchoutput=pd.concat([searchoutput,run])
+                #use the combined_ion and combined_protein files from Fragger as input
+                if input.software()=="fragpipe":
+                    if input.fragpipe_combine_switch()==True:
+                        for i in range(len(input.searchreport())):
+                            if "combined_ion" in input.searchreport()[i]["name"]:
+                                combined_ion=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
+                            if "combined_protein" in input.searchreport()[i]["name"]:
+                                combined_protein=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
+
+                        #remove extraneous columns from protein and modifiedpeptide dfs
+                        for column in combined_protein.columns:
+                            if "Spectral Count" in column:
+                                combined_protein=combined_protein.drop(columns=column)
+                        combined_protein=combined_protein.drop(columns=["Protein Length","Organism","Protein Existence","Description","Protein Probability","Top Peptide Probability","Combined Total Peptides","Indistinguishable Proteins"])
+                        for column in combined_ion.columns:
+                            if "Spectral Count" in column or "Match Type" in column or "Localization" in column:
+                                combined_ion=combined_ion.drop(columns=column)
+                            
+                        combined_ion=combined_ion.drop(columns=["Prev AA","Next AA","Start","End","Peptide Length","Compensation Voltage","Assigned Modifications","Protein","Protein Description","Mapped Genes","Mapped Proteins"])
+
+                        idcolumns=["Peptide Sequence","Modified Sequence","M/Z","Charge","Protein ID","Entry Name","Gene"]
+                        combined_ion_intensity=pd.concat([combined_ion[idcolumns],combined_ion.loc[:,combined_ion.columns.str.contains("Intensity")]],axis=1)
+                        combined_ion_RT=pd.concat([combined_ion[idcolumns],combined_ion.loc[:,combined_ion.columns.str.contains("Retention Time")]],axis=1)
+                        combined_ion_IM=pd.concat([combined_ion[idcolumns],combined_ion.loc[:,combined_ion.columns.str.contains("Ion Mobility")]],axis=1)
+
+                        #unpivot modifiedpeptide df
+                        columns=["Peptide Sequence","Modified Sequence","M/Z","Charge","Protein ID","Entry Name","Gene"]
+                        filenames=[]
+                        filenames_original=[]
+                        for column in combined_ion_intensity.columns:
+                            if column in columns:
+                                pass
+                            else:
+                                filenames_original.append(column)
+                                filenames.append(column.split(" Intensity")[0])
+                        peptide_df=pd.melt(combined_ion_intensity,id_vars=columns,var_name="R.FileName",value_name="FG.MS2Quantity")
+
+                        filenames=[]
+                        filenames_original=[]
+                        for column in combined_ion_RT.columns:
+                            if column in columns:
+                                pass
+                            else:
+                                filenames_original.append(column)
+                                filenames.append(column.split(" Intensity")[0])
+                        peptide_df_RT=pd.melt(combined_ion_RT,id_vars=columns,var_name="R.FileName",value_name="EG.ApexRT")
+                        peptide_df_RT["EG.ApexRT"]=peptide_df_RT["EG.ApexRT"]/60
+
+                        filenames=[]
+                        filenames_original=[]
+                        for column in combined_ion_IM.columns:
+                            if column in columns:
+                                pass
+                            else:
+                                filenames_original.append(column)
+                                filenames.append(column.split(" Intensity")[0])
+                        peptide_df_IM=pd.melt(combined_ion_IM,id_vars=columns,var_name="R.FileName",value_name="EG.IonMobility")
+
+                        peptide_df_concat=pd.concat([peptide_df,peptide_df_RT["EG.ApexRT"],peptide_df_IM["EG.IonMobility"]],axis=1).dropna().reset_index(drop=True)
+
+                        #remove "Intensity" from filename entries in both dfs then sort the peptide df by protein ID
+                        peptide_df_concat[["R.FileName","drop"]]=peptide_df_concat["R.FileName"].str.split(" ",expand=True)
+                        peptide_df_concat=peptide_df_concat.drop(columns=["drop"])
+                        peptide_df_concat=peptide_df_concat.sort_values(["Protein ID","R.FileName"],ascending=[True,True]).reset_index(drop=True)
+
+                        #remove "Intensity" from the protein df column names
+                        descriptor_columns=["Protein","Entry Name","Gene","Protein Length","Organism","Protein Existence","Description","Protein Probability","Top Peptide Probability","Combined Total Peptides","Indistinguishable Proteins"]
+                        intensity_columns=sorted(list(set(combined_protein.columns)-set(descriptor_columns)))
+                        protein_intensity=combined_protein[intensity_columns].set_index("Protein ID")
+
+                        for column in protein_intensity.columns:
+                            protein_intensity=protein_intensity.rename(columns={column:column.split(" Intensity")[0]})
+
+                        #sort peptide_df by filename
+                        s=peptide_df_concat.sort_values("R.FileName")["R.FileName"].drop_duplicates().tolist()
+                        sortedfilenames=sorted(s,key=lambda x: int(re.findall(r'\d+',x)[-1]))
+                        peptide_df_concat["sortedfilenames"]=pd.Categorical(peptide_df_concat["R.FileName"],categories=sortedfilenames,ordered=True)
+                        peptide_df_concat=peptide_df_concat.sort_values(["sortedfilenames","Protein ID"],ascending=[True,True])
+                        peptide_df_concat=peptide_df_concat.drop(columns=["sortedfilenames"]).reset_index(drop=True)
+
+                        #sort protein_intensity df columns by filename
+                        s=protein_intensity.columns.tolist()
+                        sortedfilenames=sorted(s,key=lambda x: int(re.findall(r'\d+',x)[-1]))
+                        protein_intensity=protein_intensity[sortedfilenames]
+
+                        #map protein intensities per file to the peptide_df
+                        proteinintensitylist=[]
+                        for i in range(len(peptide_df_concat)):
+                            proteinintensitylist.append(protein_intensity[peptide_df_concat["R.FileName"][i]].loc[peptide_df_concat["Protein ID"][i]])
+                        peptide_df_concat["PG.MS2Quantity"]=proteinintensitylist
+
+                        peptide_df_concat.rename(columns={"Peptide Sequence":"PEP.StrippedSequence",
+                                                        "Modified Sequence":"EG.ModifiedPeptide",
+                                                        "M/Z":"FG.PrecMz",
+                                                        "Charge":"FG.Charge",
+                                                        "Protein ID":"PG.ProteinGroups",
+                                                        "Entry Name":"PG.ProteinNames",
+                                                        "Gene":"PG.Genes"},inplace=True)
+                        
+                        searchoutput=peptide_df_concat
+
+                        #adding columns here since we're bypassing the backend that I've already set up
+                        searchoutput.insert(1,"R.Condition","")
+                        searchoutput.insert(2,"R.Replicate","")
+
+                        searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
+
+                        listoflengths=[]
+                        for pep in searchoutput["PEP.StrippedSequence"]:
+                            listoflengths.append(len(pep))
+                        searchoutput["Peptide Length"]=listoflengths
+
+                        return searchoutput
+                    else:
+                        searchoutput=pd.DataFrame()
+                        for i in range(len(input.searchreport())):
+                            run=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
+                            searchoutput=pd.concat([searchoutput,run])
+                else:
+                    searchoutput=pd.DataFrame()
+                    for i in range(len(input.searchreport())):
+                        run=pd.read_csv(input.searchreport()[i]["datapath"],sep="\t")
+                        searchoutput=pd.concat([searchoutput,run])
             else:
                 searchoutput=pd.read_csv(input.searchreport()[0]["datapath"],sep="\t")
             if input.software()=="diann":
@@ -2165,6 +2580,56 @@ def server(input: Inputs, output: Outputs, session: Session):
                                 "PrecursorMz":"FG.PrecMz",
                                 "ReferenceRunMS1Response":"FG.MS2Quantity",
                                 "Protein Name":"PG.ProteinNames"})
+            if input.software()=="sage":
+                searchoutput.insert(1,"R.Condition","")
+                searchoutput.insert(2,"R.Replicate","")
+
+                searchoutput.drop(columns=["psm_id","num_proteins","scannr","rank","label","calcmass","peptide_len","missed_cleavages","semi_enzymatic",
+                                           "isotope_error","fragment_ppm","hyperscore","delta_next","delta_best","aligned_rt","predicted_rt","delta_rt_model",
+                                           "predicted_mobility","delta_mobility","matched_peaks","longest_b","longest_y","longest_y_pct","matched_intensity_pct",
+                                           "scored_candidates","poisson","sage_discriminant_score","posterior_error","spectrum_q", 
+                                           "dl_predicted_rt","dl_rt_diff","dl_predicted_im","dl_im_diff","dl_pearson_all","dl_pearson_b","dl_pearson_y",
+                                           "dl_mse_all","dl_mse_b","dl_mse_y","dl_min_abs_diff_norm","dl_max_abs_diff_norm","dl_abs_diff_q1_norm",
+                                           "dl_abs_diff_q2_norm","dl_abs_diff_q3_norm","dl_mean_abs_diff_norm","dl_std_abs_diff_norm","dl_ionb_min_abs_diff_norm",
+                                           "dl_ionb_max_abs_diff_norm","dl_ionb_abs_diff_q1_norm","dl_ionb_abs_diff_q2_norm","dl_ionb_abs_diff_q3_norm",
+                                           "dl_ionb_mean_abs_diff_norm","dl_ionb_std_abs_diff_norm","dl_iony_min_abs_diff_norm","dl_iony_max_abs_diff_norm",
+                                           "dl_iony_abs_diff_q1_norm","dl_iony_abs_diff_q2_norm","dl_iony_abs_diff_q3_norm","dl_iony_mean_abs_diff_norm",
+                                           "dl_iony_std_abs_diff_norm","dl_dot_product_all","dl_dot_product_b","dl_dot_product_y","dl_cos_similarity_all",
+                                           "dl_cos_similarity_b","dl_cos_similarity_y","dl_pearson_all_unlog","dl_pearson_b_unlog","dl_pearson_y_unlog",
+                                           "dl_spearman_all","dl_spearman_b","dl_spearman_y","dl_mse_all_unlog","dl_mse_b_unlog","dl_mse_y_unlog",
+                                           "dl_min_abs_diff_ion_type","dl_max_abs_diff_ion_type","dl_min_abs_diff","dl_max_abs_diff","dl_abs_diff_q1",
+                                           "dl_abs_diff_q2","dl_abs_diff_q3","dl_mean_abs_diff","dl_std_abs_diff","dl_ionb_min_abs_diff","dl_ionb_max_abs_diff",
+                                           "dl_ionb_abs_diff_q1","dl_ionb_abs_diff_q2","dl_ionb_abs_diff_q3","dl_ionb_mean_abs_diff","dl_ionb_std_abs_diff",
+                                           "dl_iony_min_abs_diff","dl_iony_max_abs_diff","dl_iony_abs_diff_q1","dl_iony_abs_diff_q2","dl_iony_abs_diff_q3",
+                                           "dl_iony_mean_abs_diff","dl_iony_std_abs_diff","dl_dot_product_all_unlog","dl_dot_product_b_unlog",
+                                           "dl_dot_product_y_unlog","dl_cos_similarity_all_unlog","dl_cos_similarity_b_unlog","dl_cos_similarity_y_unlog"],
+                                           inplace=True,errors="ignore")
+
+                searchoutput.rename(columns={"peptide":"EG.ModifiedPeptide",
+                                            #"proteins":"",
+                                            "filename":"R.FileName",
+                                            "expmass":"FG.PrecMz",
+                                            "charge":"FG.Charge",
+                                            "precursor_ppm":"FG.CalibratedMassAccuracy (PPM)",
+                                            "rt":"EG.ApexRT",
+                                            "ion_mobility":"EG.IonMobility",
+                                            "ms2_intensity":"FG.MS2Quantity",
+                                            "protein_q":"PG.Qvalue",
+                                            "peptide_q":"EG.Qvalue"
+                                            },inplace=True)
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].str.replace("+","")
+
+                strippedpeptidelist=[]
+                for i,pep in enumerate(searchoutput["EG.ModifiedPeptide"].tolist()):
+                    ptmlist=re.findall(r"[^[]*\[([^]]*)\]",pep)
+                    if len(ptmlist)>=1:
+                        for i in range(len(ptmlist)):
+                            pep=pep.replace(ptmlist[i],"").replace("[","").replace("]","")
+                    else:
+                        pass
+                    strippedpeptidelist.append(pep)
+                searchoutput["PEP.StrippedSequence"]=strippedpeptidelist
+                searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
         #for BPS input
         if ".zip" in input.searchreport()[0]["name"]:
             os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -2839,21 +3304,36 @@ def server(input: Inputs, output: Outputs, session: Session):
                 searchoutput["EG.ModifiedPeptide"]=searchoutput["EG.ModifiedPeptide"].replace(ptmdict,regex=True)
 
         #filter out decoy and contaminant sequences
-        searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
+        if "PG.ProteinGroups" in searchoutput.columns:
+            searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
         
         #replace None values in protein name column, remove leading semicolon from protein name entries
-        if len(searchoutput[searchoutput["PG.ProteinNames"].isnull()])>0:
-            df=searchoutput[searchoutput["PG.ProteinNames"].isnull()]
-            for index in df.index.tolist():
-                if searchoutput.at[index,"PG.ProteinNames"]==None:
-                    searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinGroups"]
-        if len(searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")])>0:
-            df=searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")]
-            for index in df.index.tolist():
-                searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinNames"].strip(";")
+        if "PG.ProteinNames" in searchoutput.columns:
+            if len(searchoutput[searchoutput["PG.ProteinNames"].isnull()])>0:
+                df=searchoutput[searchoutput["PG.ProteinNames"].isnull()]
+                for index in df.index.tolist():
+                    if searchoutput.at[index,"PG.ProteinNames"]==None or math.isnan(searchoutput.at[index,"PG.ProteinNames"])==True:
+                        searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinGroups"]
+            if len(searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")])>0:
+                df=searchoutput[searchoutput["PG.ProteinNames"].str.startswith(";")]
+                for index in df.index.tolist():
+                    searchoutput.at[index,"PG.ProteinNames"]=searchoutput.at[index,"PG.ProteinNames"].strip(";")
+
+        #some software add a peptide length column, adding universally here
+        listoflengths=[]
+        for pep in searchoutput["PEP.StrippedSequence"]:
+            listoflengths.append(len(pep))
+        searchoutput["Peptide Length"]=listoflengths
 
         #this line is needed for some files since some will order the search report by file name and others won't. Need to account for this
-        searchoutput=searchoutput.sort_values(["R.Replicate","R.FileName"])
+        #searchoutput=searchoutput.sort_values("R.FileName")
+        
+        #updated searchoutput sorting, sorts by the last number in the file name, which should be the run ID from HyStar
+        s=searchoutput.sort_values("R.FileName")["R.FileName"].drop_duplicates().tolist()
+        sortedfilenames=sorted(s,key=lambda x: int(re.findall(r'\d+',x)[-1]))
+        searchoutput["sortedfilenames"]=pd.Categorical(searchoutput["R.FileName"],categories=sortedfilenames,ordered=True)
+        searchoutput=searchoutput.sort_values("sortedfilenames")
+        searchoutput=searchoutput.drop(columns=["sortedfilenames"]).reset_index(drop=True)
 
         return searchoutput
     
@@ -2922,13 +3402,15 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.software()=="ddalibrary":
             return "DDA libraries have limited functionality, can only plot ID metrics."
         if input.software()=="fragpipe":
-            return "Use the psm.tsv file as the file input."
+            return "Use the psm.tsv file as the file input. Alternatively, upload both the combined_ion.tsv and combined_protein.tsv files to be joined."
         if input.software()=="fragpipe_glyco":
             return "Use the psm.tsv file as the file input. Use the Glycoproteomics tab for processing."
         if input.software()=="bps_timsrescore" or input.software()=="bps_timsdiann" or input.software()=="bps_pulsar" or input.software()=="bps_spectronaut":
             return "Use the .zip file from the artifacts download. File upload can take several minutes because of how protein information is mapped to the peptide file. Make sure to periodically check the timsplot folder and remove metadata.csv and the processing-run folder to free up space."
         if input.software()=="bps_denovo":
             return "Use the .zip file from the artifacts download."
+        if input.software()=="sage":
+            return "Use the results.tsv file as the file input. As of latest version (), most plotting functions are unavailable because protein group names are not present in the Sage output."
         if input.software()=="glycoscape":
             return "Use the .zip file from the artifacts download. Use the Glycoproteomics tab for processing."
 
@@ -2963,51 +3445,51 @@ def server(input: Inputs, output: Outputs, session: Session):
         metadata=metadata_table.data_view()
         metadata_condition=metadata_condition_table.data_view()
 
-        #update condition/replicate names/values from metadata
-        #if not filled out, autofill with generic values
-        if input.condition_names()==True:
-            RConditionlist=[]
-            RReplicatelist=[]
-            for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
-                fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
-                if metadata["R.Condition"][fileindex]=="":
-                    RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
-                else:
-                    RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-                if metadata["R.Replicate"][fileindex]=="":
-                    RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
-                else:
-                    RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-            searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
-            searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
-            searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
-        elif input.condition_names()==False:
-            #check if Condition or Replicate columns in the metadata are empty if the condition/replicate value switch is off
-            if metadata["R.Condition"].drop_duplicates().tolist()==[""]:
-                RConditionlist=[]
-                for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
-                    fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
-                    if metadata["R.Condition"][fileindex]=="":
-                        RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
-                    else:
-                        RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-                searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
-            if metadata["R.Replicate"].drop_duplicates().tolist()==[""]:
-                RReplicatelist=[]
-                for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
-                    fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
-
-                    if metadata["R.Replicate"][fileindex]=="":
-                        RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
-                    else:
-                        RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-                searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
-                searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
-
         #remove checked runs
         if input.remove()==True:
             editedmetadata=metadata[metadata.remove !="x"]
             searchoutput=searchoutput.set_index("R.FileName").loc[editedmetadata["R.FileName"].tolist()].reset_index()
+
+        #update condition/replicate names/values from metadata
+        #if not filled out, autofill with generic values
+        #if input.condition_names()==True:
+        RConditionlist=[]
+        RReplicatelist=[]
+        for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+            fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+            if metadata["R.Condition"][fileindex]=="":
+                RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
+            else:
+                RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+            if metadata["R.Replicate"][fileindex]=="":
+                RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
+            else:
+                RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+        searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+        searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+        # elif input.condition_names()==False:
+        #     #check if Condition or Replicate columns in the metadata are empty if the condition/replicate value switch is off
+        #     if metadata["R.Condition"].drop_duplicates().tolist()==[""]:
+        #         RConditionlist=[]
+        #         for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+        #             fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+        #             if metadata["R.Condition"][fileindex]=="":
+        #                 RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #             else:
+        #                 RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #         searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+        #     if metadata["R.Replicate"].drop_duplicates().tolist()==[""]:
+        #         RReplicatelist=[]
+        #         for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+        #             fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+
+        #             if metadata["R.Replicate"][fileindex]=="":
+        #                 RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #             else:
+        #                 RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #         searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+        #         searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
 
         #reorder runs
         if input.reorder()==True:
@@ -3052,6 +3534,19 @@ def server(input: Inputs, output: Outputs, session: Session):
     def diann_mbr_ui():
         if input.software_general()=="diann":
             return ui.input_radio_buttons("diann_mbr_switch","Q value filtering option:",choices=["off","Protein.Q.Value","Global.PG.Q.Value"])
+
+    #switch to have the user upload combined_ion and combined_protein files and use that input as the searchoutput
+    @render.ui
+    def fragger_combine_ui():
+        if input.software()=="fragpipe":
+            return ui.input_switch("fragpipe_combine_switch","Combine quant files")
+
+    @render.download(filename=lambda: f"{input.searchreport()[0]['name']}"+".tsv")
+    def searchreport_download():
+        searchoutput=metadata_update()
+        with io.BytesIO() as buf:
+            searchoutput.to_csv(buf,index=False,sep="\t")
+            yield buf.getvalue()
 
 #endregion
 
@@ -3189,10 +3684,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 for ele in range(x):
                     replicateplotcolors.append(plotcolors[i])
             return replicateplotcolors
-
-    @render.text
-    def colornote():
-        return "Note: replicates of the same condition will have the same color"
     #show a table of the sample conditions 
     @render.table()
     def customcolors_table1():
@@ -3336,19 +3827,18 @@ def server(input: Inputs, output: Outputs, session: Session):
 #region
 
     # ====================================== Counts per Condition
-    #plot ID metrics
     @reactive.effect
     def _():
-        if input.idplotinput()=="all":
-            @render.plot(width=input.idmetrics_width(),height=input.idmetrics_height())
-            def idmetricsplot():
-                resultdf,averagedf=idmetrics()
-                idmetricscolor=replicatecolors()
-                titlefont=input.titlefont()
-                axisfont=input.axisfont()
-                labelfont=input.labelfont()
-                y_padding=input.ypadding()
-
+        @render.plot(width=input.idmetrics_width(),height=input.idmetrics_height())
+        def idmetricsplot():
+            resultdf,averagedf=idmetrics()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+            if input.idplotinput()=="all":
                 fig,ax=plt.subplots(nrows=2,ncols=2,sharex=True)
                 fig.set_tight_layout(True)
                 ax1=ax[0,0]
@@ -3356,46 +3846,64 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax3=ax[1,0]
                 ax4=ax[1,1]
 
-                resultdf.plot.bar(ax=ax1,x="Cond_Rep",y="proteins",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax1.set_ylim(top=max(resultdf["proteins"].tolist())+y_padding*max(resultdf["proteins"].tolist()))
+                if input.idmetrics_individual_average()=="individual":
+                    idmetricscolor=replicatecolors()
+                    ax1.bar(resultdf["Cond_Rep"],resultdf["proteins"],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax2.bar(resultdf["Cond_Rep"],resultdf["proteins2pepts"],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax3.bar(resultdf["Cond_Rep"],resultdf["peptides"],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax4.bar(resultdf["Cond_Rep"],resultdf["precursors"],width=0.8,color=idmetricscolor,edgecolor="k")
+
+                    ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+
+                    ax1.set_ylim(top=max(resultdf["proteins"].tolist())+y_padding*max(resultdf["proteins"].tolist()))
+                    ax2.set_ylim(top=max(resultdf["proteins2pepts"].tolist())+y_padding*max(resultdf["proteins2pepts"].tolist()))
+                    ax3.set_ylim(top=max(resultdf["peptides"].tolist())+(y_padding+0.1)*max(resultdf["peptides"].tolist()))
+                    ax4.set_ylim(top=max(resultdf["precursors"].tolist())+(y_padding+0.1)*max(resultdf["precursors"].tolist()))
+
+                elif input.idmetrics_individual_average()=="average":
+                    idmetricscolor=colorpicker()
+                    bars1=ax1.bar(averagedf["R.Condition"],averagedf["proteins_avg"],yerr=averagedf["proteins_stdev"],edgecolor="k",width=0.8,capsize=10,color=idmetricscolor)
+                    bars2=ax2.bar(averagedf["R.Condition"],averagedf["proteins2pepts_avg"],yerr=averagedf["proteins2pepts_stdev"],edgecolor="k",width=0.8,capsize=10,color=idmetricscolor)
+                    bars3=ax3.bar(averagedf["R.Condition"],averagedf["peptides_avg"],yerr=averagedf["peptides_stdev"],edgecolor="k",width=0.8,capsize=10,color=idmetricscolor)
+                    bars4=ax4.bar(averagedf["R.Condition"],averagedf["precursors_avg"],yerr=averagedf["precursors_stdev"],edgecolor="k",width=0.8,capsize=10,color=idmetricscolor)
+
+                    ax1.bar_label(bars1,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax2.bar_label(bars2,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax3.bar_label(bars3,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax4.bar_label(bars4,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+
+                    ax1.set_ylim(top=max(averagedf["proteins_avg"].tolist())+y_padding*max(averagedf["proteins_avg"].tolist()))
+                    ax2.set_ylim(top=max(averagedf["proteins2pepts_avg"].tolist())+y_padding*max(averagedf["proteins2pepts_avg"].tolist()))
+                    ax3.set_ylim(top=max(averagedf["peptides_avg"].tolist())+y_padding*max(averagedf["peptides_avg"].tolist()))
+                    ax4.set_ylim(top=max(averagedf["precursors_avg"].tolist())+y_padding*max(averagedf["precursors_avg"].tolist()))
+                
                 ax1.set_title("Protein Groups",fontsize=titlefont)
-
-                resultdf.plot.bar(ax=ax2,x="Cond_Rep",y="proteins2pepts",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax2.set_ylim(top=max(resultdf["proteins2pepts"].tolist())+y_padding*max(resultdf["proteins2pepts"].tolist()))
                 ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
-
-                resultdf.plot.bar(ax=ax3,x="Cond_Rep",y="peptides",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax3.set_ylim(top=max(resultdf["peptides"].tolist())+(y_padding+0.1)*max(resultdf["peptides"].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.set_xlabel("Condition",fontsize=axisfont)
-                ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
-
-                resultdf.plot.bar(ax=ax4,x="Cond_Rep",y="precursors",legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax4.set_ylim(top=max(resultdf["precursors"].tolist())+(y_padding+0.1)*max(resultdf["precursors"].tolist()))
+                ax3.tick_params(axis="x",rotation=x_label_rotation)
                 ax4.set_title("Precursors",fontsize=titlefont)
                 ax4.set_xlabel("Condition",fontsize=axisfont)
-                ax4.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+                ax4.tick_params(axis="x",rotation=x_label_rotation)
 
                 fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
+                ax1.tick_params(axis="both",labelsize=axisfont_labels)
                 ax2.set_axisbelow(True)
                 ax2.grid(linestyle="--")
+                ax2.tick_params(axis="both",labelsize=axisfont_labels)
                 ax3.set_axisbelow(True)
                 ax3.grid(linestyle="--")
+                ax3.tick_params(axis="both",labelsize=axisfont_labels)
                 ax4.set_axisbelow(True)
                 ax4.grid(linestyle="--")
-
-        else:
-            @render.plot(width=input.idmetrics_width(),height=input.idmetrics_height())
-            def idmetricsplot():
-                resultdf,averagedf=idmetrics()
-                idmetricscolor=replicatecolors()
+                ax4.tick_params(axis="both",labelsize=axisfont_labels)
+            else:
                 plotinput=input.idplotinput()
                 if plotinput=="proteins":
                     titleprop="Protein Groups"
@@ -3406,122 +3914,33 @@ def server(input: Inputs, output: Outputs, session: Session):
                 if plotinput=="precursors":
                     titleprop="Precursors"
 
-                titlefont=input.titlefont()
-                axisfont=input.axisfont()
-                labelfont=input.labelfont()
-                y_padding=input.ypadding()
-
                 fig,ax=plt.subplots()
-                resultdf.plot.bar(ax=ax,x="Cond_Rep",y=plotinput,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
-                ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax.set_ylim(top=max(resultdf[plotinput].tolist())+y_padding*max(resultdf[plotinput].tolist()))
+                if input.idmetrics_individual_average()=="individual":
+                    idmetricscolor=replicatecolors()
+                    resultdf.plot.bar(ax=ax,x="Cond_Rep",y=plotinput,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
+                    ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax.set_ylim(top=max(resultdf[plotinput].tolist())+y_padding*max(resultdf[plotinput].tolist()))
+                    titlemod=""
+                elif input.idmetrics_individual_average()=="average":
+                    idmetricscolor=colorpicker()
+                    bars=ax.bar(averagedf["R.Condition"],averagedf[plotinput+"_avg"],yerr=averagedf[plotinput+"_stdev"],edgecolor="k",width=0.8,capsize=10,color=idmetricscolor)
+                    ax.bar_label(bars,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax.set_ylim(top=max(averagedf[plotinput+"_avg"].tolist())+y_padding*max(averagedf[plotinput+"_avg"].tolist()))
+                    titlemod="Average #"
+
                 ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_xlabel("Condition",fontsize=axisfont)
-                ax.set_title(titleprop,fontsize=titlefont)
-                ax.tick_params(axis="y",labelsize=axisfont)
-                ax.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
-                ax.set_axisbelow(True)
-                ax.grid(linestyle="--")
-
-    # ====================================== Average Counts
-    #plot average ID metrics
-    @reactive.effect
-    def _():
-        if input.avgidplotinput()=="all":
-            @render.plot(width=input.avgidmetrics_width(),height=input.avgidmetrics_height())
-            def avgidmetricsplot():
-                resultdf,averagedf=idmetrics()
-                avgmetricscolor=colorpicker()
-
-                figsize=(15,10)
-                titlefont=input.titlefont()
-                axisfont=input.axisfont()
-                labelfont=input.labelfont()
-                y_padding=input.ypadding()
-
-                fig,ax=plt.subplots(nrows=2,ncols=2,figsize=figsize)
-                fig.set_tight_layout(True)
-                ax1=ax[0,0]
-                ax2=ax[0,1]
-                ax3=ax[1,0]
-                ax4=ax[1,1]
-
-                bars1=ax1.bar(averagedf["R.Condition"],averagedf["proteins_avg"],yerr=averagedf["proteins_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
-                ax1.bar_label(bars1,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
-                ax1.set_ylim(top=max(averagedf["proteins_avg"].tolist())+y_padding*max(averagedf["proteins_avg"].tolist()))
-                ax1.set_title("Protein Groups",fontsize=titlefont)
-                ax1.tick_params(axis='y',labelsize=axisfont)
-                ax1.tick_params(axis='x',labelbottom=False)
-
-                bars2=ax2.bar(averagedf["R.Condition"],averagedf["proteins2pepts_avg"],yerr=averagedf["proteins2pepts_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
-                ax2.bar_label(bars2,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
-                ax2.set_ylim(top=max(averagedf["proteins2pepts_avg"].tolist())+y_padding*max(averagedf["proteins2pepts_avg"].tolist()))
-                ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
-                ax2.tick_params(axis='y',labelsize=axisfont)
-                ax2.tick_params(axis='x',labelbottom=False)
-
-                bars3=ax3.bar(averagedf["R.Condition"],averagedf["peptides_avg"],yerr=averagedf["peptides_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
-                ax3.bar_label(bars3,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
-                ax3.set_ylim(top=max(averagedf["peptides_avg"].tolist())+y_padding*max(averagedf["peptides_avg"].tolist()))
-                ax3.set_title("Peptides",fontsize=titlefont)
-                ax3.tick_params(axis='y',labelsize=axisfont)
-                ax3.tick_params(axis='x',labelsize=axisfont,rotation=input.xaxis_label_rotation())
-                ax3.set_xlabel("Condition",fontsize=axisfont)
-                ax3.set_ylabel("  ",fontsize=axisfont)
-
-                bars4=ax4.bar(averagedf["R.Condition"],averagedf["precursors_avg"],yerr=averagedf["precursors_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
-                ax4.bar_label(bars4,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
-                ax4.set_ylim(top=max(averagedf["precursors_avg"].tolist())+y_padding*max(averagedf["precursors_avg"].tolist()))
-                ax4.set_title("Precursors",fontsize=titlefont)
-                ax4.tick_params(axis='y',labelsize=axisfont)
-                ax4.tick_params(axis='x',labelsize=axisfont,rotation=input.xaxis_label_rotation())
-                ax4.set_xlabel("Condition",fontsize=axisfont)
-
-                fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
-
-                ax1.set_axisbelow(True)
-                ax1.grid(linestyle="--")
-                ax2.set_axisbelow(True)
-                ax2.grid(linestyle="--")
-                ax3.set_axisbelow(True)
-                ax3.grid(linestyle="--")
-                ax4.set_axisbelow(True)
-                ax4.grid(linestyle="--")
-            
-        else:
-            @render.plot(width=input.avgidmetrics_width(),height=input.avgidmetrics_height())
-            def avgidmetricsplot():
-                resultdf,averagedf=idmetrics()
-                avgmetricscolor=colorpicker()
-                avgplotinput=input.avgidplotinput()
-                if avgplotinput=="proteins":
-                    titleprop="Protein Groups"
-                if avgplotinput=="proteins2pepts":
-                    titleprop="Protein Groups with >2 Peptides"
-                if avgplotinput=="peptides":
-                    titleprop="Peptides"
-                if avgplotinput=="precursors":
-                    titleprop="Precursors"
-
-                figsize=(15,10)
-                titlefont=input.titlefont()
-                axisfont=input.axisfont()
-                labelfont=input.labelfont()
-                y_padding=input.ypadding()
-                fig,ax=plt.subplots()
-                
-                bars=ax.bar(averagedf["R.Condition"],averagedf[avgplotinput+"_avg"],yerr=averagedf[avgplotinput+"_stdev"],edgecolor="k",capsize=10,color=avgmetricscolor)
-                ax.bar_label(bars,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
-                ax.set_ylim(top=max(averagedf[avgplotinput+"_avg"].tolist())+y_padding*max(averagedf[avgplotinput+"_avg"].tolist()))
-                plt.ylabel("Counts",fontsize=axisfont)
-                plt.xlabel("Condition",fontsize=axisfont)
-                plt.title("Average #"+titleprop,fontsize=titlefont)
-                ax.tick_params(axis="both",labelsize=axisfont)
-                ax.tick_params(axis='x',labelsize=axisfont,rotation=input.xaxis_label_rotation())
+                ax.set_title(titlemod+titleprop,fontsize=titlefont)
+                ax.tick_params(axis="x",rotation=x_label_rotation)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
 
     # ====================================== CV Plots
+    @render.ui
+    def cvplot_histogram_bins_ui():
+        if input.cvplot_histogram_bins_switch()==True:
+            return ui.input_slider("cvplot_histogram_bins_slider","Number of bins:",min=10,max=250,value=100,step=10,ticks=True,width="300px")
     #plot cv violin plots
     @reactive.effect
     def _():
@@ -3529,51 +3948,78 @@ def server(input: Inputs, output: Outputs, session: Session):
         def cvplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             cvcalc_df=cvcalc()
-
             violincolors=colorpicker()
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             cvplotinput=input.proteins_precursors_cvplot()
             cutoff95=input.removetop5percent()
 
-            x=np.arange(len(cvcalc_df["R.Condition"]))
-
-            fig,ax=plt.subplots()
-
-            lineprops=dict(linestyle="--",color="black")
-            flierprops=dict(markersize=3)
-
-            if cutoff95==True:
-                bplot=ax.boxplot(cvcalc_df[cvplotinput+" 95% CVs"],medianprops=lineprops,flierprops=flierprops)
-                plot=ax.violinplot(cvcalc_df[cvplotinput+" 95% CVs"],showextrema=False)
-                ax.set_title(cvplotinput+" CVs, 95% Cutoff",fontsize=titlefont)
-
-            elif cutoff95==False:
-                bplot=ax.boxplot(cvcalc_df[cvplotinput+" CVs"],medianprops=lineprops,flierprops=flierprops)
-                plot=ax.violinplot(cvcalc_df[cvplotinput+" CVs"],showextrema=False)
-                ax.set_title(cvplotinput+" CVs",fontsize=titlefont)
-
-            ax.set_xticks(x+1,labels=cvcalc_df["R.Condition"],fontsize=axisfont,rotation=input.xaxis_label_rotation())
-            ax.tick_params(axis="y",labelsize=axisfont)
-            ax.set_ylabel("CV%",fontsize=axisfont)
-            ax.set_xlabel("Condition",fontsize=axisfont)
-            ax.grid(linestyle="--")
-            ax.set_axisbelow(True)
-
-            ax.axhline(y=20,color="black",linestyle="--")
-
-            if numconditions==1:
-                for z in plot["bodies"]:
-                    z.set_facecolor(violincolors)
-                    z.set_edgecolor("black")
-                    z.set_alpha(0.7)
+            if input.cvplot_histogram_bins_switch()==True:
+                numbins=input.cvplot_histogram_bins_slider()
+                fig,ax=plt.subplots(ncols=len(cvcalc_df))
+                colors=colorpicker()
+                numbins=100
+                if numconditions==1:
+                    if cutoff95==True:
+                        ax.hist(cvcalc_df[cvplotinput+" 95% CVs"],bins=numbins,color=colors)
+                    elif cutoff95==False:
+                        ax.hist(cvcalc_df[cvplotinput+" CVs"],bins=numbins,color=colors)
+                    ax.set_xlabel(cvplotinput+" % CV",fontsize=axisfont)
+                    ax.axvline(x=20,color="black",linestyle="--")
+                    ax.set_ylabel("Counts",fontsize=axisfont)
+                    ax.set_title(cvcalc_df["R.Condition"].tolist()[0],fontsize=titlefont)
+                    ax.grid(linestyle="--")
+                    ax.set_axisbelow(True)
+                else:
+                    for i in range(len(cvcalc_df)):
+                        if cutoff95==True:
+                            ax[i].hist(cvcalc_df[cvplotinput+" 95% CVs"][i],bins=numbins,color=colors[i])
+                        elif cutoff95==False:
+                            ax[i].hist(cvcalc_df[cvplotinput+" CVs"][i],bins=numbins,color=colors[i])
+                        ax[i].set_xlabel(cvplotinput+" % CV",fontsize=axisfont)
+                        ax[i].set_title(cvcalc_df["R.Condition"].tolist()[i],fontsize=titlefont)
+                        ax[i].axvline(x=20,color="black",linestyle="--")
+                        ax[i].grid(linestyle="--")
+                        ax[i].set_axisbelow(True)
+                    ax[0].set_ylabel("Counts",fontsize=axisfont)
             else:
-                for z,color in zip(plot["bodies"],violincolors):
-                    z.set_facecolor(color)
-                    z.set_edgecolor("black")
-                    z.set_alpha(0.7)
+                fig,ax=plt.subplots()
+                x=np.arange(len(cvcalc_df["R.Condition"]))
+                lineprops=dict(linestyle="--",color="black")
+                flierprops=dict(markersize=3)
+                if cutoff95==True:
+                    bplot=ax.boxplot(cvcalc_df[cvplotinput+" 95% CVs"],medianprops=lineprops,flierprops=flierprops)
+                    plot=ax.violinplot(cvcalc_df[cvplotinput+" 95% CVs"],showextrema=False)
+                    ax.set_title(cvplotinput+" CVs, 95% Cutoff",fontsize=titlefont)
+                elif cutoff95==False:
+                    bplot=ax.boxplot(cvcalc_df[cvplotinput+" CVs"],medianprops=lineprops,flierprops=flierprops)
+                    plot=ax.violinplot(cvcalc_df[cvplotinput+" CVs"],showextrema=False)
+                    ax.set_title(cvplotinput+" CVs",fontsize=titlefont)
+                ax.set_xticks(x+1,labels=cvcalc_df["R.Condition"],rotation=x_label_rotation)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+                ax.set_ylabel("CV%",fontsize=axisfont)
+                ax.set_xlabel("Condition",fontsize=axisfont)
+                ax.grid(linestyle="--")
+                ax.set_axisbelow(True)
+                ax.axhline(y=20,color="black",linestyle="--")
+
+                if numconditions==1:
+                    for z in plot["bodies"]:
+                        z.set_facecolor(violincolors)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
+                else:
+                    for z,color in zip(plot["bodies"],violincolors):
+                        z.set_facecolor(color)
+                        z.set_edgecolor("black")
+                        z.set_alpha(0.7)
     #show a table of mean/median CV values per condition 
     @render.table
     def cv_table():
@@ -3648,6 +4094,23 @@ def server(input: Inputs, output: Outputs, session: Session):
                 return cvtable_peptide[["R.Condition","Peptide Mean CVs","Peptide Median CVs"]]
 
     # ====================================== IDs with CV Cutoff
+    #show percentages of IDs below cutoffs as a table
+    @render.table
+    def countscvcutoff_table():
+        resultdf,averagedf=idmetrics()
+        cvcalc_df=cvcalc()
+        cvinput=input.proteins_precursors_idcutoffplot()
+
+        conditions=cvcalc_df["R.Condition"].tolist()
+        sub20percent=[]
+        sub10percent=[]
+        for i in range(len(conditions)):
+            totalID=averagedf[cvinput+"_avg"][i]
+            sub20=cvcalc_df[cvinput+"CV<20"][i]
+            sub10=cvcalc_df[cvinput+"CV<10"][i]
+            sub20percent.append(round((sub20/totalID)*100,2))
+            sub10percent.append(round((sub10/totalID)*100,2))
+        return pd.DataFrame({"R.Condition":conditions,"% "+cvinput+" CV<20%":sub20percent,"% "+cvinput+" CV<10%":sub10percent})
     #plot counts with CV cutoffs
     @reactive.effect
     def _():
@@ -3659,9 +4122,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
             y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             x=np.arange(len(cvcalc_df["R.Condition"]))
             width=0.25
@@ -3680,12 +4145,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.bar_label(ax.containers[2],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
 
             ax.set_ylim(top=max(averagedf[cvinput+"_avg"])+y_padding*max(averagedf[cvinput+"_avg"]))
-            #ax.legend(ncols=3,loc="upper left",fontsize=axisfont)
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
-            ax.set_xticks(x+width,cvcalc_df["R.Condition"],fontsize=axisfont,rotation=input.xaxis_label_rotation())
-            ax.tick_params(axis="y",labelsize=axisfont)
+            ax.legend(loc='center left',bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
+            ax.set_xticks(x+width,cvcalc_df["R.Condition"],rotation=x_label_rotation)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.set_ylabel("Counts",fontsize=axisfont)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
             if cvinput=="proteins":
                 ax.set_title("Protein Counts with CV Cutoffs",fontsize=titlefont)
             if cvinput=="precursors":
@@ -3927,16 +4391,20 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.upsetplotstats_whattoplot()=="condition" or input.upsetplotstats_whattoplot()=="specific_condition":
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             opts=sampleconditions
-            return ui.input_selectize("upsetplotstats_conditionlist_pick","Pick sample condition",choices=opts)
+            return ui.input_selectize("upsetplotstats_conditionlist_pick","Pick sample condition:",choices=opts)
     @reactive.effect
     def _():
         @render.plot(width=input.upsetplotstats_width(),height=input.upsetplotstats_height())
         def upsetplotstats_singlehitIDplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
-            axisfont=input.axisfont()
             titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
             legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             if input.upsetplotstats_peptide_precursor()=="Peptide":
                 peptidedict=dict()
@@ -3988,7 +4456,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             if input.upsetplotstats_whattoplot()=="specific_condition":
                 #pull mz and IM from every ID from specified condition
                 remainderIDs=searchoutput[searchoutput["R.Condition"]==input.upsetplotstats_conditionlist_pick()][["FG.PrecMz","EG.IonMobility"]].drop_duplicates()
-                scatterlabel="All IDs from selected condition"
+                scatterlabel="All IDs from "+input.upsetplotstats_conditionlist_pick()
             if input.upsetplotstats_plottype()=="scatter":
                 fig,ax=plt.subplots()
                 #scatter of all IDs
@@ -3997,9 +4465,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.scatter(IDs_1run_searchoutput["FG.PrecMz"],IDs_1run_searchoutput["EG.IonMobility"],zorder=2,s=2,label="IDs in only 1 Run")
                 ax.set_xlabel("m/z",fontsize=axisfont)
                 ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
-                ax.legend(markerscale=5)
+                ax.legend(markerscale=5,prop={'size':legendfont})
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             if input.upsetplotstats_plottype()=="2dhist":
                 numbins=[100,100]
@@ -4017,28 +4486,30 @@ def server(input: Inputs, output: Outputs, session: Session):
                 fig.colorbar(j[3],ax=ax[0])
                 fig.colorbar(k[3],ax=ax[1])
                 fig.set_tight_layout(True)
-                ax[0].set_title("All IDs")
-                ax[1].set_title("Unique IDs")
+                ax[0].set_title("All IDs",fontsize=titlefont)
+                ax[1].set_title("Unique IDs",fontsize=titlefont)
+                ax[0].tick_params(axis="both",labelsize=axisfont_labels)
+                ax[1].tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Tracker
     #render table of detected proteins and their average PG.MS2Quantity
     @render.data_frame
     def protein_df():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        df=searchoutput[["PG.ProteinGroups","PG.MS2Quantity"]].groupby("PG.ProteinGroups").mean().reset_index().rename(columns={"PG.MS2Quantity":"Mean_PG.MS2Quantity"})
+        df=searchoutput[["PG.ProteinNames","PG.MS2Quantity"]].groupby("PG.ProteinNames").mean().reset_index().rename(columns={"PG.MS2Quantity":"Mean_PG.MS2Quantity"})
         return render.DataGrid(df,width="100%",selection_mode="row",editable=False)
     #render table of peptides identified for picked protein from above table
     @render.data_frame
     def pickedprotein_df():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        if len(protein_df.data_view(selected=True)["PG.ProteinGroups"].tolist())==0:
+        if len(protein_df.data_view(selected=True)["PG.ProteinNames"].tolist())==0:
             df=pd.DataFrame()
             return render.DataGrid(df)
         else:
-            selectedprotein=protein_df.data_view(selected=True)["PG.ProteinGroups"].tolist()[0]
+            selectedprotein=protein_df.data_view(selected=True)["PG.ProteinNames"].tolist()[0]
             #df=searchoutput[searchoutput["PG.ProteinGroups"]==selectedprotein][["Cond_Rep","PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates()
-            df=searchoutput[searchoutput["PG.ProteinGroups"]==selectedprotein][["PEP.StrippedSequence"]].drop_duplicates().sort_values("PEP.StrippedSequence")
-            return render.DataGrid(df,width="100%",selection_mode="row")
+            df=searchoutput[searchoutput["PG.ProteinNames"]==selectedprotein][["PEP.StrippedSequence"]].drop_duplicates().sort_values("PEP.StrippedSequence")
+            return render.DataGrid(df,width="100%",selection_mode="row")  
     #line plot of either protein or peptide signal depending on what is selected in the above two tables
     @reactive.effect
     def _():
@@ -4046,28 +4517,37 @@ def server(input: Inputs, output: Outputs, session: Session):
         def tracker_plot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
-            axisfont=input.axisfont()
             titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             #show empty graph since nothing was selected
-            if len(protein_df.data_view(selected=True)["PG.ProteinGroups"].tolist())==0:
+            if len(protein_df.data_view(selected=True)["PG.ProteinNames"].tolist())==0:
                 fig,ax=plt.subplots()
             #if just protien is selected, show protein intensities across runs
             elif len(pickedprotein_df.data_view(selected=True)["PEP.StrippedSequence"].tolist())==0:
                 fig,ax=plt.subplots()
-                selectedprotein=protein_df.data_view(selected=True)["PG.ProteinGroups"].tolist()[0]
-                plottingdf=searchoutput[searchoutput["PG.ProteinGroups"]==selectedprotein][["Cond_Rep","PG.MS2Quantity"]].drop_duplicates().fillna(0)
+                selectedprotein=protein_df.data_view(selected=True)["PG.ProteinNames"].tolist()[0]
+                plottingdf=searchoutput[searchoutput["PG.ProteinNames"]==selectedprotein][["Cond_Rep","PG.MS2Quantity"]].drop_duplicates().fillna(0)
                 if len(plottingdf)<len(searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)):
                     expectedrows=pd.DataFrame({"Cond_Rep":searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)})
                     plottingdf=expectedrows.merge(plottingdf,how="left",left_on="Cond_Rep",right_on="Cond_Rep").fillna(0)
+                if input.tracker_logscale()==True:
+                    plottingdf["PG.MS2Quantity"]=np.log10(plottingdf["PG.MS2Quantity"])
+                else:
+                    plottingdf=plottingdf
                 ax.plot(plottingdf["Cond_Rep"],plottingdf["PG.MS2Quantity"],marker="o")
                 if str(selectedprotein).count(";")>=1:
                     selectedprotein=str(selectedprotein).split(";")[0]
                 ax.set_title(str(selectedprotein),fontsize=titlefont)
             #show intensity for selected peptide from selected protein across runs
             else:
-                selectedprotein=protein_df.data_view(selected=True)["PG.ProteinGroups"].tolist()[0]
-                proteindf=searchoutput[searchoutput["PG.ProteinGroups"]==selectedprotein][["Cond_Rep","PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates()
+                selectedprotein=protein_df.data_view(selected=True)["PG.ProteinNames"].tolist()[0]
+                proteindf=searchoutput[searchoutput["PG.ProteinNames"]==selectedprotein][["Cond_Rep","PEP.StrippedSequence","EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]].drop_duplicates()
 
                 selectedpeptide=pickedprotein_df.data_view(selected=True)["PEP.StrippedSequence"].tolist()[0]
                 peptidedf=proteindf[proteindf["PEP.StrippedSequence"]==selectedpeptide]
@@ -4084,18 +4564,26 @@ def server(input: Inputs, output: Outputs, session: Session):
                             plottingdf=expectedrows.merge(plottingdf,how="left",left_on="Cond_Rep",right_on="Cond_Rep").fillna(0)
                         else:
                             pass
+                        if input.tracker_logscale()==True:
+                            plottingdf["FG.MS2Quantity"]=np.log10(plottingdf["FG.MS2Quantity"])
+                        else:
+                            plottingdf=plottingdf
                         ax.plot(plottingdf["Cond_Rep"],plottingdf["FG.MS2Quantity"],marker="o",label=pep.strip("_")+"_"+str(charge)+"+")
 
-                ax.legend(loc='center left', bbox_to_anchor=(1,0.5))
+                ax.legend(loc='center left',bbox_to_anchor=(1,0.5),prop={'size':legendfont})
                 if str(selectedprotein).count(";")>=1:
                     selectedprotein=str(selectedprotein).split(";")[0]
                 ax.set_title(str(selectedprotein)+"_"+str(selectedpeptide),fontsize=titlefont)
-
-            ax.tick_params(axis="x",rotation=input.xaxis_label_rotation())
+            ax.tick_params(axis="x",rotation=x_label_rotation)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.set_ylabel("MS2 Intensity",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            if input.tracker_yaxiszero()==True:
+                ax.set_ylim(bottom=0)
+                top=ax.get_ylim()[1]
+                ax.set_ylim(top=top+(top*0.1))
    
 #endregion
 
@@ -4103,95 +4591,212 @@ def server(input: Inputs, output: Outputs, session: Session):
 #region
     # ====================================== Charge State
     #plot charge states
+    @render.ui
+    def chargestate_peplength_slider_ui():
+        if input.chargestate_peplength()==True:
+            return ui.input_slider("chargestate_peplength_slider_pick","Pick peptide length to plot:",min=7,max=25,value=9,step=1,ticks=True)
+    @render.ui
+    def chargestate_averages_ui():
+        if input.chargestate_condition_or_run()=="condition" and input.chargestate_stacked()==False:
+            return ui.input_switch("chargestate_averages_switch","Show bar plots as averages with error bars",value=False)
     @reactive.effect
     def _():
         @render.plot(width=input.chargestate_width(),height=input.chargestate_height())
         def chargestateplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
             y_padding=input.ypadding()
-        
-            chargestatedf_condition,chargestatedf_run=chargestates()
-            if input.chargestate_condition_or_run()=="condition":
-                plottingdf=chargestatedf_condition
-                chargestatecolor=colorpicker()
-            if input.chargestate_condition_or_run()=="individual":
-                plottingdf=chargestatedf_run
-                chargestatecolor=replicatecolors()
+            x_label_rotation=input.xaxis_label_rotation()
 
-            #plot as stacked bar graphs 
+            df=searchoutput[["Cond_Rep","R.Condition","EG.ModifiedPeptide","PEP.StrippedSequence","FG.Charge","Peptide Length"]]
+            charges=list(set(df["FG.Charge"]))
+            chargedf=pd.DataFrame()
+
+            if input.chargestate_condition_or_run()=="individual":
+                chargestatecolor=replicatecolors()
+                #count number of unique precursors per charge state in each replicate
+                if input.chargestate_peplength()==True:
+                    chargedf_ref=df[df["Peptide Length"]==input.chargestate_peplength_slider_pick()][["Cond_Rep","EG.ModifiedPeptide","FG.Charge"]]
+                else:
+                    chargedf_ref=df[["Cond_Rep","EG.ModifiedPeptide","FG.Charge"]]
+                for charge in charges:
+                    chargecounts=[]
+                    for run in chargedf_ref["Cond_Rep"].drop_duplicates().tolist():
+                        chargecounts.append(len(chargedf_ref[(chargedf_ref["Cond_Rep"]==run)&(chargedf_ref["FG.Charge"]==charge)].drop_duplicates()))
+                    chargedf[charge]=chargecounts
+                chargedf["Run"]=chargedf_ref["Cond_Rep"].drop_duplicates().tolist()
+                chargedf=chargedf.set_index("Run").transpose()
+                
+                #use to show counts calculated above as percents
+                if input.chargestate_counts_percent()=="Percent":
+                    chargedf_percents=pd.DataFrame()
+                    for run in chargedf.columns:
+                        total=chargedf[run].sum()
+                        percentlist=[]
+                        for value in chargedf[run]:
+                            percentlist.append(round((value/total*100),2))
+                        chargedf_percents[run]=percentlist
+                    chargedf_percents=chargedf_percents.set_index(pd.Index(charges))
+                    chargedf=chargedf_percents
+
+                stackxlabel="Run"
+            elif input.chargestate_condition_or_run()=="condition":
+                if input.chargestate_averages_switch()==True:
+                    chargestatecolor=colorpicker()
+                    if input.chargestate_peplength()==True:
+                        chargedf_ref=df[df["Peptide Length"]==input.chargestate_peplength_slider_pick()][["Cond_Rep","EG.ModifiedPeptide","FG.Charge"]]
+                    else:
+                        chargedf_ref=df[["Cond_Rep","EG.ModifiedPeptide","FG.Charge"]]
+                    for charge in charges:
+                        chargecounts=[]
+                        for run in chargedf_ref["Cond_Rep"].drop_duplicates().tolist():
+                            chargecounts.append(len(chargedf_ref[(chargedf_ref["Cond_Rep"]==run)&(chargedf_ref["FG.Charge"]==charge)].drop_duplicates()))
+                        chargedf[charge]=chargecounts
+                    chargedf["Run"]=chargedf_ref["Cond_Rep"].drop_duplicates().tolist()
+                    chargedf=chargedf.set_index("Run").transpose()
+                    
+                    #use to show counts calculated above as percents, extra line added so "Run" shows up as a column name for the index to avoid an error downstream
+                    if input.chargestate_counts_percent()=="Percent":
+                        chargedf_percents=pd.DataFrame()
+                        for run in chargedf.columns:
+                            total=chargedf[run].sum()
+                            percentlist=[]
+                            for value in chargedf[run]:
+                                percentlist.append(round((value/total*100),2))
+                            chargedf_percents[run]=percentlist
+                        chargedf_percents=chargedf_percents.set_index(pd.Index(charges))
+                        chargedf_percents=chargedf_percents.transpose().reset_index().rename(columns={"index":"Run"}).set_index("Run").transpose()
+                        chargedf=chargedf_percents
+
+                    #calculate averages of the counts or percents
+                    chargedf_transpose=chargedf.transpose().reset_index()
+                    chargedf_transpose["R.Condition"]=chargedf_transpose["Run"].str.rsplit("_",n=1,expand=True)[0]
+                    chargedf_transpose=chargedf_transpose.drop(columns="Run")
+
+                    chargeresultdf_avg=pd.DataFrame()
+                    chargeresultdf_stdev=pd.DataFrame()
+                    chargeresultdf_avg["R.Condition"]=chargedf_transpose["R.Condition"].drop_duplicates().tolist()
+                    chargeresultdf_stdev["R.Condition"]=chargedf_transpose["R.Condition"].drop_duplicates().tolist()
+
+                    columns=chargedf_transpose.columns.tolist()[:-1]
+
+                    for charge in columns:
+                        avg=[]
+                        stdev=[]
+                        for condition in chargedf_transpose["R.Condition"].drop_duplicates().tolist():
+                            avg.append(round(chargedf_transpose.groupby("R.Condition").get_group(condition)[charge].mean(),2))
+                            stdev.append(chargedf_transpose.groupby("R.Condition").get_group(condition)[charge].std())
+                        chargeresultdf_avg[charge]=avg
+                        chargeresultdf_stdev[charge]=stdev
+                    chargeresultdf_avg=chargeresultdf_avg.set_index("R.Condition").transpose()
+                    chargeresultdf_stdev=chargeresultdf_stdev.set_index("R.Condition").transpose()
+                    chargedf=chargeresultdf_avg
+                else:
+                    #count number of unique precursors per charge state in each condition
+                    chargestatecolor=colorpicker()
+                    if input.chargestate_peplength()==True:
+                        chargedf_ref=df[df["Peptide Length"]==input.chargestate_peplength_slider_pick()][["R.Condition","EG.ModifiedPeptide","FG.Charge"]]
+                    else:
+                        chargedf_ref=df[["R.Condition","EG.ModifiedPeptide","FG.Charge"]]
+                    for charge in charges:
+                        chargecounts=[]
+                        for run in chargedf_ref["R.Condition"].drop_duplicates().tolist():
+                            chargecounts.append(len(chargedf_ref[(chargedf_ref["R.Condition"]==run)&(chargedf_ref["FG.Charge"]==charge)].drop_duplicates()))
+                        chargedf[charge]=chargecounts
+                    chargedf["Run"]=chargedf_ref["R.Condition"].drop_duplicates().tolist()
+                    chargedf=chargedf.set_index("Run").transpose()
+
+                    #use to show counts calculated above as percents
+                    if input.chargestate_counts_percent()=="Percent":
+                        chargedf_percents=pd.DataFrame()
+                        for run in chargedf.columns:
+                            total=chargedf[run].sum()
+                            percentlist=[]
+                            for value in chargedf[run]:
+                                percentlist.append(round((value/total*100),2))
+                            chargedf_percents[run]=percentlist
+                        chargedf_percents=chargedf_percents.set_index(pd.Index(charges))
+                        chargedf=chargedf_percents
+                stackxlabel="Condition"
+
+            if input.chargestate_counts_percent()=="Percent":
+                ylabel="Frequency (%)"
+            if input.chargestate_counts_percent()=="Counts":
+                ylabel="Counts"
+
+            plottingdf=chargedf
+            #show as stacked bar graphs
             if input.chargestate_stacked()==True:
                 fig,ax=plt.subplots()
                 matplottabcolors=list(mcolors.TABLEAU_COLORS)
-                x=np.arange(len(plottingdf))
-                for i in range(len(plottingdf)):
-                    charges=list(set(plottingdf["Charge States"][i]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][i]))]
-                    totals=sum(frequencies)
-                    bottom=np.zeros(len(frequencies))
-                    for y,ele in enumerate(frequencies):
-                        frequencies[y]=round((ele/totals)*100,1)
-                    for z in range(len(charges)):
-                        ax.bar(x[i],frequencies[z],bottom=bottom,color=matplottabcolors[z],width=0.75)
-                        bottom+=frequencies[z]
-                ax.legend(charges,loc="center left",bbox_to_anchor=(1, 0.5))
-                ax.set_xticks(x,labels=plottingdf["Sample Names"],rotation=input.xaxis_label_rotation())
-                ax.set_ylim(top=105)
-                ax.set_ylabel("Frequency (%)",fontsize=axisfont)
-                ax.set_xlabel("Condition",fontsize=axisfont)
+                x=np.arange(len(plottingdf.columns))
+                for i,column in enumerate(plottingdf.columns):
+                    bottom=0
+                    for j,charge in enumerate(charges):
+                        ax.bar(x[i],plottingdf[column][charge],width=0.75,bottom=bottom,color=matplottabcolors[j])
+                        bottom+=plottingdf[column][charge]
+                ax.legend(charges,loc="center left",bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
+                if input.chargestate_counts_percent()=="Percent":
+                    ax.set_ylim(top=105)
+                ax.set_xticks(x,labels=plottingdf.columns,rotation=x_label_rotation)
+                ax.set_ylabel(ylabel,fontsize=axisfont)
+                ax.set_xlabel(stackxlabel,fontsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-
-            #show as regular bar graphs in separate subplots
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+            #show as separate bar graphs
             else:
-                #condition for when there's only a single sample in searchoutput
-                if len(plottingdf)==1:
+                x=charges
+                if len(plottingdf.columns.tolist())==1:
                     fig,ax=plt.subplots()
-                    x=list(set(plottingdf["Charge States"][0]))
-                    frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][0]))]
-                    
-                    totals=sum(frequencies)
-                    for y,ele in enumerate(frequencies):
-                        frequencies[y]=round((ele/totals)*100,1)
-                    ax.bar(x,frequencies,edgecolor="k",color=chargestatecolor)
-                    ax.set_title(plottingdf["Sample Names"][0],fontsize=titlefont)
+                    column=plottingdf.columns.tolist()[0]
+                    if input.chargestate_averages_switch()==True:
+                        ax.bar(x,plottingdf[column],yerr=chargeresultdf_stdev[column],capsize=8,edgecolor="k",color=chargestatecolor)
+                        ax.bar_label(ax.containers[1],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
+                    else:
+                        ax.bar(x,plottingdf[column],edgecolor="k",color=chargestatecolor)
+                        ax.bar_label(ax.containers[0],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
+                    ax.set_xticks(np.arange(1,max(x)+1,1))
+                    ax.set_title(column,fontsize=titlefont)
+                    ax.set_xlabel("Charge State",fontsize=axisfont)
+                    ax.set_ylabel(ylabel,fontsize=axisfont)
+                    ax.set_ylim(bottom=0-(max(plottingdf[column])*0.05),top=max(plottingdf[column])+y_padding*max(plottingdf[column]))
+
                     ax.set_axisbelow(True)
                     ax.grid(linestyle="--")
-                    ax.bar_label(ax.containers[0],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
-
-                    ax.set_ylim(bottom=-5,top=max(frequencies)+y_padding*max(frequencies))
-                    ax.tick_params(axis="both",labelsize=axisfont)
-                    ax.set_xticks(np.arange(1,max(x)+1,1))
-                    ax.set_xlabel("Charge State",fontsize=axisfont)             
-                    ax.set_ylabel("Frequency (%)",fontsize=axisfont)
-                #for when there's more than a single sample in searchoutput
+                    ax.tick_params(axis="both",labelsize=axisfont_labels)
                 else:
-                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf))
-                    for i in range(len(plottingdf)):
-                        x=list(set(plottingdf["Charge States"][i]))
-                        frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Charge States"][i]))]
-
-                        totals=sum(frequencies)
-                        for y,ele in enumerate(frequencies):
-                            frequencies[y]=round((ele/totals)*100,1)
-                        #check if there's only one sample condition, the loop will try and split the color name/code which will result in an error
-                        if numconditions==1:
-                            ax[i].bar(x,frequencies,color=chargestatecolor,edgecolor="k")
+                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf.columns),sharey=True)
+                    for i,run in enumerate(plottingdf.columns.tolist()):
+                        if input.chargestate_averages_switch()==True:
+                            ax[i].bar(x,plottingdf[run].tolist(),yerr=chargeresultdf_stdev[run],capsize=8,color=chargestatecolor[i],edgecolor="k")
+                            ax[i].bar_label(ax[i].containers[1],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
                         else:
-                            ax[i].bar(x,frequencies,color=chargestatecolor[i],edgecolor="k")
-                        ax[i].set_title(plottingdf["Sample Names"][i],fontsize=titlefont)
-                        ax[i].set_axisbelow(True)
-                        ax[i].grid(linestyle="--")
-                        ax[i].bar_label(ax[i].containers[0],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
-
-                        ax[i].set_ylim(bottom=-5,top=max(frequencies)+y_padding*max(frequencies))
-                        ax[i].tick_params(axis="both",labelsize=axisfont)
+                            if numconditions==1:
+                                ax[i].bar(x,plottingdf[run].tolist(),color=chargestatecolor,edgecolor="k")
+                                ax[i].bar_label(ax[i].containers[0],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
+                            else:
+                                ax[i].bar(x,plottingdf[run].tolist(),color=chargestatecolor[i],edgecolor="k")
+                                ax[i].bar_label(ax[i].containers[0],label_type="edge",padding=10,rotation=90,fontsize=labelfont)
+                        ax[i].set_title(plottingdf.columns[i],fontsize=titlefont)
+                        ax[i].set_xticks(np.arange(1,max(x)+1,1))
+                        
+                        #ax[i].set_ylim(bottom=0-(max(plottingdf[run])*0.05),top=max(plottingdf[run])+y_padding*max(plottingdf[run]))
                         ax[i].set_xticks(np.arange(1,max(x)+1,1))
                         ax[i].set_xlabel("Charge State",fontsize=axisfont)
-                    ax[0].set_ylabel("Frequency (%)",fontsize=axisfont)
-                fig.set_tight_layout(True)
+                        
+                        ax[i].set_axisbelow(True)
+                        ax[i].grid(linestyle="--")
+                        ax[i].tick_params(axis="both",labelsize=axisfont_labels)
+                    ax[0].set_ylim(bottom=0-(max(plottingdf.max().tolist())*0.05),top=max(plottingdf.max().tolist())+(y_padding*max(plottingdf.max().tolist())))
+                    ax[0].set_ylabel(ylabel,fontsize=axisfont)
+
+            fig.set_tight_layout(True)
 
     # ====================================== Peptide Length
     #ui call for dropdown for marking peptide lengths
@@ -4202,7 +4807,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             maxlength=30
             opts=[item for item in range(minlength,maxlength+1)]
             opts.insert(0,0)
-            return ui.column(4,ui.input_switch("hide_lengthmark","Hide peptide length marker"),ui.input_selectize("lengthmark_pick","Pick peptide length to mark on bar plot (use 0 for maximum)",choices=opts))
+            return ui.column(2,ui.input_switch("hide_lengthmark","Hide peptide length marker"),ui.input_selectize("lengthmark_pick","Pick peptide length to mark on bar plot (use 0 for maximum)",choices=opts))
     #plot peptide legnths
     @reactive.effect
     def _():
@@ -4213,9 +4818,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
             y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             peptidelengths_condition,peptidelengths_run=peptidelengths()
 
@@ -4243,12 +4850,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                         else:
                             ax.plot(x,frequencies,color=colors[i],linewidth=2)
                         legendlist.append(plottingdf["Sample Names"][i])
-                ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_xlabel("Peptide Length",fontsize=axisfont)
                 ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-                ax.legend(legendlist,fontsize=legendfont)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+                ax.legend(legendlist,prop={'size':legendfont})
 
             if input.peplengthinput()=="barplot":
                 lengthmark=int(input.lengthmark_pick())
@@ -4268,10 +4875,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                             ax.vlines(x=x[np.argmax(frequencies)],ymin=max(frequencies),ymax=max(frequencies)+0.2*max(frequencies),color="k")
                             ax.text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+": "+str(max(frequencies)),fontsize=labelfont)
                             ax.set_ylim(top=max(frequencies)+y_padding*max(frequencies))
-                    ax.tick_params(axis="both",labelsize=axisfont)
                     ax.set_xlabel("Peptide Length",fontsize=axisfont)
                     ax.set_ylabel("Counts",fontsize=axisfont)
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
+                    ax.tick_params(axis="both",labelsize=axisfont_labels)
                 else:
                     fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),sharey=True)
                     for i in range(len(plottingdf)):
@@ -4291,10 +4898,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                             if lengthmark==0:
                                 ax[i].vlines(x=x[np.argmax(frequencies)],ymin=max(frequencies),ymax=max(frequencies)+0.2*max(frequencies),color="k")
                                 ax[i].text(x=x[np.argmax(frequencies)],y=max(frequencies)+0.2*max(frequencies),s=str(x[np.argmax(frequencies)])+": "+str(max(frequencies)),fontsize=labelfont)
-                                ax[i].set_ylim(top=max(frequencies)+y_padding*max(frequencies))
-                        ax[i].tick_params(axis="both",labelsize=axisfont)
+                                #ax[i].set_ylim(top=max(frequencies)+y_padding*max(frequencies))
                         ax[i].set_xlabel("Peptide Length",fontsize=axisfont)
                         ax[i].xaxis.set_minor_locator(MultipleLocator(1))
+                        ax[i].tick_params(axis="both",labelsize=axisfont_labels)
+                    ymax_list=[]
+                    for i in range(len(ax)):
+                        ymax_list.append(ax[i].get_ylim()[1])
+                    ax[0].set_ylim(top=max(ymax_list)+(y_padding*max(ymax_list)))
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
             fig.set_tight_layout(True)
     
@@ -4305,10 +4916,14 @@ def server(input: Inputs, output: Outputs, session: Session):
         @render.plot(width=input.pepsperprotein_width(),height=input.pepsperprotein_height())
         def pepsperproteinplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             pepsperprotein_condition,pepsperprotein_run=pepsperprotein()
 
@@ -4321,7 +4936,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             if input.pepsperproteininput()=="lineplot":
                 legendlist=[]
-                fig,ax=plt.subplots(figsize=(6,4))
+                fig,ax=plt.subplots()
 
                 if len(plottingdf)==1:
                     x=sorted(list(set(plottingdf["Peptides per Protein"][0])))
@@ -4339,16 +4954,16 @@ def server(input: Inputs, output: Outputs, session: Session):
                         legendlist.append(plottingdf["Sample Names"][i])
 
                 ax.set_xlim(left=0,right=input.pepsperprotein_xrange())
-                ax.tick_params(axis="both",labelsize=axisfont)
                 ax.set_xlabel("Peptides per Protein",fontsize=axisfont)
                 ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-                ax.legend(legendlist,fontsize=legendfont)
+                ax.legend(legendlist,prop={'size':legendfont})
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             if input.pepsperproteininput()=="barplot":
                 if len(plottingdf)==1:
-                    fig,ax=plt.subplots(figsize=(5,5))
+                    fig,ax=plt.subplots()
                     for i in range(len(plottingdf)):
                         x=sorted(list(set(plottingdf["Peptides per Protein"][0])))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][0]))]
@@ -4358,13 +4973,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax.set_axisbelow(True)
                         ax.grid(linestyle="--")
 
-                        ax.tick_params(axis="both",labelsize=axisfont)
                         ax.set_xticks(np.arange(0,max(x)+1,25))
                         ax.set_xlabel("# Peptides",fontsize=axisfont)
                         ax.set_ylabel("Counts",fontsize=axisfont)
                         ax.set_xlim(left=0,right=input.pepsperprotein_xrange())
+                        ax.tick_params(axis="both",labelsize=axisfont_labels)
                 else:
-                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf),figsize=(15,5))
+                    fig,ax=plt.subplots(nrows=1,ncols=len(plottingdf))
                     for i in range(len(plottingdf)):
                         x=list(set(plottingdf["Peptides per Protein"][i]))
                         frequencies=[len(list(group)) for key, group in groupby(sorted(plottingdf["Peptides per Protein"][i]))]
@@ -4376,10 +4991,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax[i].set_axisbelow(True)
                         ax[i].grid(linestyle="--")
 
-                        ax[i].tick_params(axis="both",labelsize=axisfont)
                         ax[i].set_xticks(np.arange(0,max(x)+1,25))
                         ax[i].set_xlabel("# Peptides",fontsize=axisfont)
                         ax[i].set_xlim(left=0,right=input.pepsperprotein_xrange())
+                        ax[i].tick_params(axis="both",labelsize=axisfont_labels)
                     ax[0].set_ylabel("Counts",fontsize=axisfont)
                 fig.set_tight_layout(True)
     
@@ -4395,6 +5010,12 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             markersize=25
             titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             if propertyinput=="mean":
                 intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinGroups").mean().reset_index(drop=True)
@@ -4402,7 +5023,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             elif propertyinput=="median":
                 intensitydf=searchoutput[searchoutput["R.Condition"]==conditioninput][["PG.ProteinGroups","PG.MS2Quantity"]].drop_duplicates().groupby("PG.ProteinGroups").median().reset_index(drop=True)
 
-            fig,ax=plt.subplots(nrows=2,ncols=1,figsize=(5,7),sharex=True,gridspec_kw={"height_ratios":[1,3]})
+            fig,ax=plt.subplots(nrows=2,ncols=1,sharex=True,gridspec_kw={"height_ratios":[1,3]})
             ax1=ax[0]
             ax2=ax[1]
 
@@ -4413,24 +5034,26 @@ def server(input: Inputs, output: Outputs, session: Session):
             n_75=relative_fraction[relative_fraction["PG.MS2Quantity"]<0.75].shape[0]
 
             ax1.scatter(relative_fraction.index,relative_fraction["PG.MS2Quantity"],marker=".",s=markersize)
-            ax1.set_ylabel("Relative Fraction")
-            ax1.text(0,0.2,"- - - - - - - "+str(n_25)+" Protein groups")
-            ax1.text(0,0.45,"- - - - - - - "+str(n_50)+" Protein groups")
-            ax1.text(0,0.7,"- - - - - - - "+str(n_75)+" Protein groups")
+            ax1.set_ylabel("Relative Fraction",fontsize=axisfont)
+            ax1.text(0,0.2,"- - - - - - - "+str(n_25)+" Protein groups",fontsize=labelfont)
+            ax1.text(0,0.45,"- - - - - - - "+str(n_50)+" Protein groups",fontsize=labelfont)
+            ax1.text(0,0.7,"- - - - - - - "+str(n_75)+" Protein groups",fontsize=labelfont)
 
             log10df=np.log10(intensitydf).sort_values(by="PG.MS2Quantity",ascending=False).reset_index(drop=True)
             dynamicrange=round(max(log10df["PG.MS2Quantity"])-min(log10df[log10df["PG.MS2Quantity"]!=float("-inf")]["PG.MS2Quantity"]),1)
 
             ax2.scatter(log10df.index,log10df["PG.MS2Quantity"],marker=".",s=markersize)
-            ax2.set_ylabel("Log10(Area)")
+            ax2.set_ylabel("Log10(Area)",fontsize=axisfont)
             ax2.text(max(log10df.index)-0.6*(max(log10df.index)),max(log10df["PG.MS2Quantity"])-0.15*(max(log10df["PG.MS2Quantity"])),str(dynamicrange)+" log",fontsize=titlefont)
 
-            plt.xlabel("Rank")
-            plt.suptitle(conditioninput+" ("+propertyinput+"_PG)",x=0.13,horizontalalignment="left")
+            plt.xlabel("Rank",fontsize=axisfont)
+            plt.suptitle(conditioninput+" ("+propertyinput+"_PG)",x=0.13,horizontalalignment="left",fontsize=titlefont)
             ax1.set_axisbelow(True)
             ax2.set_axisbelow(True)
             ax1.grid(linestyle="--")
             ax2.grid(linestyle="--")
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
             fig.set_tight_layout(True)
     #get ranked proteins based on signal
     @render.data_frame
@@ -4471,7 +5094,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             violincolors=replicatecolors()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             if input.massaccuracy_violin_hist()=="violin":
                 fig,ax=plt.subplots()
@@ -4482,9 +5109,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.boxplot(massaccuracy_df["Mass Accuracy"],medianprops=medianlineprops,flierprops=flierprops)
                 ax.set_ylabel("Mass Accuracy (ppm)",fontsize=axisfont)
                 ax.set_xlabel("Run",fontsize=axisfont)
-                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=x_label_rotation)
                 ax.grid(linestyle="--")
                 ax.set_axisbelow(True)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
                 if numconditions==1:
                     for z in plot["bodies"]:
@@ -4506,6 +5134,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.set_title(run,fontsize=titlefont)
                     ax.grid(linestyle="--")
                     ax.set_axisbelow(True)
+                    ax.tick_params(axis="both",labelsize=axisfont_labels)
                 else:
                     fig,ax=plt.subplots(ncols=len(massaccuracy_df["Cond_Rep"]))
                     for i,run in enumerate(massaccuracy_df["Cond_Rep"]):
@@ -4517,6 +5146,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax[i].set_title(run,fontsize=titlefont)
                         ax[i].grid(linestyle="--")
                         ax[i].set_axisbelow(True)
+                        ax[i].tick_params(axis="both",labelsize=axisfont_labels)
                     ax[0].set_ylabel("Frequency",fontsize=axisfont)
 
     # ====================================== Data Completeness
@@ -4534,11 +5164,13 @@ def server(input: Inputs, output: Outputs, session: Session):
         def datacompletenessplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
 
-            figsize=(12,5)
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
             y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
             labelpadding=1
 
             color1="tab:blue"
@@ -4576,9 +5208,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             y1=proteincounts
             y2=proteinfrequencies
 
-            fig,ax1=plt.subplots(figsize=figsize)
+            fig,ax1=plt.subplots()
 
-            ax2 = ax1.twinx()
+            ax2=ax1.twinx()
             ax1.bar(xaxis,y1,edgecolor="k")
             ax2.plot(xaxis,y2,"-o",color=color2)
 
@@ -4588,17 +5220,17 @@ def server(input: Inputs, output: Outputs, session: Session):
             elif input.protein_peptide()=="peptides":
                 ax1.set_ylabel('# Peptides',color=color1,fontsize=axisfont)
             ax2.set_ylabel('% of MS Runs',color=color2,fontsize=axisfont)
-            ax1.tick_params(axis="x",labelsize=axisfont)
-            ax1.tick_params(axis="y",colors=color1,labelsize=axisfont)
-            ax2.tick_params(axis="y",colors=color2,labelsize=axisfont)
+            ax1.tick_params(axis="y",colors=color1)
+            ax2.tick_params(axis="y",colors=color2)
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax1.bar_label(ax1.containers[0],label_type="edge",padding=35,color=color1,fontsize=labelfont)
             ax1.set_ylim(top=max(proteincounts)+y_padding*max(proteincounts))
             ax2.set_ylim(top=max(proteinfrequencies)+y_padding*max(proteinfrequencies))
 
             for x,y in enumerate(proteinfrequencies):
-                ax2.text(xaxis[x],proteinfrequencies[x]+labelpadding,str(round(y,1))+"%",
-                horizontalalignment="center",verticalalignment="bottom",color=color2,fontsize=labelfont)
+                ax2.text(xaxis[x],proteinfrequencies[x]+labelpadding,str(round(y,1))+"%",horizontalalignment="center",verticalalignment="bottom",color=color2,fontsize=labelfont)
 
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
@@ -4616,6 +5248,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             violincolors=replicatecolors()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             fwhm_df=peakwidths()
 
@@ -4635,6 +5272,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_xticks(x+1,labels=fwhm_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
             ax.grid(linestyle="--")
             ax.set_axisbelow(True)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             if numconditions==1:
                 for z in plot["bodies"]:
@@ -4684,44 +5322,54 @@ def server(input: Inputs, output: Outputs, session: Session):
             enzyme_rules=input.enzyme_rules()
             missedcleavages=[]
             for pep in searchoutput["PEP.StrippedSequence"]:
+                #check if tryptic
                 if enzyme_rules=="trypsin":
-                    if pep.count("K")+pep.count("R")>1:
-                        missedcleavages.append(pep.count("K")+pep.count("R")-1)
+                    if pep[-1]=="K" or pep[-1]=="R":
+                        missedcleavages.append(pep[:-1].count("K")+pep[:-1].count("R"))
+                    #-1 if peptide is nontryptic
                     else:
-                        missedcleavages.append(0)
+                        missedcleavages.append(-1)
             searchoutput["Missed Cleavages"]=missedcleavages
 
             missedcleavages_df=pd.DataFrame()
             for run in searchoutput["Cond_Rep"].drop_duplicates().tolist():
-                df=pd.DataFrame(searchoutput[searchoutput["Cond_Rep"]==run]["Missed Cleavages"].value_counts().reset_index(drop=True)).transpose()
+                df=pd.DataFrame(searchoutput[searchoutput["Cond_Rep"]==run]["Missed Cleavages"].value_counts()).sort_index().transpose()
                 missedcleavages_df=pd.concat([missedcleavages_df,df],axis=0)
             missedcleavages_df=missedcleavages_df.reset_index(drop=True)
             missedcleavages_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().tolist()
+            missedcleavages_df=missedcleavages_df.set_index("Cond_Rep")
 
-            maxvalue=missedcleavages_df.select_dtypes(include=[np.number]).max()[0]
-            x=np.arange(len(missedcleavages_df["Cond_Rep"].tolist()))
+            maxvalue=max(missedcleavages_df.select_dtypes(include=[np.number]).max().tolist())
+            x=np.arange(len(missedcleavages_df.index.tolist()))
 
             width=input.missedcleavages_barwidth()
             y_padding=input.ypadding()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             fig,ax=plt.subplots()
             legend_patches=[]
-            for i in range(len(missedcleavages_df.columns.tolist())-1):
-                ax.bar(x+(i*width),missedcleavages_df[i],width=width,edgecolor="k")
+            for i,column in enumerate(missedcleavages_df.columns):
+                ax.bar(x+(i*width),missedcleavages_df[column],width=width,edgecolor="k")
                 ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                legend_patches.append(mpatches.Patch(color=list(mcolors.TABLEAU_COLORS.keys())[i],label=i))
-            ax.set_ylim(top=maxvalue+(y_padding*maxvalue),bottom=-(0.025*maxvalue))
-            ax.set_xticks(x+width,missedcleavages_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
-            ax.legend(handles=legend_patches,loc="upper right",prop={"size":legendfont})
+                if column==-1:
+                    label="Non-Tryptic"
+                else:
+                    label=column
+                legend_patches.append(mpatches.Patch(color=list(mcolors.TABLEAU_COLORS.keys())[i],label=label))
+            ax.set_ylim(top=(maxvalue+(y_padding*maxvalue)),bottom=-(0.025*maxvalue))
+            ax.set_xticks(x+width,missedcleavages_df.index.tolist(),rotation=x_label_rotation)
+            ax.legend(handles=legend_patches,loc='center left', bbox_to_anchor=(1,0.5),prop={'size':legendfont})
             ax.set_title("Missed Cleavages",fontsize=titlefont)
             ax.set_ylabel("Counts",fontsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.grid(linestyle="--")
             ax.set_axisbelow(True)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
 #endregion
 
@@ -4758,8 +5406,8 @@ def server(input: Inputs, output: Outputs, session: Session):
     def ptmcounts():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         resultdf,averagedf=idmetrics()
-        ptm=input.foundptms()
 
+        ptm=input.foundptms()
         numptmproteins=[]
         numptmproteins2pepts=[]
         numptmpeptides=[]
@@ -4780,19 +5428,41 @@ def server(input: Inputs, output: Outputs, session: Session):
             #number of precursors with specified PTM
             numptmprecursors.append(len(df[df["EG.ModifiedPeptide"].str.contains(ptm)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates()))
 
-        ptmresultdf=pd.DataFrame({"Cond_Rep":resultdf["Cond_Rep"],"proteins":numptmproteins,"proteins2pepts":numptmproteins2pepts,"peptides":numptmpeptides,"precursors":numptmprecursors})
+        ptmresultdf=pd.DataFrame(searchoutput[["Cond_Rep","R.FileName","R.Condition","R.Replicate"]].drop_duplicates()).reset_index(drop=True)
+
+        ptmresultdf["proteins"]=numptmproteins
+        ptmresultdf["proteins2pepts"]=numptmproteins2pepts
+        ptmresultdf["peptides"]=numptmpeptides
+        ptmresultdf["precursors"]=numptmprecursors
 
         propcolumnlist=["proteins","proteins2pepts","peptides","precursors"]
 
         for column in propcolumnlist:
             exec(f'ptmresultdf["{column}_enrich%"]=round((ptmresultdf["{column}"]/resultdf["{column}"])*100,1)')
-        return ptmresultdf,ptm
+
+        ptmaveragedf=pd.DataFrame({"R.Condition":sampleconditions,"N.Replicates":maxreplicatelist})
+
+        #avg and stdev values for IDs appended to averagedf dataframe, which holds lists of all the calculated values here
+        columnlist=ptmresultdf.columns.values.tolist()
+        for i in columnlist:
+            if i=="R.FileName" or i=="Cond_Rep" or i=="R.Condition" or i=="R.Replicate":
+                continue
+            avglist=[]
+            stdevlist=[]
+            for j in sampleconditions:
+                samplecondition=ptmresultdf[ptmresultdf["R.Condition"]==j]
+                avglist.append(round(np.average(samplecondition[i].to_numpy())))
+                stdevlist.append(np.std(samplecondition[i].to_numpy()))
+            ptmaveragedf[i+"_avg"]=avglist
+            ptmaveragedf[i+"_stdev"]=stdevlist
+        
+        return ptmresultdf,ptmaveragedf,ptm
     #calculate CVs for selected PTM
     @reactive.calc
     def ptmcvs_calc():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         resultdf,averagedf=idmetrics()
-        ptmresultdf,ptm=ptmcounts()
+        ptmresultdf,ptmaveragedf,ptm=ptmcounts()
 
         ptmcvs=pd.DataFrame()
         ptmcvs["R.Condition"]=averagedf["R.Condition"]
@@ -4883,108 +5553,142 @@ def server(input: Inputs, output: Outputs, session: Session):
     #plot PTM ID metrics
     @reactive.effect
     def _():
-        plotinput=input.ptmidplotinput()
-        ptmresultdf,ptm=ptmcounts()
-        figsize=(15,10)
-        titlefont=input.titlefont()
-        axisfont=input.axisfont()
-        labelfont=input.labelfont()
-        y_padding=input.ypadding()
-        idmetricscolor=replicatecolors()
+        @render.plot(width=input.ptmidmetrics_width(),height=input.ptmidmetrics_height())
+        def ptmidmetricsplot():
+            plotinput=input.ptmidplotinput()
+            ptmresultdf,ptmaveragedf,ptm=ptmcounts()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
-        if input.ptm_counts_vs_enrich()=="counts":
-            y1="proteins"
-            y2="proteins2pepts"
-            y3="peptides"
-            y4="precursors"
-            titlemod="ID Counts for PTM: "
-            ylabel="Counts"
-        if input.ptm_counts_vs_enrich()=="percent":
-            y1="proteins_enrich%"
-            y2="proteins2pepts_enrich%"
-            y3="peptides_enrich%"
-            y4="precursors_enrich%"
-            titlemod="% of IDs for PTM: "
-            ylabel="% of IDs"
+            if input.ptm_counts_vs_enrich()=="counts":
+                y1="proteins"
+                y2="proteins2pepts"
+                y3="peptides"
+                y4="precursors"
+                titlemod="ID Counts for PTM: "
+                ylabel="Counts"
+            if input.ptm_counts_vs_enrich()=="percent":
+                y1="proteins_enrich%"
+                y2="proteins2pepts_enrich%"
+                y3="peptides_enrich%"
+                y4="precursors_enrich%"
+                titlemod="% of IDs for PTM: "
+                ylabel="% of IDs"
 
-        if plotinput=="all":
-            @render.plot(width=input.ptmidmetrics_width(),height=input.ptmidmetrics_height())
-            def ptmidmetricsplot():
-                fig,ax=plt.subplots(nrows=2,ncols=2,figsize=figsize,sharex=True)
+            if plotinput=="all":
+                fig,ax=plt.subplots(nrows=2,ncols=2,sharex=True)
                 fig.set_tight_layout(True)
                 ax1=ax[0,0]
                 ax2=ax[0,1]
                 ax3=ax[1,0]
                 ax4=ax[1,1]
 
-                ptmresultdf.plot.bar(ax=ax1,x="Cond_Rep",y=y1,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
-                ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax1.set_ylim(top=max(ptmresultdf[y1].tolist())+y_padding*max(ptmresultdf[y1].tolist()))
+                if input.ptmidmetrics_individual_average()=="individual":
+                    idmetricscolor=replicatecolors()
+                    titlemod1=""
+                    ax1.bar(ptmresultdf["Cond_Rep"],ptmresultdf[y1],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax2.bar(ptmresultdf["Cond_Rep"],ptmresultdf[y2],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax3.bar(ptmresultdf["Cond_Rep"],ptmresultdf[y3],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax4.bar(ptmresultdf["Cond_Rep"],ptmresultdf[y4],width=0.8,color=idmetricscolor,edgecolor="k")
+
+                    ax1.bar_label(ax1.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+
+                    ax1.set_ylim(top=max(ptmresultdf[y1].tolist())+y_padding*max(ptmresultdf[y1].tolist()))
+                    ax2.set_ylim(top=max(ptmresultdf[y2].tolist())+y_padding*max(ptmresultdf[y2].tolist()))
+                    ax3.set_ylim(top=max(ptmresultdf[y3].tolist())+(y_padding+0.1)*max(ptmresultdf[y3].tolist()))
+                    ax4.set_ylim(top=max(ptmresultdf[y4].tolist())+(y_padding+0.1)*max(ptmresultdf[y4].tolist()))
+                elif input.ptmidmetrics_individual_average()=="average":
+                    idmetricscolor=colorpicker()
+                    titlemod1="Average "
+                    bars1=ax1.bar(ptmaveragedf["R.Condition"],ptmaveragedf[y1+"_avg"],yerr=ptmaveragedf[y1+"_stdev"],width=0.8,capsize=10,color=idmetricscolor,edgecolor="k")
+                    bars2=ax2.bar(ptmaveragedf["R.Condition"],ptmaveragedf[y2+"_avg"],yerr=ptmaveragedf[y2+"_stdev"],width=0.8,capsize=10,color=idmetricscolor,edgecolor="k")
+                    bars3=ax3.bar(ptmaveragedf["R.Condition"],ptmaveragedf[y3+"_avg"],yerr=ptmaveragedf[y3+"_stdev"],width=0.8,capsize=10,color=idmetricscolor,edgecolor="k")
+                    bars4=ax4.bar(ptmaveragedf["R.Condition"],ptmaveragedf[y4+"_avg"],yerr=ptmaveragedf[y4+"_stdev"],width=0.8,capsize=10,color=idmetricscolor,edgecolor="k")
+
+                    ax1.bar_label(bars1,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax2.bar_label(bars2,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax3.bar_label(bars3,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax4.bar_label(bars4,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+
+                    ax1.set_ylim(top=max(ptmaveragedf[y1+"_avg"].tolist())+y_padding*max(ptmaveragedf[y1+"_avg"].tolist()))
+                    ax2.set_ylim(top=max(ptmaveragedf[y2+"_avg"].tolist())+y_padding*max(ptmaveragedf[y2+"_avg"].tolist()))
+                    ax3.set_ylim(top=max(ptmaveragedf[y3+"_avg"].tolist())+(y_padding+0.1)*max(ptmaveragedf[y3+"_avg"].tolist()))
+                    ax4.set_ylim(top=max(ptmaveragedf[y4+"_avg"].tolist())+(y_padding+0.1)*max(ptmaveragedf[y4+"_avg"].tolist()))
+
+                fig.text(0, 0.6,ylabel,ha="left",va="center",rotation="vertical",fontsize=axisfont)
+                plt.suptitle(titlemod1+titlemod+ptm,y=1,fontsize=titlefont)
                 ax1.set_title("Protein Groups",fontsize=titlefont)
-
-                ptmresultdf.plot.bar(ax=ax2,x="Cond_Rep",y=y2,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
-                ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax2.set_ylim(top=max(ptmresultdf[y2].tolist())+y_padding*max(ptmresultdf[y2].tolist()))
                 ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
-
-                ptmresultdf.plot.bar(ax=ax3,x="Cond_Rep",y=y3,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
-                ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax3.set_ylim(top=max(ptmresultdf[y3].tolist())+(y_padding+0.1)*max(ptmresultdf[y3].tolist()))
                 ax3.set_title("Peptides",fontsize=titlefont)
                 ax3.set_xlabel("Condition",fontsize=axisfont)
                 ax3.set_ylabel("  ",fontsize=axisfont)
-                ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
-
-                ptmresultdf.plot.bar(ax=ax4,x="Cond_Rep",y=y4,legend=False,width=0.8,color=idmetricscolor,edgecolor="k",fontsize=axisfont)
-                ax4.bar_label(ax4.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax4.set_ylim(top=max(ptmresultdf[y4].tolist())+(y_padding+0.1)*max(ptmresultdf[y4].tolist()))
+                ax3.tick_params(axis="x",rotation=x_label_rotation)
                 ax4.set_title("Precursors",fontsize=titlefont)
                 ax4.set_xlabel("Condition",fontsize=axisfont)
-                ax4.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
-
-                fig.text(0, 0.6,ylabel,ha="left",va="center",rotation="vertical",fontsize=axisfont)
-
-                plt.suptitle(titlemod+ptm,y=1,fontsize=titlefont)
+                ax4.tick_params(axis="x",rotation=x_label_rotation)
 
                 ax1.set_axisbelow(True)
                 ax1.grid(linestyle="--")
+                ax1.tick_params(axis="both",labelsize=axisfont_labels)
                 ax2.set_axisbelow(True)
                 ax2.grid(linestyle="--")
+                ax2.tick_params(axis="both",labelsize=axisfont_labels)
                 ax3.set_axisbelow(True)
                 ax3.grid(linestyle="--")
+                ax3.tick_params(axis="both",labelsize=axisfont_labels)
                 ax4.set_axisbelow(True)
                 ax4.grid(linestyle="--")
-            
-        else:
-            @render.plot(width=input.ptmidmetrics_width(),height=input.ptmidmetrics_height())
-            def ptmidmetricsplot():
+                ax4.tick_params(axis="both",labelsize=axisfont_labels)
+
+            else:
+                plotinput=input.ptmidplotinput()
                 if plotinput=="proteins":
-                    titleprop="Proteins"
+                    titleprop="Protein Groups"
                 if plotinput=="proteins2pepts":
-                    titleprop="Proteins with >2 Peptides"
+                    titleprop="Protein Groups with >2 Peptides"
                 if plotinput=="peptides":
                     titleprop="Peptides"
                 if plotinput=="precursors":
                     titleprop="Precursors"
 
                 if input.ptm_counts_vs_enrich()=="counts":
-                    y=plotinput
+                    plot_y=plotinput
+                    titlemod="ID Counts for PTM: "
+                    y_mod="Counts"
                 if input.ptm_counts_vs_enrich()=="percent":
-                    y=plotinput+"_enrich%"
+                    plot_y=plotinput+"_enrich%"
+                    titlemod="% of IDs for PTM: "
+                    y_mod="% of IDs"
 
                 fig,ax=plt.subplots()
-                ptmresultdf.plot.bar(ax=ax,x="Cond_Rep",y=y,legend=False,width=0.8,color=idmetricscolor,edgecolor="k")
-                ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
-                ax.set_ylim(top=max(ptmresultdf[y].tolist())+y_padding*max(ptmresultdf[y].tolist()))
-                plt.ylabel(ylabel,fontsize=axisfont)
-                plt.xlabel("Condition",fontsize=axisfont)
-                plt.title(titleprop,fontsize=titlefont)
-                ax.tick_params(axis="y",labelsize=axisfont)
-                ax.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+                if input.ptmidmetrics_individual_average()=="individual":
+                    idmetricscolor=replicatecolors()
+                    ax.bar(ptmresultdf["Cond_Rep"],ptmresultdf[plot_y],width=0.8,color=idmetricscolor,edgecolor="k")
+                    ax.bar_label(ax.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
+                    ax.set_ylim(top=max(ptmresultdf[plot_y].tolist())+y_padding*max(ptmresultdf[plot_y].tolist()))
+                    titlemod1=""
+                    
+                elif input.ptmidmetrics_individual_average()=="average":
+                    idmetricscolor=colorpicker()
+                    bars=ax.bar(ptmaveragedf["R.Condition"],ptmaveragedf[plot_y+"_avg"],yerr=ptmaveragedf[plot_y+"_stdev"],width=0.8,capsize=10,color=idmetricscolor,edgecolor="k")
+                    ax.bar_label(bars,label_type="edge",rotation=90,padding=10,fontsize=labelfont)
+                    ax.set_ylim(top=max(ptmaveragedf[plot_y+"_avg"].tolist())+y_padding*max(ptmaveragedf[plot_y+"_avg"].tolist()))
+                    titlemod1="Average "
+                
+                ax.set_ylabel(y_mod,fontsize=axisfont)
+                ax.set_xlabel("Condition",fontsize=axisfont)
+                ax.set_title(titlemod1+titleprop+" "+titlemod+ptm,fontsize=titlefont)
+                ax.tick_params(axis="x",rotation=x_label_rotation)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
-
-                plt.suptitle(titlemod+ptm,y=1,fontsize=titlefont)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== CV Plots    
     #plot PTM CV violin plots
@@ -4994,7 +5698,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         def ptm_cvplot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             resultdf,averagedf=idmetrics()
-            ptmresultdf,ptm=ptmcounts()
+            ptmresultdf,ptmaveragedf,ptm=ptmcounts()
             ptmcvs=ptmcvs_calc()
 
             colors=colorpicker()
@@ -5003,6 +5707,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             n=len(sampleconditions)
             x=np.arange(n)
@@ -5022,12 +5731,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                 plot=ax.violinplot(ptmcvs[cvplotinput+" CVs"],showextrema=False)#,showmeans=True)
                 ax.set_title(cvplotinput+" CVs for PTM: "+ptm,fontsize=titlefont)
 
-            ax.set_xticks(x+1,labels=ptmcvs["R.Condition"],fontsize=axisfont,rotation=input.xaxis_label_rotation())
-            ax.tick_params(axis="y",labelsize=axisfont)
+            ax.set_xticks(x+1,labels=ptmcvs["R.Condition"],rotation=x_label_rotation)
             ax.set_ylabel("CV%",fontsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.grid(linestyle="--")
             ax.set_axisbelow(True)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax.axhline(y=20,color="black",linestyle="--")
 
@@ -5041,7 +5750,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                     z.set_facecolor(color)
                     z.set_edgecolor("black")
                     z.set_alpha(0.7)
-
     #show a table of mean/median CV values per condition for selected PTM
     @render.table
     def ptm_cvtable():
@@ -5115,10 +5823,19 @@ def server(input: Inputs, output: Outputs, session: Session):
                 return ptmcvs_summary[["R.Condition","Peptide Mean CVs","Peptide Median CVs"]]
 
     # ====================================== PTMs per Precursor
+    #generate list to pull from to pick PTMs
+    @render.ui
+    def ptmsperprecursor_ptmlist_ui():
+        if input.ptmsperprecursor_specific()==True:
+            listofptms=find_ptms()
+            ptmshortened=[]
+            for i in range(len(listofptms)):
+                ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
+            ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
+            return ui.input_selectize("ptmsperprecursor_foundptms","Pick PTM to plot data for:",choices=ptmdict,selected=listofptms[0])
     #plot PTMs per precursor
     @reactive.effect
     def _():
-        width=input.barwidth()
         @render.plot(width=input.ptmsperprecursor_width(),height=input.ptmsperprecursor_height())
         def ptmsperprecursor():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
@@ -5128,9 +5845,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
             y_padding=input.ypadding()
+            width=input.barwidth()
 
             fig,ax=plt.subplots()
             ptmdf=pd.DataFrame()
@@ -5140,7 +5859,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                 dfptmlist=[]
                 numptms=[]
                 for i in df["EG.ModifiedPeptide"]:
-                    foundptms=re.findall(r"[^[]*\[([^]]*)\]",i)
+                    if input.ptmsperprecursor_specific()==True:
+                        ptm=input.ptmsperprecursor_foundptms().split(" (")[0]
+                        foundptms=re.findall(ptm,i)
+                        titlemod=ptm
+                    else:
+                        foundptms=re.findall(r"[^[]*\[([^]]*)\]",i)
+                        titlemod=""
                     dfptmlist.append(foundptms)
                     numptms.append(len(foundptms))
                 dfptmlist=pd.Series(dfptmlist).value_counts().to_frame().reset_index().rename(columns={"index":condition,"count":condition+"_count"})
@@ -5157,12 +5882,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.legend(sampleconditions,loc="upper right",fontsize=legendfont)
             ax.set_ylim(bottom=-ax.get_ylim()[1]+0.9*ax.get_ylim()[1],top=ax.get_ylim()[1]+y_padding*ax.get_ylim()[1])
             ax.set_xticks(x+((numconditions-1)/2)*width,x)
-            ax.tick_params(axis="both",labelsize=axisfont)
             ax.set_ylabel("Counts",fontsize=axisfont)
             ax.set_xlabel("# of PTMs",fontsize=axisfont)
-            ax.set_title("# of PTMs per Precursor",fontsize=titlefont)
+            ax.set_title("# of "+titlemod+"PTMs per Precursor",fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Mass Accuracy
     @render.ui
@@ -5175,7 +5900,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         @render.plot(width=input.ptm_massaccuracy_width(),height=input.ptm_massaccuracy_height())
         def ptm_massaccuracy_plot():
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-            ptmresultdf,ptm=ptmcounts()
+            ptmresultdf,ptmaveragedf,ptm=ptmcounts()
 
             massaccuracy_df=pd.DataFrame()
             massaccuracy_df["Cond_Rep"]=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True)
@@ -5189,7 +5914,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             violincolors=replicatecolors()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             if input.ptm_massaccuracy_violin_hist()=="violin":
                 fig,ax=plt.subplots()
@@ -5201,9 +5930,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.set_ylabel("Mass Accuracy (ppm)",fontsize=axisfont)
                 ax.set_xlabel("Run",fontsize=axisfont)
                 ax.set_title(ptm+"Precursor Mass Accuracy",fontsize=titlefont)
-                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.set_xticks(x+1,labels=massaccuracy_df["Cond_Rep"].tolist(),rotation=x_label_rotation)
                 ax.grid(linestyle="--")
                 ax.set_axisbelow(True)
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
                 if numconditions==1:
                     for z in plot["bodies"]:
@@ -5225,6 +5955,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.set_title(ptm+"Precursor Mass Accuracy",fontsize=titlefont)
                     ax.grid(linestyle="--")
                     ax.set_axisbelow(True)
+                    ax.tick_params(axis="both",labelsize=axisfont_labels)
                 else:
                     fig,ax=plt.subplots(ncols=len(massaccuracy_df["Cond_Rep"]))
                     for i,run in enumerate(massaccuracy_df["Cond_Rep"]):
@@ -5236,6 +5967,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax[i].set_title(run,fontsize=titlefont)
                         ax[i].grid(linestyle="--")
                         ax[i].set_axisbelow(True)
+                        ax[i].tick_params(axis="both",labelsize=axisfont_labels)
                     ax[0].set_ylabel("Frequency",fontsize=axisfont)
                     plt.suptitle(ptm+"Precursor Mass Accuracy",fontsize=titlefont)
 
@@ -5263,7 +5995,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             numbins=input.heatmap_numbins()
 
@@ -5285,12 +6021,14 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax[0,0].set_title("RT vs m/z",fontsize=titlefont)
             ax[0,0].set_xlabel("Retention Time (min)",fontsize=axisfont)
             ax[0,0].set_ylabel("m/z",fontsize=axisfont)
+            ax[0,0].tick_params(axis="both",labelsize=axisfont_labels)
             fig.colorbar(i[3],ax=ax[0,0])
 
             j=ax[0,1].hist2d(his2dsample["FG.PrecMz"],his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
             ax[0,1].set_title("m/z vs Mobility",fontsize=titlefont)
             ax[0,1].set_xlabel("m/z",fontsize=axisfont)
             ax[0,1].set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            ax[0,1].tick_params(axis="both",labelsize=axisfont_labels)
             fig.colorbar(j[3],ax=ax[0,1])
 
             if len(his2dsample["FG.MS2Quantity"].drop_duplicates())==1:
@@ -5300,11 +6038,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax[1,0].set_title("RT vs Intensity (line plot)",fontsize=titlefont)
                 ax[1,0].set_xlabel("Retention Time (min)",fontsize=axisfont)
                 ax[1,0].set_ylabel("Intensity",fontsize=axisfont)
+                ax[1,0].tick_params(axis="both",labelsize=axisfont_labels)
 
             k=ax[1,1].hist2d(his2dsample["EG.ApexRT"].sort_values(),his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
             ax[1,1].set_title("RT vs Mobility",fontsize=titlefont)
             ax[1,1].set_xlabel("Retention Time (min)",fontsize=axisfont)
             ax[1,1].set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            ax[1,1].tick_params(axis="both",labelsize=axisfont_labels)
             fig.colorbar(k[3],ax=ax[1,1])
             fig.set_tight_layout(True)
             plt.suptitle("Histograms of Identified Precursors"+", "+samplename,y=1,fontsize=titlefont)
@@ -5329,15 +6069,27 @@ def server(input: Inputs, output: Outputs, session: Session):
     def diawindows_import():
         if input.diawindow_upload() is None:
             return pd.DataFrame()
-        diawindows=pd.read_csv(input.diawindow_upload()[0]["datapath"])
-        diawindows=diawindows.drop(index=0).reset_index(drop=True)
-        startcoords=[]
-        for i in range(len(diawindows)):
-            startcorner=float(diawindows["Start Mass [m/z]"][i]),float(diawindows["Start IM [1/K0]"][i])
-            startcoords.append(startcorner)
-        diawindows["W"]=diawindows["End Mass [m/z]"].astype(float)-diawindows["Start Mass [m/z]"].astype(float)
-        diawindows["H"]=diawindows["End IM [1/K0]"].astype(float)-diawindows["Start IM [1/K0]"].astype(float)
-        diawindows["xy"]=startcoords
+        if input.windows_choice()=="diagonal":
+            diagonal=pd.read_csv(input.diawindow_upload()[0]["datapath"])
+            diagonal=diagonal.drop(index=0).reset_index(drop=True).drop(columns=["type"])
+            columnlist=[]
+            for column in diagonal.columns.tolist():
+                diagonal[column]=diagonal[column].astype(float)
+                columnlist.append(column.strip())
+            diagonal=diagonal.set_axis(columnlist,axis=1)
+            diagonalspacing=list(set(diagonal["mass pos.1 end [m/z]"]-diagonal["mass pos.1 start [m/z]"].tolist()))[0]
+            diagonal["mass pos.2 end [m/z]"]=diagonal["mass pos.2 start [m/z]"]+diagonalspacing
+            diawindows=diagonal
+        else:
+            diawindows=pd.read_csv(input.diawindow_upload()[0]["datapath"])
+            diawindows=diawindows.drop(index=0).reset_index(drop=True)
+            startcoords=[]
+            for i in range(len(diawindows)):
+                startcorner=float(diawindows["Start Mass [m/z]"][i]),float(diawindows["Start IM [1/K0]"][i])
+                startcoords.append(startcorner)
+            diawindows["W"]=diawindows["End Mass [m/z]"].astype(float)-diawindows["Start Mass [m/z]"].astype(float)
+            diawindows["H"]=diawindows["End IM [1/K0]"].astype(float)-diawindows["Start IM [1/K0]"].astype(float)
+            diawindows["xy"]=startcoords
         return diawindows
     #Lubeck DIA windows
     def lubeckdiawindow():
@@ -5393,7 +6145,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         maxcharge=max(searchoutput["FG.Charge"])
         opts=[item for item in range(mincharge,maxcharge+1)]
         opts.insert(0,0)
-        return ui.input_selectize("chargestates_chargeptmheatmap_list","Pick charge to plot data for (use 0 for all):",choices=opts)
+        return ui.input_selectize("chargestates_chargeptmheatmap_list","Pick charge to plot for (use 0 for all):",choices=opts)
     #render ui call for dropdown calling PTMs that were detected
     @render.ui
     def ptm_chargeptmheatmap_ui():
@@ -5404,7 +6156,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
         nonedict={"None":"None"}
         ptmdict=(nonedict | ptmdict)
-        return ui.input_selectize("ptm_chargeptmheatmap_list","Pick PTM to plot data for (use None for all precursors):",choices=ptmdict,selected="None")
+        return ui.input_selectize("ptm_chargeptmheatmap_list","Pick PTM to plot for (use None for all):",choices=ptmdict,selected="None")
     #Charge/PTM precursor heatmap
     @reactive.effect
     def _():
@@ -5426,6 +6178,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
 
             fig,ax=plt.subplots()
 
@@ -5442,40 +6195,54 @@ def server(input: Inputs, output: Outputs, session: Session):
                     savetitle=str(charge)+"+_"+"_Precursor IDs Heatmap_"   
             if ptm!="None":
                 if charge=="0":
-                    #all modified precursors 
+                    #all modified precursors
                     his2dsample=searchoutput[searchoutput["EG.ModifiedPeptide"].str.contains(ptm)][["R.Condition","R.Replicate","EG.IonMobility","FG.PrecMz"]]
-                    title="m/z vs Mobility, "+ptm+" Precursor IDs"
-                    savetitle=ptm+"_Precursor IDs Heatmap_"   
+                    title="m/z vs Mobility, "+ptm.strip()+" Precursor IDs"
+                    savetitle=ptm.strip()+"_Precursor IDs Heatmap_"   
                 elif charge!="0":
                     #modified precursors of specific charge
                     his2dsample=searchoutput[(searchoutput["FG.Charge"]==int(charge))&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))][["R.Condition","R.Replicate","EG.IonMobility","FG.PrecMz"]]
-                    title="m/z vs Mobility, "+ptm+" "+str(charge)+"+ Precursor IDs"
-                    savetitle=ptm+"_"+str(charge)+"+_"+"_Precursor IDs Heatmap_"
+                    title="m/z vs Mobility, "+ptm.strip()+" "+str(charge)+"+ Precursor IDs"
+                    savetitle=ptm.strip()+"_"+str(charge)+"+_"+"_Precursor IDs Heatmap_"
             j=ax.hist2d(his2dsample["FG.PrecMz"],his2dsample["EG.IonMobility"],bins=numbins,cmap=cmap)
             ax.set_title(title,fontsize=titlefont)
             ax.set_xlabel("m/z",fontsize=axisfont)
             ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
-            ax.tick_params(axis="both",labelsize=axisfont)
-            fig.colorbar(j[3],ax=ax)
-
-            #ax.set_ylim(0.6,1.45)
-            #ax.set_xlim(100,1700)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
+            #fig.colorbar(j[3],ax=ax)
             
             fig.set_tight_layout(True)
             
             if input.windows_choice()!="None":
-                if input.windows_choice()=="lubeck":
-                    diawindows=lubeckdiawindow()
-                elif input.windows_choice()=="phospho":
-                    diawindows=phosphodiawindow()
-                elif input.windows_choice()=="bremen":
-                    diawindows=bremendiawindow()
-                elif input.windows_choice()=="imported":
+                if input.windows_choice()=="diagonal":
                     diawindows=diawindows_import()
+                    coordlist=[]
+                    for i in range(len(diawindows)):
+                        polycoords=[(diawindows["mass pos.1 start [m/z]"][i],diawindows["mobility pos.1 [1/K0]"][i]),
+                                    (diawindows["mass pos.1 end [m/z]"][i],diawindows["mobility pos.1 [1/K0]"][i]),
+                                    (diawindows["mass pos.2 end [m/z]"][i],diawindows["mobility pos.2 [1/K0]"][i]),
+                                    (diawindows["mass pos.2 start [m/z]"][i],diawindows["mobility pos.2 [1/K0]"][i])
+                                ]
+                        coordlist.append(polycoords)
+                    diawindows["coords"]=coordlist
+                    for i in range(len(diawindows)):
+                        y=diawindows["coords"][i]
 
-                for i in range(len(diawindows)):
-                    rect=matplotlib.patches.Rectangle(xy=diawindows["xy"][i],width=diawindows["W"][i],height=diawindows["H"][i],facecolor="red",alpha=0.1,edgecolor="grey")
-                    ax.add_patch(rect) 
+                        p=Polygon(y,facecolor="red",alpha=0.1,edgecolor="black")
+                        ax.add_patch(p)
+                else:
+                    if input.windows_choice()=="lubeck":
+                        diawindows=lubeckdiawindow()
+                    elif input.windows_choice()=="phospho":
+                        diawindows=phosphodiawindow()
+                    elif input.windows_choice()=="bremen":
+                        diawindows=bremendiawindow()
+                    elif input.windows_choice()=="imported":
+                        diawindows=diawindows_import()
+
+                    for i in range(len(diawindows)):
+                        rect=matplotlib.patches.Rectangle(xy=diawindows["xy"][i],width=diawindows["W"][i],height=diawindows["H"][i],facecolor="red",alpha=0.1,edgecolor="grey")
+                        ax.add_patch(rect)
 
     # ====================================== Charge/PTM Precursor Scatter
     #render ui call for dropdown calling Cond_Rep column
@@ -5494,7 +6261,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
         nonedict={"None":"None"}
         ptmdict=(nonedict | ptmdict)
-        return ui.input_selectize("ptm_chargeptmscatter_list","Pick PTM to plot data for (use None for all precursors):",choices=ptmdict,selected="None")
+        return ui.input_selectize("ptm_chargeptmscatter_list","Pick PTM to highlight (use None for all):",choices=ptmdict,selected="None")
     #render ui call for dropdown calling charge states that were detected
     @render.ui
     def chargestates_chargeptmscatter_ui():
@@ -5502,9 +6269,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         mincharge=min(searchoutput["FG.Charge"])
         maxcharge=max(searchoutput["FG.Charge"])
         opts=[item for item in range(mincharge,maxcharge+1)]
-        if input.ptm_chargeptmscatter_list()!="None":
-            opts.insert(0,0)
-        return ui.input_selectize("chargestates_chargeptmscatter_list","Pick charge to plot data for:",choices=opts)
+        return ui.input_checkbox_group("chargestates_chargeptmscatter_list","Pick charge to highlight:",choices=opts)
     #scatterplot of picked PTM or charge against the rest of the detected precursors (better for DDA to show charge groups in the heatmap)
     @reactive.effect
     def _():
@@ -5513,49 +6278,45 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()
 
             ptm=input.ptm_chargeptmscatter_list()
-            charge=int(input.chargestates_chargeptmscatter_list())
+            charge=input.chargestates_chargeptmscatter_list()
             cond_rep_pick=input.chargeptmscatter_cond_rep_pick()
 
-            # if input.charge_or_ptm()=="charge":
-            #     charge=int(input.charge_ptm_list())
-            #     precursor_pick=searchoutput[((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-            #     precursor_other=searchoutput[((searchoutput["FG.Charge"]==charge)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-            #     titlemod=str(charge)+"+ Precursors"
-            # if input.charge_or_ptm()=="ptm":
-            #     ptm=input.charge_ptm_list()
-            #     precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-            #     precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-            #     titlemod=ptm.split("(")[0]+"Precursors"
-
-            if ptm=="None":
-                #all ptms, specific charge
-                precursor_pick=searchoutput[((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                precursor_other=searchoutput[((searchoutput["FG.Charge"]==charge)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                titlemod=str(charge)+"+ Precursors"
-            if ptm!="None":
-                #specific ptm, all charges
-                # if charge==0:
-                #     precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                #     precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                #     titlemod=ptm.split("(")[0]+"Precursors"
-                # #specific ptm, specific charge
-                #elif charge!=0:
-                precursor_pick=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==True)&((searchoutput["FG.Charge"]==charge)==True)&(searchoutput["Cond_Rep"]==cond_rep_pick)]
-                #for some reason there's a bug with only +2 charge where the precursor_other wouldn't display correctly
-                precursor_other=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm)==False)&(searchoutput["Cond_Rep"]==cond_rep_pick)]#&((searchoutput["FG.Charge"]==charge)==False)
-                titlemod=ptm.split("(")[0]+str(charge)+"+ Precursors"
+            colorlist=["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan"]
+            precursor_other=searchoutput[searchoutput["Cond_Rep"]==cond_rep_pick]
 
             fig,ax=plt.subplots()
-            ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Other Precursors")
-            ax.scatter(x=precursor_pick["FG.PrecMz"],y=precursor_pick["EG.IonMobility"],s=2,label=titlemod)
+                
+            if ptm=="None":
+                if len(charge)==0:
+                    ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Precursors",color="dimgray")
+                else:
+                    ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Other Precursors",color="dimgray")
+                    for i in range(len(charge)):
+                        x=searchoutput[(searchoutput["FG.Charge"]==int(charge[i]))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["FG.PrecMz"]
+                        y=searchoutput[(searchoutput["FG.Charge"]==int(charge[i]))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["EG.IonMobility"]
+                        ax.scatter(x=x,y=y,s=2,label=str(charge[i])+"+",color=colorlist[i])
+            if ptm!="None":
+                ax.scatter(x=precursor_other["FG.PrecMz"],y=precursor_other["EG.IonMobility"],s=2,label="All Other Precursors",color="dimgray")
+                if len(charge)==0:
+                        x=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["FG.PrecMz"]
+                        y=searchoutput[(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["EG.IonMobility"]
+                        ax.scatter(x=x,y=y,s=2,label=ptm.strip()+" Precursors",color="tab:cyan")
+                else:
+                    for i in range(len(charge)):
+                        x=searchoutput[(searchoutput["FG.Charge"]==int(charge[i]))&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["FG.PrecMz"]
+                        y=searchoutput[(searchoutput["FG.Charge"]==int(charge[i]))&(searchoutput["EG.ModifiedPeptide"].str.contains(ptm))&(searchoutput["Cond_Rep"]==cond_rep_pick)]["EG.IonMobility"]
+                        ax.scatter(x=x,y=y,s=2,label=ptm.strip()+" "+str(charge[i])+"+",color=colorlist[i])
+
             ax.set_xlabel("m/z",fontsize=axisfont)
             ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
             ax.legend(loc="upper left",fontsize=legendfont,markerscale=5)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
     #show table of # of precursors selected in charge-ptm scatterplot
     @render.table
     def chargeptmscatter_table():
@@ -5610,6 +6371,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()
 
             fig,ax=plt.subplots()
@@ -5623,7 +6385,6 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             ax.set_ylabel("# of IDs",fontsize=axisfont)
             ax.set_xlabel("RT (min)",fontsize=axisfont)
-            ax.tick_params(axis="both",labelsize=axisfont)
             ax.text(0,(ax.get_ylim()[1]-(0.1*ax.get_ylim()[1])),"~"+str(round(bintime,2))+" s per bin",fontsize=axisfont)
             legend=ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
             for i in legend.legend_handles:
@@ -5631,6 +6392,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
             ax.set_title("# of Precursor IDs vs RT",fontsize=titlefont)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Venn Diagram
     @render.ui
@@ -5638,29 +6400,29 @@ def server(input: Inputs, output: Outputs, session: Session):
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         if input.venn_conditionorrun()=="condition":
             opts=resultdf["R.Condition"].drop_duplicates().tolist()
-            return ui.input_selectize("venn_run1_list","Pick first condition to compare",choices=opts)
+            return ui.input_selectize("venn_run1_list","Pick first condition to compare:",choices=opts)
         if input.venn_conditionorrun()=="individual":
             opts=resultdf["Cond_Rep"].tolist()
-            return ui.input_selectize("venn_run1_list","Pick first run to compare",choices=opts)   
+            return ui.input_selectize("venn_run1_list","Pick first run to compare:",choices=opts)   
     @render.ui
     def venn_run2_ui():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         if input.venn_conditionorrun()=="condition":
             opts=resultdf["R.Condition"].drop_duplicates().tolist()
-            return ui.input_selectize("venn_run2_list","Pick second condition to compare",choices=opts)
+            return ui.input_selectize("venn_run2_list","Pick second condition to compare:",choices=opts)
         if input.venn_conditionorrun()=="individual":
             opts=resultdf["Cond_Rep"].tolist()
-            return ui.input_selectize("venn_run2_list","Pick second run to compare",choices=opts)   
+            return ui.input_selectize("venn_run2_list","Pick second run to compare:",choices=opts)   
     @render.ui
     def venn_run3_ui():
         if input.venn_numcircles()=="3":
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             if input.venn_conditionorrun()=="condition":
                 opts=resultdf["R.Condition"].drop_duplicates().tolist()
-                return ui.input_selectize("venn_run3_list","Pick third condition to compare",choices=opts)
+                return ui.input_selectize("venn_run3_list","Pick third condition to compare:",choices=opts)
             if input.venn_conditionorrun()=="individual":
                 opts=resultdf["Cond_Rep"].tolist()
-                return ui.input_selectize("venn_run3_list","Pick third run to compare",choices=opts)
+                return ui.input_selectize("venn_run3_list","Pick third run to compare:",choices=opts)
     @render.ui
     def venn_specific_length_ui():
         if input.venn_plotproperty()=="peptides" or input.venn_plotproperty()=="precursors" or input.venn_plotproperty()=="peptides_stripped":
@@ -5672,7 +6434,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.ui
     def peptidecore_ui():
         if input.venn_plotproperty()=="peptides_stripped":
-            return ui.input_switch("peptidecore","Only consider peptide core (cut first and last 2 residues)",value=False)
+            return ui.input_switch("peptidecore","Only consider peptide core (cut first and last 2 residues, can't download detailed list)",value=False)
     @render.ui
     def venn_ptm_ui():
         if input.venn_plotproperty()=="peptides" or input.venn_plotproperty()=="precursors" or input.venn_plotproperty()=="peptides_stripped":
@@ -5686,7 +6448,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 for i in range(len(listofptms)):
                     ptmshortened.append(re.sub(r'\(.*?\)',"",listofptms[i]))
                 ptmdict={ptmshortened[i]: listofptms[i] for i in range(len(listofptms))}
-                return ui.input_selectize("venn_foundptms","Pick PTM to plot data for",choices=ptmdict,selected=listofptms[0])  
+                return ui.input_selectize("venn_foundptms","Pick PTM to plot data for:",choices=ptmdict,selected=listofptms[0])  
     #plot Venn Diagram
     @reactive.effect
     def _():
@@ -5990,6 +6752,208 @@ def server(input: Inputs, output: Outputs, session: Session):
             with io.BytesIO() as buf:
                 df.to_csv(buf,index=False)
                 yield buf.getvalue()            
+    #download detailed table of Venn Diagram intersections
+    @reactive.effect
+    def _():
+        if input.venn_numcircles()=="2":
+            filename=lambda: f"VennList_Detailed_{input.venn_run1_list()}_vs_{input.venn_run2_list()}_{input.venn_plotproperty()}.csv"
+        if input.venn_numcircles()=="3":
+            filename=lambda: f"VennList_Detailed_A-{input.venn_run1_list()}_vs_B-{input.venn_run2_list()}_vs_C-{input.venn_run3_list()}_{input.venn_plotproperty()}.csv"
+        @render.download(filename=filename)
+        def venn_download_detailed():
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            if input.venn_conditionorrun()=="condition":
+                A=searchoutput[searchoutput["R.Condition"]==input.venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                B=searchoutput[searchoutput["R.Condition"]==input.venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                if input.venn_numcircles()=="3":
+                    C=searchoutput[searchoutput["R.Condition"]==input.venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+            if input.venn_conditionorrun()=="individual":
+                A=searchoutput[searchoutput["Cond_Rep"]==input.venn_run1_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                B=searchoutput[searchoutput["Cond_Rep"]==input.venn_run2_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+                if input.venn_numcircles()=="3":
+                    C=searchoutput[searchoutput["Cond_Rep"]==input.venn_run3_list()][["PG.ProteinGroups","EG.ModifiedPeptide","FG.Charge","PEP.StrippedSequence"]].drop_duplicates().reset_index(drop=True)
+            
+            #add extra columns to df for peptide+charge and peptide lengths
+            A["pep_charge"]=A["EG.ModifiedPeptide"]+A["FG.Charge"].astype(str)
+            B["pep_charge"]=B["EG.ModifiedPeptide"]+B["FG.Charge"].astype(str)
+            if input.venn_numcircles()=="3":
+                C["pep_charge"]=C["EG.ModifiedPeptide"]+C["FG.Charge"].astype(str)
+                C_peplength=[]
+                for pep in C["PEP.StrippedSequence"]:
+                    C_peplength.append(len(pep))
+                C["Peptide Length"]=C_peplength
+            A_peplength=[]
+            for pep in A["PEP.StrippedSequence"]:
+                A_peplength.append(len(pep))
+            A["Peptide Length"]=A_peplength
+            B_peplength=[]
+            for pep in B["PEP.StrippedSequence"]:
+                B_peplength.append(len(pep))
+            B["Peptide Length"]=B_peplength
+
+            if input.venn_plotproperty()=="proteingroups":
+                a=set(A["PG.ProteinGroups"])
+                b=set(B["PG.ProteinGroups"])
+                if input.venn_numcircles()=="3":
+                    c=set(C["PG.ProteinGroups"])
+            if input.venn_plotproperty()=="peptides":
+                if input.venn_ptm()==True:
+                    ptm=input.venn_foundptms()
+                    A=A[A["EG.ModifiedPeptide"].str.contains(ptm)]
+                    B=B[B["EG.ModifiedPeptide"].str.contains(ptm)]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["EG.ModifiedPeptide"].str.contains(ptm)]
+                if input.venn_specific_length()==True:
+                    A=A[A["Peptide Length"]==int(input.venn_peplength_pick())]
+                    B=B[B["Peptide Length"]==int(input.venn_peplength_pick())]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["Peptide Length"]==int(input.venn_peplength_pick())]
+                if input.venn_ptm()==False and input.venn_specific_length()==False:
+                    A=A
+                    B=B
+                    if input.venn_numcircles()=="3":
+                        C=C
+                a=set(A["EG.ModifiedPeptide"])
+                b=set(B["EG.ModifiedPeptide"])
+                if input.venn_numcircles()=="3":
+                    c=set(C["EG.ModifiedPeptide"])
+            if input.venn_plotproperty()=="precursors":
+                if input.venn_ptm()==True:
+                    ptm=input.venn_foundptms()
+                    A=A[A["EG.ModifiedPeptide"].str.contains(ptm)]
+                    B=B[B["EG.ModifiedPeptide"].str.contains(ptm)]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["EG.ModifiedPeptide"].str.contains(ptm)]
+                if input.venn_specific_length()==True:
+                    A=A[A["Peptide Length"]==int(input.venn_peplength_pick())]
+                    B=B[B["Peptide Length"]==int(input.venn_peplength_pick())]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["Peptide Length"]==int(input.venn_peplength_pick())]
+                else:
+                    A=A
+                    B=B
+                    if input.venn_numcircles()=="3":
+                        C=C
+                a=set(A["pep_charge"])
+                b=set(B["pep_charge"])
+                if input.venn_numcircles()=="3":
+                    c=set(C["pep_charge"])
+            if input.venn_plotproperty()=="peptides_stripped":
+                if input.venn_ptm()==True:
+                    ptm=input.venn_foundptms()
+                    A=A[A["EG.ModifiedPeptide"].str.contains(ptm)]
+                    B=B[B["EG.ModifiedPeptide"].str.contains(ptm)]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["EG.ModifiedPeptide"].str.contains(ptm)]
+                if input.venn_specific_length()==True:
+                    A=A[A["Peptide Length"]==int(input.venn_peplength_pick())]
+                    B=B[B["Peptide Length"]==int(input.venn_peplength_pick())]
+                    if input.venn_numcircles()=="3":
+                        C=C[C["Peptide Length"]==int(input.venn_peplength_pick())]
+                else:
+                    A=A
+                    B=B
+                    if input.venn_numcircles()=="3":
+                        C=C
+                if input.peptidecore()==True:
+                    A_coreAA=[]
+                    B_coreAA=[]
+                    for pep in A["PEP.StrippedSequence"].tolist():
+                        A_coreAA.append(pep[2:-2])
+                    for pep in B["PEP.StrippedSequence"].tolist():
+                        B_coreAA.append(pep[2:-2])
+                    a=set(A_coreAA)
+                    b=set(B_coreAA)
+                    if input.venn_numcircles()=="3":
+                        C_coreAA=[]
+                        for pep in C["PEP.StrippedSequence"].tolist():
+                            C_coreAA.append(pep[2:-2])
+                        c=set(C_coreAA)
+                else:
+                    a=set(A["PEP.StrippedSequence"])
+                    b=set(B["PEP.StrippedSequence"])
+                    if input.venn_numcircles()=="3":
+                        c=set(C["PEP.StrippedSequence"])
+
+            df=pd.DataFrame()
+            if input.venn_numcircles()=="2":
+                Ab=list(a-b)
+                aB=list(b-a)
+                AB=list(a&b)
+                df=pd.concat([df,pd.Series(Ab,name=input.venn_run1_list())],axis=1)
+                df=pd.concat([df,pd.Series(aB,name=input.venn_run2_list())],axis=1)
+                df=pd.concat([df,pd.Series(AB,name="Both")],axis=1)
+            if input.venn_numcircles()=="3":
+                Abc=list(a-b-c)
+                aBc=list(b-a-c)
+                ABc=list((a&b)-c)
+                abC=list(c-a-b)
+                AbC=list((a&c)-b)
+                aBC=list((b&c)-a)
+                ABC=list(a&b&c)
+                df=pd.concat([df,pd.Series(Abc,name="A only")],axis=1)
+                df=pd.concat([df,pd.Series(aBc,name="B only")],axis=1)
+                df=pd.concat([df,pd.Series(ABc,name="A and B, not C")],axis=1)
+                df=pd.concat([df,pd.Series(abC,name="C only")],axis=1)
+                df=pd.concat([df,pd.Series(AbC,name="A and C, not B")],axis=1)
+                df=pd.concat([df,pd.Series(aBC,name="B and C, not A")],axis=1)
+                df=pd.concat([df,pd.Series(ABC,name="ABC")],axis=1)
+
+            if input.venn_plotproperty()=="proteingroups":
+                locindex="PG.ProteinGroups"
+                pullcolumns=["Cond_Rep","PG.ProteinGroups","PG.ProteinNames","PG.Genes","PG.MS2Quantity"]
+            if input.venn_plotproperty()=="peptides":
+                locindex="EG.ModifiedPeptide"
+                pullcolumns=["Cond_Rep","EG.ModifiedPeptide","PEP.StrippedSequence","FG.Charge","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames","PG.Genes","PG.MS2Quantity"]
+            if input.venn_plotproperty()=="peptides_stripped":
+                locindex="PEP.StrippedSequence"
+                pullcolumns=["Cond_Rep","PEP.StrippedSequence","PG.ProteinGroups","PG.ProteinNames","PG.Genes","PG.MS2Quantity"]
+            if input.venn_plotproperty()=="precursors":
+                locindex=searchoutput["EG.ModifiedPeptide"]+searchoutput["FG.Charge"].astype(str)
+                pullcolumns=["Cond_Rep","EG.ModifiedPeptide","PEP.StrippedSequence","FG.Charge","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames","PG.Genes","PG.MS2Quantity"]
+            if input.venn_conditionorrun()=="individual":
+                querycolumn="Cond_Rep"
+            if input.venn_conditionorrun()=="condition":
+                querycolumn="R.Condition"
+
+            searchoutput_loc=searchoutput.set_index(locindex)
+
+            if input.venn_numcircles()=="2":
+                IDlist=df["Both"].dropna().tolist()
+                venndf_all=searchoutput_loc[(searchoutput_loc[querycolumn]==df.columns[0])|(searchoutput_loc[querycolumn]==df.columns[1])].loc[IDlist].reset_index()[pullcolumns].drop_duplicates().reset_index(drop=True)
+
+                venndf_individualID=pd.DataFrame()
+                columnlist=df.columns[:-1]
+                for i in columnlist:
+                    venndf=searchoutput_loc[searchoutput_loc[querycolumn]==i].loc[df[i].dropna().tolist()].reset_index()[pullcolumns].drop_duplicates().reset_index(drop=True)
+                    venndf_individualID=pd.concat([venndf_individualID,venndf])
+                venndf_detailed=pd.concat([venndf_all,venndf_individualID]).reset_index(drop=True)
+            if input.venn_numcircles()=="3":
+                A=input.venn_run1_list()
+                B=input.venn_run2_list()
+                C=input.venn_run3_list()
+
+                columndict={"A only":searchoutput_loc[querycolumn]==A,
+                            "B only":searchoutput_loc[querycolumn]==B,
+                            "C only":searchoutput_loc[querycolumn]==C,
+                            "A and B, not C":(searchoutput_loc[querycolumn]==A)|(searchoutput_loc[querycolumn]==B),
+                            "A and C, not B":(searchoutput_loc[querycolumn]==A)|(searchoutput_loc[querycolumn]==C),
+                            "B and C, not A":(searchoutput_loc[querycolumn]==B)|(searchoutput_loc[querycolumn]==C)}
+
+                
+                IDlist=df["ABC"].dropna().tolist()
+                venndf_all=searchoutput_loc[(searchoutput_loc[querycolumn]==A)|(searchoutput_loc[querycolumn]==B)|(searchoutput_loc[querycolumn]==C)].loc[IDlist].reset_index()[pullcolumns].drop_duplicates().reset_index(drop=True)
+
+                venndf_individualID=pd.DataFrame()
+                columnlist=df.columns[:-1]
+                for i in columnlist:
+                    venndf=searchoutput_loc[columndict[i]].loc[df[i].dropna()].reset_index()[pullcolumns].drop_duplicates().reset_index(drop=True)
+                    venndf_individualID=pd.concat([venndf_individualID,venndf])
+                venndf_detailed=pd.concat([venndf_all,venndf_individualID]).reset_index(drop=True)
+
+            with io.BytesIO() as buf:
+                venndf_detailed.to_csv(buf,index=False)
+                yield buf.getvalue()            
 
     # ====================================== Histogram
     #render ui call for dropdown calling Cond_Rep column
@@ -6006,6 +6970,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             runlist=input.histogram_cond_rep_pick()
             bins=input.histogram_numbins()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            legendfont=input.legendfont()
 
             fig,ax=plt.subplots()
             ax.set_ylabel("Counts",fontsize=axisfont)
@@ -6025,7 +6991,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                     df=df[df["PG.MS2Quantity"]!=0]
                     ax.hist(np.log10(df["PG.MS2Quantity"]),bins=bins,label=run,alpha=0.75)
                     ax.set_xlabel("log10(Protein Intensity)",fontsize=axisfont)
-            ax.legend()
+            ax.legend(prop={'size':legendfont})
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
 #endregion
 
@@ -6115,6 +7082,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
 
             fig,ax=plt.subplots()
             ax.scatter(merged["log2_FoldChange"],merged["-log10_pvalue"],s=1,c=merged["color"])
@@ -6128,17 +7096,43 @@ def server(input: Inputs, output: Outputs, session: Session):
             
             ax.set_axisbelow(True)
             ax.grid(linestyle="--",alpha=0.75)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             if input.volcano_plotrange_switch()==True:
                 ax.set_xlim(input.volcano_xplotrange()[0],input.volcano_xplotrange()[1])
                 ax.set_ylim(input.volcano_yplotrange()[0],input.volcano_yplotrange()[1])
 
             if input.show_labels()==True:
+                text_list=[]
+                inc_text_x=[]
+                inc_text_y=[]
+                dec_text_x=[]
+                dec_text_y=[]
                 for protein in merged.index:
-                    if np.absolute(merged.loc[protein]["log2_FoldChange"]) >= foldchange_cutoff and np.absolute(merged.loc[protein]["-log10_pvalue"]) >= pvalue_cutoff:
-                        ax.annotate(protein,merged.loc[protein]["label"],fontsize=input.label_fontsize())
-                    else:
-                        pass
+                    if merged.loc[protein]["log2_FoldChange"] >= foldchange_cutoff and np.absolute(merged.loc[protein]["-log10_pvalue"]) >= pvalue_cutoff:
+                        text_list.append(protein.split(";")[0])
+                        inc_text_x.append(merged.loc[protein]["log2_FoldChange"])
+                        inc_text_y.append(merged.loc[protein]["-log10_pvalue"])
+                    elif merged.loc[protein]["log2_FoldChange"] <= -foldchange_cutoff and np.absolute(merged.loc[protein]["-log10_pvalue"]) >= pvalue_cutoff:
+                        text_list.append(protein.split(";")[0])
+                        dec_text_x.append(merged.loc[protein]["log2_FoldChange"])
+                        dec_text_y.append(merged.loc[protein]["-log10_pvalue"])
+                ta.allocate(ax,x=inc_text_x,y=inc_text_y,text_list=text_list,
+                            x_scatter=merged["log2_FoldChange"],y_scatter=merged["-log10_pvalue"],
+                            textsize=input.label_fontsize(),linewidth=0.25,linecolor="r",direction="east",
+                            max_distance=0.1,
+                            avoid_label_lines_overlap=True,avoid_crossing_label_lines=True)
+                ta.allocate(ax,x=dec_text_x,y=dec_text_y,text_list=text_list,
+                            x_scatter=merged["log2_FoldChange"],y_scatter=merged["-log10_pvalue"],
+                            textsize=input.label_fontsize(),linewidth=0.25,linecolor="b",direction="west",
+                            max_distance=0.1,
+                            avoid_label_lines_overlap=True,avoid_crossing_label_lines=True)
+
+                # for protein in merged.index:
+                #     if np.absolute(merged.loc[protein]["log2_FoldChange"]) >= foldchange_cutoff and np.absolute(merged.loc[protein]["-log10_pvalue"]) >= pvalue_cutoff:
+                #         ax.annotate(protein,merged.loc[protein]["label"],fontsize=input.label_fontsize())
+                #     else:
+                #         pass
 
     # ====================================== Volcano Plot - Feature Plot
     #selectable table for corresponding plot
@@ -6202,9 +7196,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.legend(handles=legend_patches)
 
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
 
             ax.set_ylabel("Protein Group Intensity",fontsize=axisfont)
             ax.set_xlabel("Protein Group",fontsize=axisfont)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
             #ax.grid(axis="y",linestyle="--")
 
     # ====================================== Volcano Plot - Up/Down Regulation
@@ -6220,6 +7216,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
 
             if plot_up_or_down=="up":
                 merged_sort=merged[merged["log2_FoldChange"]>=foldchange_cutoff]["-log10_pvalue"].dropna().sort_values(axis=0,ascending=False).reset_index()
@@ -6243,6 +7240,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_title(title,fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
             ax.margins(0.02)
             fig.set_tight_layout(True)
 
@@ -6262,6 +7260,14 @@ def server(input: Inputs, output: Outputs, session: Session):
             data=data.fillna(0)
             data_transposed=data.transpose()
 
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             #make dendrogram linking the runs
             clusteringlist=[]
             for column in data.columns:
@@ -6270,8 +7276,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             datalinkage=linkage(clusteringlist)
             dendrogram(datalinkage,labels=data.columns,ax=ax[0,0])
 
-            ax[0,0].set(ylabel="Distance")
-            ax[0,0].set_title("Run Linkage")
+            ax[0,0].set_ylabel("Distance",fontsize=axisfont)
+            ax[0,0].set_title("Run Linkage",fontsize=titlefont)
+            ax[0,0].tick_params(axis="both",labelsize=axisfont_labels)
             #ax[0].tick_params(axis="x",rotation=90)
 
             #get tick labels in the order they're shown in the dendrogram
@@ -6288,15 +7295,25 @@ def server(input: Inputs, output: Outputs, session: Session):
             for column in data_transposed.columns:
                 plottinglist.append(data_transposed[column].tolist())
             heatmap=ax[1,0].imshow(plottinglist,cmap=input.dendrogram_cmap(),aspect="auto")
-            ax[1,0].set(xlabel="Run",ylabel="Protein")
-            ax[1,0].set_title("Protein Intensity Heatmap (log10)")
-            ax[1,0].tick_params(axis="x",rotation=90)
+            ax[1,0].set_xlabel("Run",fontsize=axisfont)
+            ax[1,0].set_ylabel("Protein",fontsize=axisfont)           
+            ax[1,0].set_title("Protein Intensity Heatmap (log10)",fontsize=titlefont)
+            ax[1,0].tick_params(axis="x",rotation=x_label_rotation)
             ax[1,0].set_xticks(np.arange(0,6),labels)
+            ax[1,0].tick_params(axis="both",labelsize=axisfont_labels)
             plt.colorbar(heatmap,ax=ax[1,1],location="left")
 
             fig.set_tight_layout(True)
             ax[0,1].remove()
             ax[1,1].axes.set_axis_off()
+
+            # #dendrogram linking proteins
+            # datalinkage=linkage(plottinglist)
+            # fig,ax=plt.subplots(figsize=(10,20))
+            # dendrogram(datalinkage,ax=ax,orientation="right")#,truncate_mode="lastp",p=100)
+            # ax.set_xlabel("Distance")
+            # ax.set_ylabel("Protein Group")
+            # ax.set_title("Protein Group Linkage")
 
     # ====================================== PCA
     #compute PCA and plot principal components
@@ -6308,6 +7325,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()
 
             samplelist=searchoutput["Cond_Rep"].drop_duplicates().reset_index(drop=True).tolist()
@@ -6325,10 +7343,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             X_trans=pip.transform(X)
             #each row is a sample, each element of each row is a principal component
 
-            figsize=(10,5)
             colors=colorpicker()
 
-            fig,ax=plt.subplots(ncols=2,figsize=figsize,gridspec_kw={"width_ratios":[10,5]})
+            fig,ax=plt.subplots(ncols=2,gridspec_kw={"width_ratios":[10,5]})
             
             ax1=ax[0]
             ax2=ax[1]
@@ -6354,12 +7371,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax1.spines['left'].set_position('zero')
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax1.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)",fontsize=axisfont)
             ax1.xaxis.set_label_coords(x=0.5,y=-0.02)
             ax1.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)",fontsize=axisfont)
             ax1.yaxis.set_label_coords(x=-0.02,y=0.45)
-            ax1.tick_params(axis="both",labelsize=axisfont)
 
             #ax2.bar(np.arange(1,len(pip.named_steps.pca.explained_variance_ratio_)+1),pip.named_steps.pca.explained_variance_ratio_*100,edgecolor="k")
             ax2.bar(np.arange(1,4),pip.named_steps.pca.explained_variance_ratio_[:3]*100,edgecolor="k")
@@ -6369,7 +7386,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax2.set_xticks(np.arange(1,4))
             ax2.set_axisbelow(True)
             ax2.grid(linestyle="--")
-            ax2.tick_params(axis="both",labelsize=axisfont)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
 
             fig.set_tight_layout(True)        
 
@@ -6392,6 +7409,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             seq_df=searchoutput[searchoutput["Cond_Rep"]==input.seqmotif_run_pick()][["PEP.StrippedSequence"]].drop_duplicates()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
 
             lengths=[]
             for pep in seq_df["PEP.StrippedSequence"].tolist():
@@ -6410,6 +7428,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             logo.ax.set_ylabel(ylabel,fontsize=axisfont)
             logo.ax.set_title(input.seqmotif_run_pick()+": "+str(input.seqmotif_peplengths())+"mers",fontsize=titlefont)
             logo.ax.set_ylim(bottom=0)
+            logo.ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Charge States (Bar)
     @reactive.calc
@@ -6627,6 +7646,8 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            x_label_rotation=input.xaxis_label_rotation()
 
             if input.chargestate_charges_usepickedcharges()==True:
                 chargelist=list(input.chargestate_charges())
@@ -6640,12 +7661,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                 key=list(plottingdf.keys())[0]
                 x=np.arange(1,len(plottingdf[key]["list"])+1)
                 ax.bar(x,plottingdf[key]["count"],edgecolor="k")
-                ax.set_xticks(x,plottingdf[key]["list"],rotation=input.xaxis_label_rotation())
+                ax.set_xticks(x,plottingdf[key]["list"],rotation=x_label_rotation)
                 ax.set_ylabel("Counts (%)",fontsize=axisfont)
                 ax.set_xlabel("Charge(s)",fontsize=axisfont)
                 ax.set_title(key,fontsize=titlefont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             else:
                 fig,ax=plt.subplots(ncols=len(plottingdf))
@@ -6656,11 +7678,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ax[i].bar(x,plottingdf[key]["count"],edgecolor="k",color=colorpicker())
                     else:
                         ax[i].bar(x,plottingdf[key]["count"],edgecolor="k",color=colors[i])
-                    ax[i].set_xticks(x,plottingdf[key]["list"],rotation=input.xaxis_label_rotation())
+                    ax[i].set_xticks(x,plottingdf[key]["list"],rotation=x_label_rotation)
                     ax[i].set_title(key,fontsize=titlefont)
                     ax[i].set_xlabel("Charge(s)",fontsize=axisfont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
+                    ax[i].tick_params(axis="both",labelsize=axisfont_labels)
                 ax[0].set_ylabel("Counts",fontsize=axisfont)
             fig.set_tight_layout(True)
 
@@ -6678,6 +7701,9 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             fig,ax=plt.subplots()
             for i,key in enumerate(plottingdf.keys()):
@@ -6696,14 +7722,15 @@ def server(input: Inputs, output: Outputs, session: Session):
                         plotcolors=matplottabcolors
                     ax.bar(i,plottingdf[key]["frequency%"][x],bottom=bottom,label=plottingdf[key]["list"][x],color=plotcolors[x])
                     bottom+=plottingdf[key]["frequency%"][x]
-            ax.set_xticks(np.arange(0,len(plottingdf)),list(plottingdf.keys()),rotation=90)
+            ax.set_xticks(np.arange(0,len(plottingdf)),list(plottingdf.keys()),rotation=x_label_rotation)
             ax.set_ylabel("Frequency (%)",fontsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
             handles,labels=plt.gca().get_legend_handles_labels()
             by_label=OrderedDict(zip(labels,handles))
-            ax.legend(by_label.values(), by_label.keys(),loc="center",bbox_to_anchor=(1.1,0.5))
+            ax.legend(by_label.values(), by_label.keys(),loc="center",bbox_to_anchor=(1.1,0.5),prop={'size':legendfont})
     #table of frequencies for the stacked bar chart
     @render.data_frame
     def charge_stacked_table():
@@ -6745,11 +7772,34 @@ def server(input: Inputs, output: Outputs, session: Session):
         chargelist.remove("Peptide Length")
 
         return ui.input_checkbox_group("chargestate_peplength_charges","Charges to plot:",choices=chargelist)
+    @render.ui
+    def chargestate_peplength_download_ui():
+        if input.chargestate_peplength_condition_or_run()=="condition":
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            opts=sampleconditions
+            return ui.input_selectize("chargestate_peplength_download_pick","Pick condition for download:",choices=opts,width="300px")
+        if input.chargestate_peplength_condition_or_run()=="individual":
+            searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
+            opts=resultdf["Cond_Rep"].tolist()
+            return ui.input_selectize("chargestate_peplength_download_pick","Pick run for download:",choices=opts,width="300px")
+    @render.download(filename=lambda: f"{input.chargestate_peplength_download_pick()}_chargestates-peptidelengths.csv")
+    def chargestate_peplength_download():
+        dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
+        if input.chargestate_peplength_condition_or_run()=="condition":
+            plottingdf=dict_peplengthcountdf_condition
+        if input.chargestate_peplength_condition_or_run()=="individual":
+            plottingdf=dict_peplengthcountdf_run
+        exportdf=plottingdf[input.chargestate_peplength_download_pick()]
+
+        with io.BytesIO() as buf:
+            exportdf.to_csv(buf,index=False)
+            yield buf.getvalue()
+
     #plot charge states per peptide length
     @reactive.effect
     def _():
         @render.plot(width=input.chargestate_peplength_width(),height=input.chargestate_peplength_height())
-        def chargestate_peplength():
+        def chargestate_peplength_plot():
             dict_chargecountdf_run,dict_peplengthcountdf_run,dict_chargecountdf_condition,dict_peplengthcountdf_condition=ipep_charge_peplength()
             if input.chargestate_peplength_condition_or_run()=="condition":
                 plottingdf=dict_peplengthcountdf_condition
@@ -6757,7 +7807,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 plottingdf=dict_peplengthcountdf_run
 
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             titlefont=input.titlefont()
+            legendfont=input.legendfont()
+            y_padding=0.05
 
             if len(plottingdf)==1:
                 fig,ax=plt.subplots()
@@ -6770,23 +7823,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                 x=plotdf.index.tolist()
                 bottom=np.zeros(len(plotdf))
                 for col in columns:
-                    ax.bar(x,plotdf[col],label=col)
+                    ax.bar(x,plotdf[col],label=col,bottom=bottom)
                     bottom+=plotdf[col].tolist()
                 ax.set_xlabel("Peptide Length",fontsize=axisfont)
                 ax.set_title(key,fontsize=titlefont)
-                ax.legend(loc="upper right",prop={'size':8})
+                ax.legend(loc="upper right",prop={'size':legendfont})
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.set_ylabel("Counts",fontsize=axisfont)
                 ax.set_xlim(left=input.chargestate_peplength_plotrange()[0]-0.75,right=input.chargestate_peplength_plotrange()[1]+0.5)
+                ax.set_ylim(top=ax.get_ylim()[1]+(y_padding*ax.get_ylim()[1]))
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
                 fig.set_tight_layout(True)
 
             else:
                 fig,ax=plt.subplots(ncols=len(plottingdf),sharey=True)
+                maxlist=[]
                 for i,key in enumerate(plottingdf.keys()):
                     plotdf=plottingdf[key].set_index("Peptide Length")
+                    maxlist.append(max(plotdf.max().tolist()))
                     if input.usepickedcharges()==True:
                         columns=input.chargestate_peplength_charges()
                     else:
@@ -6799,13 +7856,15 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                     ax[i].set_xlabel("Peptide Length",fontsize=axisfont)
                     ax[i].set_title(key,fontsize=titlefont)
-                    ax[i].legend(loc="upper right",prop={'size':8})
+                    ax[i].legend(loc="upper right",prop={'size':legendfont})
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
                     ax[i].set_xlim(left=input.chargestate_peplength_plotrange()[0]-0.75,right=input.chargestate_peplength_plotrange()[1]+0.5)
                     ax[i].xaxis.set_major_locator(MaxNLocator(integer=True))
                     ax[i].xaxis.set_minor_locator(MultipleLocator(1))
+                    ax[i].tick_params(axis="both",labelsize=axisfont_labels)
 
+                ax[maxlist.index(max(maxlist))].set_ylim(top=ax[i].get_ylim()[1]+(y_padding*ax[i].get_ylim()[1]))
                 ax[0].set_ylabel("Counts",fontsize=axisfont)
                 fig.set_tight_layout(True)
 
@@ -6819,11 +7878,14 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.data_frame
     def organismtable():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        organismlist=[]
-        for entry in searchoutput["PG.ProteinNames"].drop_duplicates().str.split(";"):
-            organismlist.append(entry[0].split("_")[-1])
+        organismcolumn=[]
+        for entry in searchoutput["PG.ProteinNames"].str.split(";"):
+            organismcolumn.append(entry[0].split("_")[-1])
+        searchoutput["Organism"]=organismcolumn
+        organismlist=searchoutput["Organism"].drop_duplicates().tolist()
+
         organism_table=pd.DataFrame()
-        organism_table["Organism"]=list(set(organismlist))
+        organism_table["Organism"]=organismlist
         organism_table["Order"]=np.arange(1,len(organism_table["Organism"])+1).astype(str)
         organism_table["Remove?"]=[""]*len(organism_table["Organism"])
         for column in searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True):
@@ -6834,16 +7896,14 @@ def server(input: Inputs, output: Outputs, session: Session):
     def organism_list_from_table():
         organism_table_view=organismtable.data_view()
         organismlist=list(organism_table_view.sort_values("Order")["Organism"])
-        organismlist_adjusted=[]
-        for i in range(len(organismlist)):
-            if "x" in organism_table_view["Remove?"][i]:
-                pass
-                #organismlist.remove(organismlist[i])
-            else:
-                organismlist_adjusted.append(organismlist[i])
-                #pass
+        organismlist_adjusted=organism_table_view[organism_table_view["Remove?"]!="x"]["Organism"].tolist()
         organismlist=organismlist_adjusted
         return organismlist
+    @render.text
+    def organisms():
+        organismlist=organism_list_from_table()
+        return organismlist
+
     #generate dfs for ID counts and summed intensities per organism
     @reactive.calc
     def mixedproteomestats():
@@ -6859,14 +7919,17 @@ def server(input: Inputs, output: Outputs, session: Session):
             proteincountlist=[]
             peptidecountlist=[]
             precursorcountlist=[]
-            summedintensitylist=[]
+            summedproteinintensitylist=[]
+            summedprecursorintensitylist=[]
             for run in resultdf["Cond_Rep"]:
                 df=searchoutput[searchoutput["Cond_Rep"]==run]
-                summedintensitylist.append(df[df["PG.ProteinNames"].str.contains(organism)]["PG.MS2Quantity"].drop_duplicates().reset_index(drop=True).sum())
-                proteincountlist.append(df[(df["PG.ProteinNames"].str.contains(organism))&(df["PG.MS2Quantity"]>0)]["PG.ProteinNames"].drop_duplicates().reset_index(drop=True).count())
-                peptidecountlist.append(df[(df["PG.ProteinNames"].str.contains(organism))&(df["FG.MS2Quantity"]>0)]["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True).count())
-                precursorcountlist.append(len(df[(df["PG.ProteinNames"].str.contains(organism))&(df["FG.MS2Quantity"]>0)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)))
-            mixedproteomeintensity[organism+"_summedintensity"]=summedintensitylist
+                summedproteinintensitylist.append(df[df["Organism"]==organism]["PG.MS2Quantity"].drop_duplicates().reset_index(drop=True).sum())
+                summedprecursorintensitylist.append(df[df["Organism"]==organism]["FG.MS2Quantity"].drop_duplicates().reset_index(drop=True).sum())
+                proteincountlist.append(df[(df["Organism"]==organism)&(df["PG.MS2Quantity"]>0)]["PG.ProteinNames"].drop_duplicates().reset_index(drop=True).count())
+                peptidecountlist.append(df[(df["Organism"]==organism)&(df["FG.MS2Quantity"]>0)]["EG.ModifiedPeptide"].drop_duplicates().reset_index(drop=True).count())
+                precursorcountlist.append(len(df[(df["Organism"]==organism)&(df["FG.MS2Quantity"]>0)][["EG.ModifiedPeptide","FG.Charge"]].drop_duplicates().reset_index(drop=True)))
+            mixedproteomeintensity[organism+"_summedproteinintensity"]=summedproteinintensitylist
+            mixedproteomeintensity[organism+"_summedprecursorintensity"]=summedprecursorintensitylist
             mixedproteomecounts[organism+"_proteins"]=proteincountlist
             mixedproteomecounts[organism+"_peptides"]=peptidecountlist
             mixedproteomecounts[organism+"_precursors"]=precursorcountlist
@@ -6884,9 +7947,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
             y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             matplottabcolors=list(mcolors.TABLEAU_COLORS)
             bluegray_colors=["#054169","#0071BC","#737373"]
@@ -6913,9 +7978,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax.bar(x+(i*width),mixedproteomecounts[organismlist[i]+"_"+input.countsplotinput()],width=width,label=organismlist[i],color=colors[i])
                 ax.bar_label(ax.containers[i],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             if len(organismlist)==2:
-                ax.set_xticks(x+width/2,mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.set_xticks(x+width/2,mixedproteomecounts["Cond_Rep"].tolist(),rotation=x_label_rotation)
             else:
-                ax.set_xticks(x+width,mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+                ax.set_xticks(x+width,mixedproteomecounts["Cond_Rep"].tolist(),rotation=x_label_rotation)
             ax.set_ylim(top=maxvalue+(y_padding*maxvalue))
             ax.legend(loc='center left',bbox_to_anchor=(1, 0.5),prop={'size':legendfont})
             ax.set_ylabel("Counts",fontsize=axisfont)
@@ -6923,6 +7988,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_title(titleprop+" Counts per Organism",fontsize=titlefont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Summed Intensities
     #summed intensities per organism per run
@@ -6935,8 +8001,10 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             matplottabcolors=list(mcolors.TABLEAU_COLORS)
             bluegray_colors=["#054169","#0071BC","#737373"]
@@ -6946,20 +8014,28 @@ def server(input: Inputs, output: Outputs, session: Session):
             elif input.coloroptions_sumint()=="bluegray":
                 colors=bluegray_colors
 
+            if input.summedintensities_pick()=="protein":
+                intensitycolumn="_summedproteinintensity"
+                intensitypick="Protein"
+            if input.summedintensities_pick()=="precursor":
+                intensitycolumn="_summedprecursorintensity"
+                intensitypick="Precursor"
+
             x=np.arange(len(mixedproteomeintensity["Cond_Rep"].tolist()))
             bottom=np.zeros(len(mixedproteomeintensity["Cond_Rep"].tolist()))
             fig,ax=plt.subplots()
             for i in range(len(organismlist)):
-                ax.bar(x,mixedproteomeintensity[organismlist[i]+"_summedintensity"],bottom=bottom,label=organismlist[i],color=colors[i])
-                bottom+=mixedproteomeintensity[organismlist[i]+"_summedintensity"].tolist()
+                ax.bar(x,mixedproteomeintensity[organismlist[i]+intensitycolumn],bottom=bottom,label=organismlist[i],color=colors[i])
+                bottom+=mixedproteomeintensity[organismlist[i]+intensitycolumn].tolist()
 
-            ax.set_xticks(x,labels=mixedproteomecounts["Cond_Rep"].tolist(),rotation=input.xaxis_label_rotation())
+            ax.set_xticks(x,labels=mixedproteomecounts["Cond_Rep"].tolist(),rotation=x_label_rotation)
             ax.set_ylabel("Total Intensity",fontsize=axisfont)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.legend(loc="center left",bbox_to_anchor=(1, 0.5),fontsize=legendfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
-            ax.set_title("Total Intensity per Organism per Run",fontsize=titlefont)
+            ax.set_title("Total "+intensitypick+" Intensity per Organism per Run",fontsize=titlefont)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Quant Ratios
     #render ui call for dropdown calling sample condition names
@@ -6983,15 +8059,13 @@ def server(input: Inputs, output: Outputs, session: Session):
             organismlist=organism_list_from_table()
             organism_table=organismtable.data_view()
 
-            #incorporate removal of rows from Info tab table
-            for i in range(len(organism_table)):
-                if "x" in organism_table["Remove?"][i]:
-                    organism_table=organism_table[organism_table["Remove?"] != "x"]
-
+            organism_table=organism_table[organism_table["Remove?"]!="x"]
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             matplottabcolors=list(mcolors.TABLEAU_COLORS)
             bluegray_colors=["#054169","#0071BC","#737373"]
@@ -7018,25 +8092,34 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ratio_average["Theoretical_Ratio"]=[np.log2(i/j) for i,j in zip(testratios,referenceratios)]
             if input.y_log_scale()=="log10":
                 ratio_average["Theoretical_Ratio"]=[np.log10(i/j) for i,j in zip(testratios,referenceratios)]
-            
+
+            if input.quantratios_IDpick()=="protein":
+                group_key=["PG.ProteinNames"]
+                intensitycolumn="PG.MS2Quantity"
+                df_columns=["PG.ProteinNames","PG.MS2Quantity"]
+            if input.quantratios_IDpick()=="precursor":
+                group_key=["EG.ModifiedPeptide","FG.Charge"]
+                intensitycolumn="FG.MS2Quantity"
+                df_columns=["EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]
+
             averagelist=[]
             for organism in organismlist:
-                df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+                df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["Organism"]==organism)][df_columns].drop_duplicates().reset_index(drop=True)
                 if input.quantratios_mean_median()=="mean":
-                    df_reference=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+                    df_reference=df.groupby(group_key).mean().reset_index().rename(columns={intensitycolumn:referencecondition})
                 if input.quantratios_mean_median()=="median":
-                    df_reference=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+                    df_reference=df.groupby(group_key).median().reset_index().rename(columns={intensitycolumn:referencecondition})
 
-                df_reference[referencecondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+                df_reference[referencecondition+"_stdev"]=df.groupby(group_key).std().reset_index(drop=True)
                 df_reference[referencecondition+"_CV"]=df_reference[referencecondition+"_stdev"]/df_reference[referencecondition]*100
-                
-                df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
-                if input.quantratios_mean_median()=="mean":
-                    df_test=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
-                if input.quantratios_mean_median()=="median":
-                    df_test=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
 
-                df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+                df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["Organism"]==organism)][df_columns].drop_duplicates().reset_index(drop=True)
+                if input.quantratios_mean_median()=="mean":
+                    df_test=df.groupby(group_key).mean().reset_index().rename(columns={intensitycolumn:testcondition})
+                if input.quantratios_mean_median()=="median":
+                    df_test=df.groupby(group_key).median().reset_index().rename(columns={intensitycolumn:testcondition})
+
+                df_test[testcondition+"_stdev"]=df.groupby(group_key).std().reset_index(drop=True)
                 df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
                 
                 if 1 in maxreplicatelist:
@@ -7074,10 +8157,12 @@ def server(input: Inputs, output: Outputs, session: Session):
             for x in range(len(organismlist)):
                 ax[x].set_axisbelow(True)
                 ax[x].grid(linestyle="--")
-                ax[1].axhline(y=ratio_average["Experimental_Ratio"][x],linestyle="dashed",color=colors[x])
-                ax[2].axhline(y=ratio_average["Experimental_Ratio"][x],linestyle="dashed",color=colors[x])
-                ax[1].axhline(y=ratio_average["Theoretical_Ratio"][x],color=colors[x])
-                ax[2].axhline(y=ratio_average["Theoretical_Ratio"][x],color=colors[x])
+                if input.mixedproteome_showexperimentalratios()==True:
+                    ax[1].axhline(y=ratio_average["Experimental_Ratio"][x],linestyle="dashed",color=colors[x])
+                    ax[2].axhline(y=ratio_average["Experimental_Ratio"][x],linestyle="dashed",color=colors[x])
+                if input.mixedproteome_showtheoreticalratios()==True:
+                    ax[1].axhline(y=ratio_average["Theoretical_Ratio"][x],color=colors[x])
+                    ax[2].axhline(y=ratio_average["Theoretical_Ratio"][x],color=colors[x])
 
             if input.plotrange_switch()==True:
                 ymin=input.plotrange()[0]
@@ -7085,8 +8170,8 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ax[1].set_ylim(ymin,ymax)
                 ax[2].set_ylim(ymin,ymax)
 
-            ax[0].set_xticks(np.arange(len(organismlist)),organismlist,rotation=input.xaxis_label_rotation())
-            ax[0].set_ylabel("Number of Proteins",fontsize=axisfont)
+            ax[0].set_xticks(np.arange(len(organismlist)),organismlist,rotation=x_label_rotation)
+            ax[0].set_ylabel("Number of Common IDs",fontsize=axisfont)
             bottom,top=ax[0].get_ylim()
             ax[0].set_ylim(top=top+(0.15*top))
 
@@ -7099,6 +8184,9 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             ax[2].set_xlabel("Density",fontsize=axisfont)
             ax[2].set_ylabel(input.y_log_scale()+" Ratio, Test/Reference",fontsize=axisfont)
+            ax[0].tick_params(axis="both",labelsize=axisfont_labels)
+            ax[1].tick_params(axis="both",labelsize=axisfont_labels)
+            ax[2].tick_params(axis="both",labelsize=axisfont_labels)
     #show table of quant ratios
     @render.table
     def quantratios_table():
@@ -7106,10 +8194,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         organismlist=organism_list_from_table()
         organism_table=organismtable.data_view()
 
-        #incorporate removal of rows from Info tab table
-        for i in range(len(organism_table)):
-            if "x" in organism_table["Remove?"][i]:
-                organism_table=organism_table[organism_table["Remove?"] != "x"]
+        organism_table=organism_table[organism_table["Remove?"]!="x"]
 
         referencecondition=input.referencecondition_list()
         testcondition=input.testcondition_list()
@@ -7129,23 +8214,33 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.y_log_scale()=="log10":
             ratio_average["Theoretical_Ratio (log10)"]=[np.log10(i/j) for i,j in zip(testratios,referenceratios)]
 
-        averagelist=[]
+        if input.quantratios_IDpick()=="protein":
+            group_key=["PG.ProteinNames"]
+            intensitycolumn="PG.MS2Quantity"
+            df_columns=["PG.ProteinNames","PG.MS2Quantity"]
+        if input.quantratios_IDpick()=="precursor":
+            group_key=["EG.ModifiedPeptide","FG.Charge"]
+            intensitycolumn="FG.MS2Quantity"
+            df_columns=["EG.ModifiedPeptide","FG.Charge","FG.MS2Quantity"]
 
+        averagelist=[]
         for organism in organismlist:
-            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(referencecondition))&(searchoutput["Organism"]==organism)][df_columns].drop_duplicates().reset_index(drop=True)
             if input.quantratios_mean_median()=="mean":
-                df_reference=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
+                df_reference=df.groupby(group_key).mean().reset_index().rename(columns={intensitycolumn:referencecondition})
             if input.quantratios_mean_median()=="median":
-                df_reference=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":referencecondition})
-            df_reference[referencecondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+                df_reference=df.groupby(group_key).median().reset_index().rename(columns={intensitycolumn:referencecondition})
+
+            df_reference[referencecondition+"_stdev"]=df.groupby(group_key).std().reset_index(drop=True)
             df_reference[referencecondition+"_CV"]=df_reference[referencecondition+"_stdev"]/df_reference[referencecondition]*100
-            
-            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["PG.ProteinNames"].str.contains(organism))][["PG.ProteinNames","PG.MS2Quantity"]].drop_duplicates().reset_index(drop=True)
+
+            df=searchoutput[(searchoutput["Cond_Rep"].str.contains(testcondition))&(searchoutput["Organism"]==organism)][df_columns].drop_duplicates().reset_index(drop=True)
             if input.quantratios_mean_median()=="mean":
-                df_test=df.groupby(["PG.ProteinNames"]).mean().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
+                df_test=df.groupby(group_key).mean().reset_index().rename(columns={intensitycolumn:testcondition})
             if input.quantratios_mean_median()=="median":
-                df_test=df.groupby(["PG.ProteinNames"]).median().reset_index().rename(columns={"PG.MS2Quantity":testcondition})
-            df_test[testcondition+"_stdev"]=df.groupby(["PG.ProteinNames"]).std().reset_index(drop=True)
+                df_test=df.groupby(group_key).median().reset_index().rename(columns={intensitycolumn:testcondition})
+
+            df_test[testcondition+"_stdev"]=df.groupby(group_key).std().reset_index(drop=True)
             df_test[testcondition+"_CV"]=df_test[testcondition+"_stdev"]/df_test[testcondition]*100
             
             if 1 in maxreplicatelist:
@@ -7297,6 +8392,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             chargelist.sort()
 
             titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            x_label_rotation=input.xaxis_label_rotation()
             width=0.25
 
             #make a table of expected values for the concentration ratios
@@ -7350,35 +8448,39 @@ def server(input: Inputs, output: Outputs, session: Session):
                 else:
                     ax[1,1].set_visible(False)
                 
-            ax[0,0].set_ylabel("FG.MS2Quantity")
+            ax[0,0].set_ylabel("FG.MS2Quantity",fontsize=axisfont)
             ax[0,0].set_xticks(x)
-            ax[0,0].set_xticklabels(searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True),rotation=input.xaxis_label_rotation())
+            ax[0,0].set_xticklabels(searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True),rotation=x_label_rotation)
             ax[0,0].set_ylim(bottom=-(ax[0,0].get_ylim()[1])/10)
-            ax[0,0].set_title("Intensity Across Runs")
+            ax[0,0].set_title("Intensity Across Runs",fontsize=titlefont)
             ax[0,0].set_axisbelow(True)
             ax[0,0].grid(linestyle="--")
+            ax[0,0].tick_params(axis="both",labelsize=axisfont_labels)
 
             ax[1,0].axhline(y=20,linestyle="--",color="black")
             ax[1,0].set_xticks(x)
-            ax[1,0].set_xticklabels(searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True),rotation=input.xaxis_label_rotation())
-            ax[1,0].set_ylabel("CV (%)")
-            ax[1,0].set_title("CVs")
+            ax[1,0].set_xticklabels(searchoutput["R.Condition"].drop_duplicates().reset_index(drop=True),rotation=x_label_rotation)
+            ax[1,0].set_ylabel("CV (%)",fontsize=axisfont)
+            ax[1,0].set_title("CVs",fontsize=titlefont)
             ax[1,0].set_axisbelow(True)
             ax[1,0].grid(linestyle="--")
+            ax[1,0].tick_params(axis="both",labelsize=axisfont_labels)
 
-            ax[0,1].set_ylabel("Number of Replicates")
-            ax[0,1].set_xticks(x,meandf["R.Condition"],rotation=input.xaxis_label_rotation())
-            ax[0,1].set_title("Number of Replicates Observed")
+            ax[0,1].set_ylabel("Number of Replicates",fontsize=axisfont)
+            ax[0,1].set_xticks(x,meandf["R.Condition"],rotation=x_label_rotation)
+            ax[0,1].set_title("Number of Replicates Observed",fontsize=titlefont)
             ax[0,1].set_axisbelow(True)
             ax[0,1].grid(linestyle="--")
+            ax[0,1].tick_params(axis="both",labelsize=axisfont_labels)
 
-            ax[1,1].set_xlabel("Expected Ratio")
-            ax[1,1].set_ylabel("Measured Ratio")
+            ax[1,1].set_xlabel("Expected Ratio",fontsize=axisfont)
+            ax[1,1].set_ylabel("Measured Ratio",fontsize=axisfont)
             lims=[np.min([ax[1,1].get_xlim(),ax[1,1].get_ylim()]),np.max([ax[1,1].get_xlim(),ax[1,1].get_ylim()])]
             ax[1,1].plot(lims,lims,color="k",linestyle="--",alpha=0.5)
-            ax[1,1].set_title("Dilution Curve")
+            ax[1,1].set_title("Dilution Curve",fontsize=titlefont)
             ax[1,1].set_axisbelow(True)
             ax[1,1].grid(linestyle="--")
+            ax[1,1].tick_params(axis="both",labelsize=axisfont_labels)
 
             fig.legend(loc="lower right",bbox_to_anchor=(0.99,0.9))
             fig.suptitle(peptide.strip("_"),fontsize=titlefont)
@@ -7394,7 +8496,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             prm_list,searchoutput_prmpepts=prm_import()
 
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             fig,ax=plt.subplots()
             for peptide in prm_list["EG.ModifiedPeptide"]:
@@ -7412,12 +8516,12 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ax.plot(plottingdf["Cond_Rep"],np.log10(plottingdf["FG.MS2Quantity"]),marker="o",label=peptide.strip("_")+"_"+str(charge)+"+")
 
             ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':legendfont})
-            ax.tick_params(axis="x",rotation=input.xaxis_label_rotation(),labelsize=axisfont)
-            ax.tick_params(axis="y",labelsize=axisfont)
+            ax.tick_params(axis="x",rotation=x_label_rotation)
             ax.set_xlabel("Condition",fontsize=axisfont)
             ax.set_ylabel("log10(FG.MS2Quantity)",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
 #endregion
 
@@ -7428,7 +8532,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def normalizingcondition():
         searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
         opts=sampleconditions
-        return ui.input_selectize("normalizingcondition_pick","Pick normalizing condition",choices=opts)
+        return ui.input_selectize("normalizingcondition_pick","Pick normalizing condition:",choices=opts)
 
     #dilution series calculations for plotting
     @reactive.calc
@@ -7457,38 +8561,46 @@ def server(input: Inputs, output: Outputs, session: Session):
             conc=searchoutput[searchoutput["R.Condition"]==condition]["Concentration"].drop_duplicates().reset_index(drop=True)[0]
             theoreticalratio.append(conc/norm_conc)
         
-        return sortedconditions,dilutionseries,theoreticalratio
+        return sortedconcentrations,sortedconditions,dilutionseries,theoreticalratio
 
     #plot dilution ratios
     @reactive.effect
     def _():
         @render.plot(width=input.dilutionseries_width(),height=input.dilutionseries_height())
         def dilutionseries_plot(width=input.dilutionseries_width(),height=input.dilutionseries_height()):
-            sortedconditions,dilutionseries,theoreticalratio=dilutionseries_calc()
+            sortedconcentrations,sortedconditions,dilutionseries,theoreticalratio=dilutionseries_calc()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            legendfont=input.legendfont()
 
             fig,ax=plt.subplots()
 
             medianlineprops=dict(linestyle="--",color="black")
             flierprops=dict(markersize=3)
 
-            bplot=ax.boxplot(dilutionseries,medianprops=medianlineprops,flierprops=flierprops)
-            plot=ax.violinplot(dilutionseries,showextrema=False)
-            ax.plot(np.arange(1,len(sortedconditions)+1,1),theoreticalratio,zorder=2.5,marker="o",color="k",label="Theoretical Ratio")
+            widths=[]
+            for conc in sortedconcentrations:
+                widths.append(0.5*conc)
+
+            bplot=ax.boxplot(dilutionseries,medianprops=medianlineprops,flierprops=flierprops,positions=sortedconcentrations,widths=widths)
+            plot=ax.violinplot(dilutionseries,showextrema=False,positions=sortedconcentrations,widths=widths)
+            ax.plot(sortedconcentrations,theoreticalratio,zorder=2.5,marker="o",color="k",label="Theoretical Ratio")
 
             ax.set_yscale("log")
-            ax.set_xticks(np.arange(1,len(sortedconditions)+1,1),labels=sortedconditions,rotation=input.xaxis_label_rotation())
-            ax.set_xlabel("Condition",fontsize=axisfont)
+            ax.set_xscale("log")
+            #ax.set_xticks(np.arange(1,len(sortedconditions)+1,1),labels=sortedconditions,rotation=input.xaxis_label_rotation())
+            ax.set_xlabel("Concentration",fontsize=axisfont)
             ax.set_ylabel("Ratio",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
-            ax.legend(loc="upper left")
+            ax.legend(loc="upper left",prop={'size':legendfont})
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
             colors=colorpicker()
             for z,color in zip(plot["bodies"],colors):
                 z.set_facecolor(color)
                 z.set_edgecolor("black")
-                z.set_alpha(0.7)   
+                z.set_alpha(0.7)
 
 #endregion
 
@@ -7578,6 +8690,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             color=replicatecolors()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             y_padding=input.ypadding()
 
@@ -7593,18 +8706,21 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax1.set_ylabel("Counts",fontsize=axisfont)
             ax1.set_xlabel("Condition",fontsize=axisfont)
             ax1.set_title("Glycoproteins",fontsize=titlefont)
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
 
             resultdf_glyco.plot.bar(ax=ax2,x="Cond_Rep",y="glycopeptides",legend=False,width=0.8,color=color,edgecolor="k")
             ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax2.set_ylim(top=max(resultdf_glyco["glycopeptides"].tolist())+y_padding*max(resultdf_glyco["glycopeptides"].tolist()))
             ax2.set_xlabel("Condition",fontsize=axisfont)
             ax2.set_title("Glycopeptides",fontsize=titlefont)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
 
             resultdf_glyco.plot.bar(ax=ax3,x="Cond_Rep",y="glycoPSM",legend=False,width=0.8,color=color,edgecolor="k")
             ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax3.set_ylim(top=max(resultdf_glyco["glycoPSM"].tolist())+(y_padding+0.1)*max(resultdf_glyco["glycoPSM"].tolist()))
             ax3.set_xlabel("Condition",fontsize=axisfont)
             ax3.set_title("Glyco-PSMs",fontsize=titlefont)
+            ax3.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
@@ -7867,6 +8983,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             color=replicatecolors()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
             y_padding=input.ypadding()
 
@@ -7917,18 +9034,21 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax1.set_ylabel(ylabel,fontsize=axisfont)
             ax1.set_xlabel("Condition",fontsize=axisfont)
             ax1.set_title("Glycoproteins",fontsize=titlefont)
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
 
             plottingdf.plot.bar(ax=ax2,x="Cond_Rep",y="glycopeptides",legend=False,width=0.8,color=color,edgecolor="k")
             ax2.bar_label(ax2.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax2.set_ylim(top=max(plottingdf["glycopeptides"].tolist())+y_padding*max(plottingdf["glycopeptides"].tolist()))
             ax2.set_xlabel("Condition",fontsize=axisfont)
             ax2.set_title("Glycopeptides",fontsize=titlefont)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
 
             plottingdf.plot.bar(ax=ax3,x="Cond_Rep",y="glycoPSM",legend=False,width=0.8,color=color,edgecolor="k")
             ax3.bar_label(ax3.containers[0],label_type="edge",rotation=90,padding=5,fontsize=labelfont)
             ax3.set_ylim(top=max(plottingdf["glycoPSM"].tolist())+(y_padding+0.1)*max(plottingdf["glycoPSM"].tolist()))
             ax3.set_xlabel("Condition",fontsize=axisfont)
             ax3.set_title("Glyco-PSMs",fontsize=titlefont)
+            ax3.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax1.set_axisbelow(True)
             ax1.grid(linestyle="--")
@@ -7985,6 +9105,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()
 
             fig,ax=plt.subplots()
@@ -7995,6 +9116,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.legend(loc="upper left",fontsize=legendfont,markerscale=5)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
 #endregion
 
@@ -8110,6 +9232,14 @@ def server(input: Inputs, output: Outputs, session: Session):
             mz_window=input.moma_mztolerance()
             rt_window=input.moma_rttolerance()
 
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             low_mz=mz-mz_window
             high_mz=mz+mz_window
             low_rt=(rt-rt_window)*60
@@ -8121,10 +9251,11 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             fig,ax=plt.subplots()
             ax.plot(eim_df["mobility_values"],eim_df["intensity_values"])
-            ax.set_xlabel("Ion Mobility ($1/K_{0}$)")
-            ax.set_ylabel("Intensity")
+            ax.set_xlabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            ax.set_ylabel("Intensity",fontsize=axisfont)
             ax.xaxis.set_minor_locator(MultipleLocator(0.025))
-            ax.set_title("EIM")
+            ax.set_title("EIM",fontsize=titlefont)
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
         except:
             fig,ax=plt.subplots()
 
@@ -8136,8 +9267,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         imtolerance=input.moma_imtolerance()
         sample=input.moma_cond_rep()
 
-        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]
-        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
+        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]
+        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
         coelutingpeptides=pd.DataFrame(columns=columns)
         for i in range(len(df)):
             if i+1 not in range(len(df)):
@@ -8160,7 +9291,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             imdiff=abs(coelutingpeptides["EG.IonMobility"][i]-coelutingpeptides["EG.IonMobility"][i+1])
             if rtdiff <= rttolerance and mzdiff <= mztolerance and imdiff >= imtolerance:
                 coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
-        coelutingpeptides=coelutingpeptides[["Group","EG.ModifiedPeptide","FG.Charge","FG.PrecMz","EG.ApexRT","EG.IonMobility"]]
+        coelutingpeptides=coelutingpeptides[["Group","EG.ModifiedPeptide","FG.Charge","FG.PrecMz","EG.ApexRT","EG.IonMobility","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]]
         with io.BytesIO() as buf:
             coelutingpeptides.to_csv(buf,index=False)
             yield buf.getvalue()
@@ -9170,20 +10301,35 @@ def server(input: Inputs, output: Outputs, session: Session):
         metadata=metadata_table_secondary.data_view()
         metadata_condition=metadata_condition_table_secondary.data_view()
 
-        if input.condition_names_secondary()==True:
-            RConditionlist=[]
-            RReplicatelist=[]
-            for run in searchoutput["R.FileName"].drop_duplicates().tolist():
-                fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
-                RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-                RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
-            searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
-            searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
-            searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
-
         if input.remove_secondary()==True:
             editedmetadata=metadata[metadata.remove !="x"]
             searchoutput=searchoutput.set_index("R.FileName").loc[editedmetadata["R.FileName"].tolist()].reset_index()
+
+        # if input.condition_names_secondary()==True:
+        #     RConditionlist=[]
+        #     RReplicatelist=[]
+        #     for run in searchoutput["R.FileName"].drop_duplicates().tolist():
+        #         fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+        #         RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #         RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        #     searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+        #     searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+        #     searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
+        RConditionlist=[]
+        RReplicatelist=[]
+        for i,run in enumerate(searchoutput["R.FileName"].drop_duplicates().tolist()):
+            fileindex=metadata[metadata["R.FileName"]==run].index.values[0]
+            if metadata["R.Condition"][fileindex]=="":
+                RConditionlist.append(["Not Defined"]*len(searchoutput.set_index("R.FileName").loc[run]))
+            else:
+                RConditionlist.append([metadata["R.Condition"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+            if metadata["R.Replicate"][fileindex]=="":
+                RReplicatelist.append([i]*len(searchoutput.set_index("R.FileName").loc[run]))
+            else:
+                RReplicatelist.append([metadata["R.Replicate"][fileindex]]*len(searchoutput.set_index("R.FileName").loc[run]))
+        searchoutput["R.Condition"]=list(itertools.chain(*RConditionlist))
+        searchoutput["R.Replicate"]=list(itertools.chain(*RReplicatelist))
+        searchoutput["R.Replicate"]=searchoutput["R.Replicate"].astype(int)
 
         if input.reorder_secondary()==True:
             metadata_condition["order"]=metadata_condition["order"].astype(int)
@@ -9260,8 +10406,26 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             run=input.compare_len_samplelist_pick()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             titlefont=input.titlefont()
             legendfont=input.legendfont()
+
+            if input.software_secondary()=="spectronaut":
+                name_mod="Spectronaut"
+            if input.software_secondary()=="diann":
+                name_mod="DIA-NN"
+            if input.software_secondary()=="diann2.0":
+                name_mod="DIA-NN 2.0"
+            if input.software_secondary()=="fragpipe":
+                name_mod="FragPipe"
+            if input.software_secondary()=="bps_timsrescore":
+                name_mod="tims-Rescore"
+            if input.software_secondary()=="bps_timsdiann":
+                name_mod="tims-DIANN"
+            if input.software_secondary()=="bps_pulsar":
+                name_mod="Pulsar"
+            if input.software_secondary()=="bps_spectronaut":
+                name_mod="BPS Spectronaut"
 
             bps_df=bps_df[bps_df["Cond_Rep"]==run]
             secondary_df=secondary_df[secondary_df["Cond_Rep"]==run]
@@ -9303,7 +10467,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             peplengths_combined
             fig,ax=plt.subplots()
             x=list(peplengths_combined.index)
-            ax.bar(x,peplengths_combined["Secondary"],label="Fragger")
+            ax.bar(x,peplengths_combined["Secondary"],label=name_mod)
             ax.bar(x,peplengths_combined["Denovo Unique"],label="BPS Novor (Unique)",bottom=peplengths_combined["Secondary"])
             ax.legend(loc="upper right",fontsize=legendfont)
             ax.xaxis.set_major_locator(MultipleLocator(2))
@@ -9313,6 +10477,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_ylim(bottom=-(0.025*ax.get_ylim()[1]))
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Compare - Stripped Peptide IDs
     #render ui call for dropdown calling Cond_Rep column
@@ -9347,6 +10512,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                 name_mod="tims-Rescore"
             if input.software_secondary()=="bps_timsdiann":
                 name_mod="tims-DIANN"
+            if input.software_secondary()=="bps_pulsar":
+                name_mod="Pulsar"
+            if input.software_secondary()=="bps_spectronaut":
+                name_mod="BPS Spectronaut"
 
             if input.denovocompare_specific_length()==True:
                 bps_df=bps_df[(bps_df["Cond_Rep"]==run)&(bps_df["Peptide Length"]==int(input.denovocompare_specific_length_pick()))]
@@ -9454,6 +10623,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         bps_df,secondary_df=software_comparison()
         titlefont=input.titlefont()
         axisfont=input.axisfont()
+        axisfont_labels=input.axisfont_labels()
 
         if input.seqmotif_compare_onlyunique()==False:
             seq=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(bps_df["Peptide Length"]==input.seqmotif_compare_peplengths())]["PEP.StrippedSequence"].drop_duplicates().tolist()
@@ -9477,6 +10647,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         logo.ax.set_ylabel(ylabel,fontsize=axisfont)
         logo.ax.set_title("BPS "+input.seqmotif_compare_run_pick()+": "+str(input.seqmotif_peplengths())+"mers"+titlemod,fontsize=titlefont)
         logo.ax.set_ylim(bottom=0)
+        logo.ax.tick_params(axis="both",labelsize=axisfont_labels)
     #secondary sequence motif plot
     @render.plot(width=800,height=400)
     def seqmotif_compare_plot2():
@@ -9485,6 +10656,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         seq2=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick())&(secondary_df["Peptide Length"]==input.seqmotif_compare_peplengths())]["PEP.StrippedSequence"].drop_duplicates().tolist()
         titlefont=input.titlefont()
         axisfont=input.axisfont()
+        axisfont_labels=input.axisfont_labels()
 
         if input.software_secondary()=="spectronaut":
             name_mod="Spectronaut"
@@ -9497,7 +10669,11 @@ def server(input: Inputs, output: Outputs, session: Session):
         if input.software_secondary()=="bps_timsrescore":
             name_mod="tims-Rescore"
         if input.software_secondary()=="bps_timsdiann":
-            name_mod="tims-DIANN"   
+            name_mod="tims-DIANN"
+        if input.software_secondary()=="bps_pulsar":
+            name_mod="Pulsar"
+        if input.software_secondary()=="bps_spectronaut":
+            name_mod="BPS Spectronaut"
 
         matrix2=lm.alignment_to_matrix(seq2)
         if input.seqmotif_compare_plottype()=="counts":
@@ -9510,6 +10686,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         logo2.ax.set_ylabel(ylabel,fontsize=axisfont)
         logo2.ax.set_title(name_mod+" "+input.seqmotif_compare_run_pick()+": "+str(input.seqmotif_peplengths())+"mers",fontsize=titlefont)
         logo2.ax.set_ylim(bottom=0)
+        logo2.ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Compare - Sequence Motifs (stats)
     @render.ui
@@ -9521,6 +10698,13 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.plot(height=600)
     def seqmotif_pca():
         bps_df,secondary_df=software_comparison()
+
+        titlefont=input.titlefont()
+        axisfont=input.axisfont()
+        axisfont_labels=input.axisfont_labels()
+        labelfont=input.labelfont()
+        legendfont=input.legendfont()
+        y_padding=input.ypadding()
 
         seq_BPS=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(bps_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
         seq_secondary=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(secondary_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
@@ -9537,6 +10721,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             name_mod="tims-Rescore"
         if input.software_secondary()=="bps_timsdiann":
             name_mod="tims-DIANN"
+        if input.software_secondary()=="bps_pulsar":
+            name_mod="Pulsar"
+        if input.software_secondary()=="bps_spectronaut":
+            name_mod="BPS Spectronaut"
 
         if input.seqmotif_compare_onlyunique2()==True:
             a=set(seq_secondary)
@@ -9572,23 +10760,29 @@ def server(input: Inputs, output: Outputs, session: Session):
                 label="S"
             ax.scatter(X_trans[i,0],X_trans[i,1],color=colors[z],s=45,label=concatenated.columns.tolist()[i].split("_")[0])
             ax.annotate(label,(X_trans[i,0]+0.05,X_trans[i,1]+0.05),fontsize=8)
-        ax.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)")
-        ax.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)")
+        ax.set_xlabel("PC1"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[0]*100,1))+"%)",fontsize=axisfont)
+        ax.set_ylabel("PC2"+" ("+str(round(pip.named_steps.pca.explained_variance_ratio_[1]*100,1))+"%)",fontsize=axisfont)
         handles,labels=ax.get_legend_handles_labels()
         handle_list,label_list =[],[]
         for handle,label in zip(handles,labels):
             if label not in label_list:
                 handle_list.append(handle)
                 label_list.append(label)
-        ax.legend(handle_list,label_list,loc="center",bbox_to_anchor=(1.1,0.5),markerscale=1)
-        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod)
+        ax.legend(handle_list,label_list,loc="center",bbox_to_anchor=(1.1,0.5),markerscale=1,prop={'size':legendfont})
+        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod,fontsize=titlefont)
+        ax.tick_params(axis="both",labelsize=axisfont_labels)
         fig.set_tight_layout(True)
     #3D plot
     @render.plot(height=600)
     def seqmotif_3d():
         bps_df,secondary_df=software_comparison()
 
+        titlefont=input.titlefont()
         axisfont=input.axisfont()
+        axisfont_labels=input.axisfont_labels()
+        labelfont=input.labelfont()
+        legendfont=input.legendfont()
+        y_padding=input.ypadding()
 
         if input.software_secondary()=="spectronaut":
             name_mod="Spectronaut"
@@ -9602,6 +10796,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             name_mod="tims-Rescore"
         if input.software_secondary()=="bps_timsdiann":
             name_mod="tims-DIANN"
+        if input.software_secondary()=="bps_pulsar":
+            name_mod="Pulsar"
+        if input.software_secondary()=="bps_spectronaut":
+            name_mod="BPS Spectronaut"
 
         seq_BPS=bps_df[(bps_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(bps_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
         seq_secondary=secondary_df[(secondary_df["Cond_Rep"]==input.seqmotif_compare_run_pick2())&(secondary_df["Peptide Length"]==int(input.seqmotif_compare_peplengths2()))]["PEP.StrippedSequence"].drop_duplicates().tolist()
@@ -9636,10 +10834,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.scatter(xdata[i],ydata,zdata_fragger,color=colors[z])
         ax.view_init(azim=input.seqmotif_3d_azimuth(),elev=input.seqmotif_3d_elevation())
         ax.set_xticks(xdata,columns)
-        ax.set_xlabel("Residue")
-        ax.set_ylabel("Position")
-        ax.legend(loc="center",bbox_to_anchor=(1.1,0.5))
-        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod)
+        ax.set_xlabel("Residue",fontsize=axisfont)
+        ax.set_ylabel("Position",fontsize=axisfont)
+        ax.legend(loc="center",bbox_to_anchor=(1.1,0.5),prop={"size":legendfont})
+        ax.set_title("BPS vs. "+name_mod+": "+input.seqmotif_compare_run_pick2()+" "+str(input.seqmotif_compare_peplengths2())+"mers"+titlemod,fontsize=titlefont)
+        ax.tick_params(axis="both",labelsize=axisfont_labels)
         fig.set_tight_layout(True)
 
     # ====================================== IDs Found in Fasta
@@ -9666,8 +10865,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             
             labelfont=input.labelfont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             legendfont=input.legendfont()     
             y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
 
             maxvalue=max(fasta_df[["Fasta_True","Fasta_False"]].max().tolist())
             ax.bar(x,fasta_df["Fasta_True"],width=width,label="Fasta=True",edgecolor="k")
@@ -9675,7 +10876,7 @@ def server(input: Inputs, output: Outputs, session: Session):
 
             ax.bar_label(ax.containers[0],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
             ax.bar_label(ax.containers[1],label_type="edge",padding=5,rotation=90,fontsize=labelfont)
-            ax.set_xticks(x+(width/2),fasta_df["Cond_Rep"],rotation=input.xaxis_label_rotation())
+            ax.set_xticks(x+(width/2),fasta_df["Cond_Rep"],rotation=x_label_rotation)
             ax.set_ylim(top=maxvalue+(y_padding*maxvalue))
             ax.margins(x=0.02)
             ax.set_xlabel("Run",fontsize=axisfont)
@@ -9683,6 +10884,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.legend(fontsize=legendfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== Position Confidence
     @render.ui
@@ -9697,6 +10899,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             peplen=input.confidence_lengthslider()
             axisfont=input.axisfont()
             titlefont=input.titlefont()
+            axisfont_labels=input.axisfont_labels()
 
             searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
             listoflengths=[]
@@ -9731,6 +10934,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 
                 ax[i].set_axisbelow(True)
                 ax[i].grid(linestyle="--")
+                ax[i].tick_params(axis="both",labelsize=axisfont_labels)
                 
                 colors=mcolors.TABLEAU_COLORS
                 for patch,color in zip(bplot["boxes"],colors):
@@ -11572,30 +12776,62 @@ def server(input: Inputs, output: Outputs, session: Session):
         metadata=compare_metadata_table.data_view()
         metadata_condition=compare_metadata_condition_table.data_view()
 
+        if input.compare_remove()==True:
+            editedmetadata=metadata[metadata.remove !="x"]
+            file1=file1.set_index("R.FileName").loc[editedmetadata["R.FileName1"].tolist()].reset_index()
+            file2=file2.set_index("R.FileName").loc[editedmetadata["R.FileName2"].tolist()].reset_index()
+
         RConditionlist1=[]
         RReplicatelist1=[]
-        for run in file1["R.FileName"].drop_duplicates().tolist():
+        for i,run in enumerate(file1["R.FileName"].drop_duplicates().tolist()):
             fileindex=metadata[metadata["R.FileName1"]==run].index.values[0]
-            RConditionlist1.append([metadata["R.Condition"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
-            RReplicatelist1.append([metadata["R.Replicate"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+            if math.isnan(metadata["R.Condition"][fileindex])==True:
+                RConditionlist1.append(["Not Defined"]*len(file1.set_index("R.FileName").loc[run]))
+            else:
+                RConditionlist1.append([metadata["R.Condition"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+            if math.isnan(metadata["R.Replicate"][fileindex])==True:
+                RReplicatelist1.append([i]*len(file1.set_index("R.FileName").loc[run]))
+            else:
+                RReplicatelist1.append([metadata["R.Replicate"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
         file1["R.Condition"]=list(itertools.chain(*RConditionlist1))
         file1["R.Replicate"]=list(itertools.chain(*RReplicatelist1))
         file1["R.Replicate"]=file1["R.Replicate"].astype(int)
 
         RConditionlist2=[]
         RReplicatelist2=[]
-        for run in file2["R.FileName"].drop_duplicates().tolist():
+        for i,run in enumerate(file2["R.FileName"].drop_duplicates().tolist()):
             fileindex=metadata[metadata["R.FileName2"]==run].index.values[0]
-            RConditionlist2.append([metadata["R.Condition"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
-            RReplicatelist2.append([metadata["R.Replicate"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+            if math.isnan(metadata["R.Condition"][fileindex])==True:
+                RConditionlist2.append(["Not Defined"]*len(file2.set_index("R.FileName").loc[run]))
+            else:
+                RConditionlist2.append([metadata["R.Condition"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+            if math.isnan(metadata["R.Replicate"][fileindex])==True:
+                RReplicatelist2.append([i]*len(file2.set_index("R.FileName").loc[run]))
+            else:
+                RReplicatelist2.append([metadata["R.Replicate"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
         file2["R.Condition"]=list(itertools.chain(*RConditionlist2))
         file2["R.Replicate"]=list(itertools.chain(*RReplicatelist2))
         file2["R.Replicate"]=file2["R.Replicate"].astype(int)
 
-        if input.compare_remove()==True:
-            editedmetadata=metadata[metadata.remove !="x"]
-            file1=file1.set_index("R.FileName").loc[editedmetadata["R.FileName1"].tolist()].reset_index()
-            file2=file2.set_index("R.FileName").loc[editedmetadata["R.FileName2"].tolist()].reset_index()
+        # RConditionlist1=[]
+        # RReplicatelist1=[]
+        # for run in file1["R.FileName"].drop_duplicates().tolist():
+        #     fileindex=metadata[metadata["R.FileName1"]==run].index.values[0]
+        #     RConditionlist1.append([metadata["R.Condition"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+        #     RReplicatelist1.append([metadata["R.Replicate"][fileindex]]*len(file1.set_index("R.FileName").loc[run]))
+        # file1["R.Condition"]=list(itertools.chain(*RConditionlist1))
+        # file1["R.Replicate"]=list(itertools.chain(*RReplicatelist1))
+        # file1["R.Replicate"]=file1["R.Replicate"].astype(int)
+
+        # RConditionlist2=[]
+        # RReplicatelist2=[]
+        # for run in file2["R.FileName"].drop_duplicates().tolist():
+        #     fileindex=metadata[metadata["R.FileName2"]==run].index.values[0]
+        #     RConditionlist2.append([metadata["R.Condition"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+        #     RReplicatelist2.append([metadata["R.Replicate"][fileindex]]*len(file2.set_index("R.FileName").loc[run]))
+        # file2["R.Condition"]=list(itertools.chain(*RConditionlist2))
+        # file2["R.Replicate"]=list(itertools.chain(*RReplicatelist2))
+        # file2["R.Replicate"]=file2["R.Replicate"].astype(int)
         
         if input.compare_reorder()==True:
             metadata_condition["order"]=metadata_condition["order"].astype(int)
@@ -11738,7 +12974,10 @@ def server(input: Inputs, output: Outputs, session: Session):
             y_padding=input.ypadding()
             titlefont=input.titlefont()
             axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
             labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            x_label_rotation=input.xaxis_label_rotation()
 
             label1=input.software1()
             label2=input.software2()
@@ -11756,6 +12995,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             maxvalue1=max([max(resultdf1["proteins"]),max(resultdf2["proteins"])])
             ax1.set_ylim(top=maxvalue1+(y_padding*maxvalue1))
             ax1.set_title("Protein Groups",fontsize=titlefont)
+            ax1.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax2.bar(x,resultdf1["proteins2pepts"],width=width)
             ax2.bar(x+width,resultdf2["proteins2pepts"],width=width)
@@ -11764,6 +13004,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             maxvalue2=max([max(resultdf1["proteins2pepts"]),max(resultdf2["proteins2pepts"])])
             ax2.set_ylim(top=maxvalue2+(y_padding*maxvalue2))
             ax2.set_title("Protein Groups with >2 Peptides",fontsize=titlefont)
+            ax2.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax3.bar(x,resultdf1["peptides"],width=width)
             ax3.bar(x+width,resultdf2["peptides"],width=width)
@@ -11773,8 +13014,9 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax3.set_ylim(top=maxvalue3+(y_padding*maxvalue3))
             ax3.set_xlabel("Condition",fontsize=axisfont)
             ax3.set_xticks(x+width/2,runlist)
-            ax3.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+            ax3.tick_params(axis="x",rotation=x_label_rotation)
             ax3.set_title("Peptides",fontsize=titlefont)
+            ax3.tick_params(axis="both",labelsize=axisfont_labels)
 
             ax4.bar(x,resultdf1["precursors"],width=width)
             ax4.bar(x+width,resultdf2["precursors"],width=width)
@@ -11784,10 +13026,11 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax4.set_ylim(top=maxvalue4+(y_padding*maxvalue4))
             ax4.set_xlabel("Condition",fontsize=axisfont)
             ax4.set_xticks(x+width/2,runlist)
-            ax4.tick_params(axis="x",labelsize=axisfont,rotation=input.xaxis_label_rotation())
+            ax4.tick_params(axis="x",rotation=x_label_rotation)
             ax4.set_title("Precursors",fontsize=titlefont)
+            ax4.tick_params(axis="both",labelsize=axisfont_labels)
 
-            fig.legend(loc="upper left",bbox_to_anchor=(0,1))
+            fig.legend(loc="upper left",bbox_to_anchor=(0,1),prop={'size':legendfont})
             fig.text(0, 0.6,"Counts",ha="left",va="center",rotation="vertical",fontsize=axisfont)
 
             ax1.set_axisbelow(True)
@@ -12156,8 +13399,8 @@ def server(input: Inputs, output: Outputs, session: Session):
 
         sample=input.cond_rep()
 
-        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]
-        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
+        columns=["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]
+        df=searchoutput[searchoutput["Cond_Rep"]==sample][["EG.ModifiedPeptide","FG.Charge","EG.IonMobility","EG.ApexRT","FG.PrecMz","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]].sort_values(["EG.ApexRT"]).reset_index(drop=True)
         coelutingpeptides=pd.DataFrame(columns=columns)
         for i in range(len(df)):
             if i+1 not in range(len(df)):
@@ -12180,7 +13423,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             imdiff=abs(coelutingpeptides["EG.IonMobility"][i]-coelutingpeptides["EG.IonMobility"][i+1])
             if rtdiff <= rttolerance and mzdiff <= mztolerance and imdiff >= imtolerance:
                 coelutingpeptides.loc[coelutingpeptides.index[i],"Group"]=i
-
+        coelutingpeptides=coelutingpeptides[["Group","EG.ModifiedPeptide","FG.Charge","FG.PrecMz","EG.ApexRT","EG.IonMobility","FG.MS2Quantity","PG.ProteinGroups","PG.ProteinNames"]]
         with io.BytesIO() as buf:
             coelutingpeptides.to_csv(buf,index=False)
             yield buf.getvalue()
@@ -12278,38 +13521,48 @@ def server(input: Inputs, output: Outputs, session: Session):
             MSframedict,precursordict,samplenames=rawfile_list()
             checkgroup=input.rawfile_pick_tic()
             colors=list(mcolors.TABLEAU_COLORS)
+
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             if input.stacked_tic()==True:
                 fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
                 for i,run in enumerate(checkgroup):
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["SummedIntensities"]
                     ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Intensity",fontsize=input.axisfont())
-                    ax[0].set_title("Total Ion Chromatogram",fontsize=input.titlefont())
+                    ax[i].set_ylabel("Intensity",fontsize=axisfont)
+                    ax[0].set_title("Total Ion Chromatogram",fontsize=titlefont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
                     ax[i].xaxis.set_minor_locator(MultipleLocator(1))
-                    legend=ax[i].legend(loc="upper left")
+                    ax[i].tick_params(axis="both",labelsize=axisfont_labels)
+                    legend=ax[i].legend(loc="upper left",prop={'size':legendfont})
                     for z in legend.legend_handles:
                         z.set_linewidth(5)
-                ax[i].set_xlabel("Time (min)",fontsize=input.axisfont())
+                ax[i].set_xlabel("Time (min)",fontsize=axisfont)
             else:
                 fig,ax=plt.subplots()
                 for run in checkgroup:
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["SummedIntensities"]
                     ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)",fontsize=input.axisfont())
-                ax.set_ylabel("Intensity",fontsize=input.axisfont())
-                ax.set_title("Total Ion Chromatogram",fontsize=input.titlefont())
+                ax.set_xlabel("Time (min)",fontsize=axisfont)
+                ax.set_ylabel("Intensity",fontsize=axisfont)
+                ax.set_title("Total Ion Chromatogram",fontsize=titlefont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
-                legend=ax.legend(loc="upper left")
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+                legend=ax.legend(loc="upper left",prop={'size':legendfont})
                 for z in legend.legend_handles:
                     z.set_linewidth(5)
-               
+
     # ====================================== BPC Plot
     #render ui for checkboxes to plot specific runs
     @render.ui
@@ -12329,35 +13582,44 @@ def server(input: Inputs, output: Outputs, session: Session):
             MSframedict,precursordict,samplenames=rawfile_list()
             checkgroup=input.rawfile_pick_bpc()
             colors=list(mcolors.TABLEAU_COLORS)
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             if input.stacked_bpc()==True:
                 fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
                 for i,run in enumerate(checkgroup):
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["MaxIntensity"]
                     ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Intensity",fontsize=input.axisfont())
-                    ax[0].set_title("Base Peak Chromatogram",fontsize=input.titlefont())
+                    ax[i].set_ylabel("Intensity",fontsize=axisfont)
+                    ax[0].set_title("Base Peak Chromatogram",fontsize=titlefont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
                     ax[i].xaxis.set_minor_locator(MultipleLocator(1))
-                    legend=ax[i].legend(loc="upper left")
+                    ax[i].tick_params(axis="both",labelsize=axisfont_labels)
+                    legend=ax[i].legend(loc="upper left",prop={'size':legendfont})
                     for z in legend.legend_handles:
                         z.set_linewidth(5)
-                ax[i].set_xlabel("Time (min)",fontsize=input.axisfont())
+                ax[i].set_xlabel("Time (min)",fontsize=axisfont)
             else:
                 fig,ax=plt.subplots()
                 for run in checkgroup:
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["MaxIntensity"]
                     ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)",fontsize=input.axisfont())
-                ax.set_ylabel("Intensity",fontsize=input.axisfont())
-                ax.set_title("Base Peak Chromatogram",fontsize=input.titlefont())
+                ax.set_xlabel("Time (min)",fontsize=axisfont)
+                ax.set_ylabel("Intensity",fontsize=axisfont)
+                ax.set_title("Base Peak Chromatogram",fontsize=titlefont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                #legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
-                legend=ax.legend(loc='upper left')
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+                legend=ax.legend(loc='upper left',prop={'size':legendfont})
                 for z in legend.legend_handles:
                     z.set_linewidth(5)      
 
@@ -12380,34 +13642,44 @@ def server(input: Inputs, output: Outputs, session: Session):
             MSframedict,precursordict,samplenames=rawfile_list()
             checkgroup=input.rawfile_pick_accutime()
             colors=list(mcolors.TABLEAU_COLORS)
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             if input.stacked_accutime()==True:
                 fig,ax=plt.subplots(nrows=len(checkgroup),sharex=True)
                 for i,run in enumerate(checkgroup):
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["AccumulationTime"]
                     ax[i].plot(x,y,label=run.split("\\")[-1],linewidth=1.5,color=colors[i])
-                    ax[i].set_ylabel("Accumulation Time (ms)",fontsize=input.axisfont())
-                    ax[0].set_title("Accumulation Time Chromatogram",fontsize=input.titlefont())
+                    ax[i].set_ylabel("Accumulation Time (ms)",fontsize=axisfont)
+                    ax[0].set_title("Accumulation Time Chromatogram",fontsize=titlefont)
                     ax[i].set_axisbelow(True)
                     ax[i].grid(linestyle="--")
                     ax[i].xaxis.set_minor_locator(MultipleLocator(1))
-                    legend=ax[i].legend(loc="upper left")
+                    ax[i].tick_params(axis="both",labelsize=axisfont_labels)
+                    legend=ax[i].legend(loc="upper left",prop={'size':legendfont})
                     for z in legend.legend_handles:
                         z.set_linewidth(5)
-                ax[i].set_xlabel("Time (min)",fontsize=input.axisfont())
+                ax[i].set_xlabel("Time (min)",fontsize=axisfont)
             else:
                 fig,ax=plt.subplots()
                 for run in checkgroup:
                     x=MSframedict[run]["Time"]/60
                     y=MSframedict[run]["AccumulationTime"]
                     ax.plot(x,y,label=run.split("\\")[-1],linewidth=0.75)
-                ax.set_xlabel("Time (min)",fontsize=input.axisfont())
-                ax.set_ylabel("Accumulation Time (ms)",fontsize=input.axisfont())
-                ax.set_title("Accumulation Time Chromatogram",fontsize=input.titlefont())
+                ax.set_xlabel("Time (min)",fontsize=axisfont)
+                ax.set_ylabel("Accumulation Time (ms)",fontsize=axisfont)
+                ax.set_title("Accumulation Time Chromatogram",fontsize=titlefont)
                 ax.set_axisbelow(True)
                 ax.grid(linestyle="--")
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                legend=ax.legend(loc='center left', bbox_to_anchor=(1,0.5),prop={'size':10})
+                ax.tick_params(axis="both",labelsize=axisfont_labels)
+                legend=ax.legend(loc='center left',bbox_to_anchor=(1,0.5),prop={'size':legendfont})
                 for z in legend.legend_handles:
                     z.set_linewidth(5)
 
@@ -12437,6 +13709,14 @@ def server(input: Inputs, output: Outputs, session: Session):
         @render.plot(width=input.eic_width(),height=input.eic_height())
         def eic():
             rawfile=eic_rawfile_import()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             try:
                 mz=float(input.eic_mz_input())
                 ppm_error=float(input.eic_ppm_input())
@@ -12456,16 +13736,17 @@ def server(input: Inputs, output: Outputs, session: Session):
                 fig,ax=plt.subplots()
                 ax.plot(eic_df["rt_values_min"],eic_df["intensity_values"],linewidth=0.5)
                 if input.include_mobility()==True:
-                    ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()))
+                    ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input())+", Mobility: "+str(input.mobility_input_value()),fontsize=titlefont)
                 else:
-                    ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()))
+                    ax.set_title(input.rawfile_pick_eic().split("\\")[-1]+"\n"+"EIC: "+str(input.eic_mz_input()),fontsize=titlefont)
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
             except:
                 fig,ax=plt.subplots()
-            ax.set_xlabel("Time (min)",fontsize=input.axisfont())
-            ax.set_ylabel("Intensity",fontsize=input.axisfont())
+            ax.set_xlabel("Time (min)",fontsize=axisfont)
+            ax.set_ylabel("Intensity",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
     # ====================================== EIM Plot
     @render.ui
@@ -12488,6 +13769,14 @@ def server(input: Inputs, output: Outputs, session: Session):
         @render.plot(width=input.eim_width(),height=input.eim_height())
         def eim():
             rawfile=eim_rawfile_import()
+            titlefont=input.titlefont()
+            axisfont=input.axisfont()
+            axisfont_labels=input.axisfont_labels()
+            labelfont=input.labelfont()
+            legendfont=input.legendfont()
+            y_padding=input.ypadding()
+            x_label_rotation=input.xaxis_label_rotation()
+
             try:
                 mz=float(input.eim_mz_input())
                 ppm_error=float(input.eim_ppm_input())
@@ -12498,41 +13787,17 @@ def server(input: Inputs, output: Outputs, session: Session):
 
                 fig,ax=plt.subplots()
                 ax.plot(eim_df["mobility_values"],eim_df["intensity_values"],linewidth=0.5)
-                ax.set_title(input.rawfile_pick_eim().split("\\")[-1]+"\n"+"EIM: "+str(input.eim_mz_input()))
+                ax.set_title(input.rawfile_pick_eim().split("\\")[-1]+"\n"+"EIM: "+str(input.eim_mz_input()),fontsize=titlefont)
                 ax.xaxis.set_minor_locator(MultipleLocator(0.01))
             except:
                 fig,ax=plt.subplots()
-            ax.set_xlabel("Ion Mobility ($1/K_{0}$)",fontsize=input.axisfont())
-            ax.set_ylabel("Intensity",fontsize=input.axisfont())
+            ax.set_xlabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
+            ax.set_ylabel("Intensity",fontsize=axisfont)
             ax.set_axisbelow(True)
             ax.grid(linestyle="--")
+            ax.tick_params(axis="both",labelsize=axisfont_labels)
 
 #endregion
 
-# ============================================================================= UI calls for use around the app
-#region
-
-    #render ui call for dropdown calling sample condition names
-    @render.ui
-    def sampleconditions_ui():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=sampleconditions
-        return ui.input_selectize("conditionname","Pick sample condition",choices=opts)
-
-    #render ui call for dropdown calling replicate number
-    @render.ui
-    def replicates_ui():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=np.arange(1,max(repspercondition)+1,1)
-        return ui.input.selectize("replicate","Replicate number",opts)
-
-    #render ui call for dropdown calling Cond_Rep column
-    @render.ui
-    def cond_rep_list():
-        searchoutput,resultdf,sampleconditions,maxreplicatelist,averagedf,numconditions,repspercondition,numsamples=variables_dfs()
-        opts=resultdf["Cond_Rep"].tolist()
-        return ui.input_selectize("cond_rep","Pick run:",choices=opts)
-
 #endregion
-
 app=App(app_ui,server)
