@@ -3965,7 +3965,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 numbins=input.cvplot_histogram_bins_slider()
                 fig,ax=plt.subplots(ncols=len(cvcalc_df))
                 colors=colorpicker()
-                numbins=100
                 if numconditions==1:
                     if cutoff95==True:
                         ax.hist(cvcalc_df[cvplotinput+" 95% CVs"],bins=numbins,color=colors)
