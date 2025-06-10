@@ -6208,7 +6208,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ax.set_xlabel("m/z",fontsize=axisfont)
             ax.set_ylabel("Ion Mobility ($1/K_{0}$)",fontsize=axisfont)
             ax.tick_params(axis="both",labelsize=axisfont_labels)
-            #fig.colorbar(j[3],ax=ax)
+            fig.colorbar(j[3],ax=ax)
             
             fig.set_tight_layout(True)
             
