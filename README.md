@@ -24,9 +24,11 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
   - logomaker
   - matplotlib-venn
   - pyarrow
+  - seaborn
   - scikit-learn
   - shiny
   - shinyswatch
+  - textalloc
   - upsetplot
 
 </details>
