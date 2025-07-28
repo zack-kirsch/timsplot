@@ -40,9 +40,12 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 ## Input File Format
 Note: multiple files from the same software can be uploaded at a time. In the Upload Search Report section, just select the multiple files in the file explorer window that pops up.
 - Spectronaut: Use the report template listed as "timsplot_spectronaut_report.rs" to export the search results.
-- DIA-NN: The input is the main report .tsv file. (for DIA-NN 2.0, the input is the report.parquet file)
+- DIA-NN: The input is the main report .tsv file. (for DIA-NN 2.0, the input is the report.parquet file).
 - FragPipe (and FragPipe Glyco): The input is the psm.tsv result file.
-- BPS Novor, tims-rescore, tims-DIANN, Spectronaut (from BPS), Pulsar, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS
+- BPS Novor, tims-rescore, tims-DIANN, Spectronaut (from BPS), Pulsar, and GlycoScape: download artefacts for selected runs in BPS. The input is the .zip folder that's generated from BPS.
+- Sage: Use the results.tsv file as input.
+- Spectronaut: Use the report template listed as "timsplot_spectromine_report.rs" to export the search results.
+- PEAKS: Use the db.psms.csv file from the Peptides export.
 
 ## Alternative Launch Method
 timsplot may also be run using the command line after having installed python and the necessary libraries without the need for using Visual Studio Code
