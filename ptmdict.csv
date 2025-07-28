@@ -1,26 +1,31 @@
 0.984016,Deamidation (NQ)
 0.984,Deamidation (NQ)
 UniMod:7,Deamidation (NQ)
-147,Oxidation (M)
+M147,M[Oxidation (M)]
 15.994915,Oxidation (M)
 15.9949,Oxidation (M)
+15.99,Oxidation (M)
 UniMod:35,Oxidation (M)
 79.966331,Phospho (STY)
 UniMod:21,Phospho (STY)
-167,Phospho (STY)
-181,Phospho (STY)
-243,Phospho (STY)
+S167,S[Phospho (STY)]
+T181,T[Phospho (STY)]
+Y243,Y[Phospho (STY)]
 42.010563,Acetyl (Protein N-term)
 42.010565,Acetyl (Protein N-term)
 42.0105,Acetyl (Protein N-term)
-43,Acetyl (Protein N-term)
+42.01,Acetyl (Protein N-term)
+n43,[Acetyl (Protein N-term)]
 UniMod:1,Acetyl (Protein N-term)
-222,Carbamidomethyl (C)
-160,Carbamidomethyl (C)
+C222,C[Carbamidomethyl (C)]
+C160,C[Carbamidomethyl (C)]
 57.021464,Carbamidomethyl (C)
 57.021465,Carbamidomethyl (C)
 57.0215,Carbamidomethyl (C)
 57.0216,Carbamidomethyl (C)
+57.02,Carbamidomethyl (C)
 UniMod:4,Carbamidomethyl (C)
-111,pyroGlu (EQ)
+E111,E[pyroGlu (EQ)]
+Q111,Q[pyroGlu (EQ)]
 203.079373,-HexNAc (N)
+
