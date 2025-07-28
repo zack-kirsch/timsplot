@@ -1,4 +1,69 @@
 # Changelog
+## 2025.07.28
+- File Import
+  - added support for Spectromine output
+    - to note: columns were chosen for the report format based on similarity to the Spectronaut output. PG.Label-Free Quant and P.Label-Free Quant columns are MS1 level quant, not MS2. For simplicity, they are renamed to MS2Quantity.
+  - added support for PEAKS output
+    - use the db.psms.csv file for input
+  - added a filter for Spectronaut results to remove rows that have NaN FG.MS2Quantity or PG.MS2Quantity. These are IDs that didn't meet FDR cutoffs for a particular run but were ID'd and quantified in other runs.
+  - adjusted PTM renaming for FragPipe input and added instructions in the PTM settings tab
+  - added some code to localize PTM information in protein sequences for SN and FragPipe, added handling for when FragPipe search files are input and then downloaded then reuploaded using the SN radio button
+  - adjusted code throughout inputfile() and other file import functions to unify some commands, simplify for application to Two-Software Comparison and De Novo imports and simplification for when I make edits that I can copy and paste code and just change a variable or two
+- Settings
+  - added x axis tick label alignment setting for when tick labels are rotated. Similarly to figure dpi, this change is implemented in variables_dfs to apply it globally since doing it per-plot is problematic with how different plotting functions deal with setting x tick properties
+  - PTM Settings
+    - added extra notes to setup
+- ID Counts
+  - Counts per Condition
+    - added an option to show either modified peptide sequences or stripped peptide sequences for the Peptides plot
+    - added an option to show distinct peptide lengths when Peptides is selected
+  - CV Plots
+    - added handling for when PG.MS2Quantity or FG.MS2Quantity are missing, shows a plot of zeroes
+  - IDs with CV Cutoff
+    - added handling for when PG.MS2Quantity or FG.MS2Quantity are missing, shows a plot of zeroes
+  - Protein/Peptide Signal Tracker
+    - added a radio button to choose whether to show Protein Groups or Protein Names as the grouping key
+  - Individual Protein Counts
+    - added section
+- Metrics
+  - Charge State, Peptide Length
+    - reorganized Plot Options panel
+  - Dynamic Range
+    - adjusted table properties to better fit content
+  - Missed Cleavages
+    - adjusted logic such that the total of all bars is the number of unique stripped sequences, not the number of precursors
+- PTMs
+  - adjusted regex logic for how PTMs are searched (also in Heatmaps and 2-software comparison Venn diagrams)
+  - Counts per Condition
+    - reorganized Plot Options panel
+  - CV Plots
+    - added handling for when PG.MS2Quantity or FG.MS2Quantity are missing, shows a plot of zeroes
+  - Unique PTM Sites, Per-Residue PTM Sites
+    - added sections, show the number of unique modification sites found for each ptm. Isolation of multi-residue ptms and the counts of the different residues modified 
+    - requires new SN output format, only works for SN and FragPipe so far
+  - PTMs per Precursor
+    - fixed plot for when choosing specific PTM, PTMs need to have a whitespace (e.g. "Carbamidomethyl (C)") to work (this change needed from changing how regex worked for PTM search)
+- Heatmaps
+  - RT,m/z,IM Heatmaps
+    - added an extra bin slider to adjust x and y axis bins independently
+  - Charge/PTM Precursor Heatmap
+    - added condition/replicate as a plotting filter instead of plotting all precursors in the uploaded file
+    - added an option to show histograms of the individual axes
+    - reorganized Plot Options panel
+  - Venn Diagram
+    - added coloring options for each circle
+- De Novo
+    - added sage to list of software to compare
+- Two-Software Comparison
+  - added color options for each software to be plotted with, does not require the "Apply Changes" button to implement
+  - File Import
+    - added sage to list of software to compare
+    - changed how R.Condition and R.Replicate columns are generated in the metadata once both files have been uploaded. Previously, columns of NaNs were added and the conditional in metadata_update handled this, but when strings are input in the metadata table, it would error out because the strings aren't handled by the math.isnan function
+  - ID Counts
+    - added option to plot average counts
+    - added option to plot modified or stripped peptide sequence counts
+    - added option to plot ID counts for specified PTM
+
 ## 2025.06.09
 - UI overhaul, consolidated nearly all plotting options into collapsible ribbons at the top of each plotting page
 - File Import
