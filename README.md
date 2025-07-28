@@ -37,6 +37,13 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
 5. **Download the app from the GitHub repository:** Clone or download the repository containing the app code from the GitHub repository (<https://github.com/zack-kirsch/timsplot>).
 6. **Run and access the app:** Set the downloaded app directory as the working directory under the Explorer tab in Visual Studio Code and open the app.py file. Click the play button in the top right to launch the Shiny app. If the extensions have been installed properly, you should see `Run Shiny App` when hovering over the button.
 
+## Necessary Files for Using timsplot
+- ptmdict.csv
+  - Contains keys and replacements for PTMs in search files to unify how PTMs are notated and can be edited for custom PTM input
+  - To note: FragPipe has a specific format considering how it denotes PTMs in modified sequences. The key should be amino acid letter followed by the integer mass of the modified residue (e.g. carbamidomethylated Cys key would be C160) and the replacement should be the amino acid letter followed by the PTM name in square brackets (e.g. carbamidomethylated Cys replacement would be C[Carbamidomethyl (C)]) 
+- images folder
+  - Contains images for showing color options in the Settings panel in timsplot
+
 ## Input File Format
 Note: multiple files from the same software can be uploaded at a time. In the Upload Search Report section, just select the multiple files in the file explorer window that pops up.
 - Spectronaut: Use the report template listed as "timsplot_spectronaut_report.rs" to export the search results.
