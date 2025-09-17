@@ -3305,7 +3305,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                             if "N-term" in ele_split[k]:
                                 residuemodlist_temp.append(ele_split[k].split("(")[0])
                             else:
-                                residuemodlist_temp.append(re.split("(\d+)",ele_split[k].strip().split("(")[0])[2])
+                                residuemodlist_temp.append(re.split(r"(\d+)",ele_split[k].strip().split("(")[0])[2])
                         residuemodlist.append(residuemodlist_temp)
                 searchoutput["Mod Locations"]=modlist
                 searchoutput["Residue Mod Locations"]=residuemodlist
@@ -3722,7 +3722,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             searchoutput["EG.ModifiedPeptide"]=modifiedpeptides
         #build and add PEP.StrippedSequence column (for bps_sage, sage_lfq, sage, and peaks)
         if "PEP.StrippedSequence" not in searchoutput.columns:
-            searchoutput["PEP.StrippedSequence"]=[re.sub("\(.*?\)|\[.*?\]","",pep) for pep in searchoutput["EG.ModifiedPeptide"].tolist()]
+            searchoutput["PEP.StrippedSequence"]=[re.sub(r"\(.*?\)|\[.*?\]","",pep) for pep in searchoutput["EG.ModifiedPeptide"].tolist()]
         #filter out decoy and contaminant sequences
         if "PG.ProteinGroups" in searchoutput.columns:
             searchoutput=searchoutput[(searchoutput["PG.ProteinGroups"].str.contains("Reverse")==False)&(searchoutput["PG.ProteinGroups"].str.contains("contaminant")==False)&(searchoutput["PG.ProteinGroups"].str.contains("con_")==False)].reset_index(drop=True)
@@ -7384,7 +7384,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     index=2
                 if input.software()=="fragpipe":
                     index=2
-                residuesonly=[re.split("(\d+)",modifiedresidueslist[j])[index] for j in range(len(modifiedresidueslist))]
+                residuesonly=[re.split(r"(\d+)",modifiedresidueslist[j])[index] for j in range(len(modifiedresidueslist))]
                 mod_dict=dict([k,residuesonly.count(k)] for k in residuetargets)
                 
                 bottom=0
