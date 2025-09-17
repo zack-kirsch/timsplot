@@ -1,4 +1,69 @@
 # Changelog
+## 2025.09.18
+- General
+  - moved some import calls to where they're needed instead of at the beginning of the server to try to make app startup faster (alphatims, pca, dendrogram, venn, textalloc, logomaker)
+  - added a function for handling different OS. \\ not used in MacOS to separate directories, uses / (should be fully implemented)
+- File Import
+  - new download feature
+    - added a text box to paste a directory where figures can be automatically saved. The png files that are generated will automatically update based on the most recent changes to the plot
+    - the directory specified cannot be the timsplot folder, since the app reloads when changes are made to that directory
+    - the filename of the generated image will contain the name of the software, the name of the file uploaded, and a short identifier to the plot
+    - if multiple files are uploaded, the first file will be used in the generated file name
+    - applied to all plotting functions except MOMA tab
+  - added a checkmark image that pops up when the "apply metadata" button has been clicked (applied to De Novo input and Two-Software Comparison)
+  - added checks for if the metadata table has been changed or whether conditions/replicates are empty. Should speed up metadata apply slightly if the metadata hasn't been changed (not extended to De Novo or Two-Software Comparison)
+  - reworked replicate numbering on fill-in such that replicate numbers start at 1
+  - reworked filename sorting. Files will be sorted first by the HyStar run ID then by condition name. This should prevent issues where color choices are done in order of condition but won't be reflected in graphing unless condition order was specified in the secondary metadata table
+  - added support for Sage standalone results (applied to De Novo and Two-Software Comparison)
+  - reorganized/optimized the variables() function and applied changes to all calls in the server code
+  - for FragPipe import, un-converted PTM identifiers have their [] removed, causing them to be missed by find_ptms(). Added a loop on the back end of inputfile() to handle this so that un-converted PTMs can be detected
+  - fixed an issue with DIANN2.0 input where PG.MaxLFQ was being removed before being renamed to PG.MS2Quantity
+  - added a check for blank Protein.Group entries for DIANN2.0 input. ProteinNames will still be blank but the Protein.Groups will be filled in from the Protein.Ids column
+  - reworked inputfile() and split a few steps into their own functions (applied to De Novo and Two-Software Comparison)
+  - added an option related to reupload of processed files from timsplot
+  - added handling for multiple .zip files
+  - changed conditional UI calls for DIANN filter to panel_conditional (only in main file import)
+  - changed conditional UI calls for BPS quant to panel_conditional calls for simpler use (applied to De Novo and Two-Software Comparison)
+  - added a default ordering scheme to the metadata condition table, removed reorder button
+  - simplified how input files and metadata are handled to make it more extensible instead of duplicating functions across the app
+  - simplified some ID count functions to reduce redundant calculations (use function with variable args that's then called in a reactive.calc to store values used for plotting)
+- ID Counts
+  - Counts per Condition
+    - added new plot option - Total Unique Counts. Shows the total number of unique IDs per condition. In proteins with >2 peptides, shows a stacked bar graph of single-peptide hits and >2 hits
+  - Protein/Peptide Tracker
+    - when log10 for the y axis is selected, the y-label will now change to show that it's on log10 scale
+    - fixed display of longer ;-delimited protein names
+- Metrics
+  - Peptide Length, Peptides per Protein
+    - for line plots of individual runs, added color lightening for replicates of the same condition so that the line plots of the replicates are more distinguishable
+- PTMs
+  - CV Plots
+    - added histogram option
+  - PTM Mass Accuracy
+    - adjusted regex to fit with the rest of the app (must have missed in previous update)
+- Heatmaps
+  - Venn Diagram
+    - removed redundant code for generating Peptide Length column since it's being calculated in the file import function (applied to Two-Software Comparison Venn as well)
+    - moved section from Heatmaps to ID Counts (makes more sense)
+- Statistics
+  - Volcano Plot
+    - added absolute value of log2_FoldChange column to protein list download
+    - added PG.Genes and PG.ProteinNames to the output table for easier result navigation/interrogation
+  - Volcano Plot - Up/Down Regulation
+    - added an option to plot top N fold changes
+  - Correlations
+    - added section, comparison of FG.MS2Quantity between replicates of the same condition
+  - PCA
+    - added an option to show as a 3d plot with the 3rd PC as the z axis
+- Mixed Proteome
+  - adjusted blue/gray color list to accommodate up to 8 different organisms, added a loop to add repeats of the list if organismlist is substantially long
+  - adjusted Quant Ratios plot to better accommodate more than 3 organisms
+- Glycoproteomics
+  - added Plot Options bar similar to rest of the app (left out in previous updates)
+- Export Tables
+  - reorganized UI
+  - added a new feature to pull selected image files from a specified directory into a PowerPoint
+  - added protein ID matrix as another export option
 ## 2025.07.28
 - File Import
   - added support for Spectromine output
