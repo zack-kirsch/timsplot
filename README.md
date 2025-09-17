@@ -24,6 +24,7 @@ Instructions on how to install and use the app can be found in 'timsTOF Visualiz
   - logomaker
   - matplotlib-venn
   - pyarrow
+  - python-pptx
   - seaborn
   - scikit-learn
   - shiny
