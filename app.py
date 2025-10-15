@@ -11130,7 +11130,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 metadata["remove"]=[""]*len(metadata["R.FileName1"])
         return metadata
     #generate df for downloading metadata
-    def metadata_download_gen(metadata,metadata_condition):
+    def compare_metadata_download_gen(metadata,metadata_condition):
         metadata_download=pd.DataFrame()
         metadata_download["R.FileName1"]=metadata["R.FileName1"]
         metadata_download["R.FileName2"]=metadata["R.FileName2"]
@@ -11310,7 +11310,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     #download metadata table as shown
     @render.download(filename="metadata_"+str(date.today())+".csv")
     def compare_metadata_download():
-        metadata_download=metadata_download_gen(compare_metadata_table.data_view(),compare_metadata_condition_table.data_view())
+        metadata_download=compare_metadata_download_gen(compare_metadata_table.data_view(),compare_metadata_condition_table.data_view())
         with io.BytesIO() as buf:
             metadata_download.to_csv(buf,index=False)
             yield buf.getvalue()
@@ -12536,4 +12536,5 @@ def server(input: Inputs, output: Outputs, session: Session):
 #endregion
 
 #endregion
+
 app=App(app_ui,server)
